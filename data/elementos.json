@@ -1,0 +1,5 @@
+[
+  {"tag": 1, "ni": 1, "nj": 31, "tipo": "column", "material": 1, "seccion": "col_70x70"},
+  {"tag": 73, "ni": 31, "nj": 32, "tipo": "wall", "material": 1, "seccion": "muro"},
+  {"tag": 93, "ni": 1, "nj": 2, "tipo": "viga_x", "material": 1, "seccion": "viga_60x80"}
+]

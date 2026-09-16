@@ -1,0 +1,6 @@
+{
+  "G":  {"tipo": "distribuida", "valor": 6.30, "unidad": "kN/m2", "descripcion": "PP losa 3.75 + PM adic 2.55"},
+  "Q":  {"tipo": "distribuida", "valor": 2.50, "unidad": "kN/m2", "descripcion": "SC aula"},
+  "EX": {"tipo": "sismo_pseudoestatico", "alfa": 0.10, "direccion": "X"},
+  "EY": {"tipo": "sismo_pseudoestatico", "alfa": 0.10, "direccion": "Y"}
+}

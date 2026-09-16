@@ -1,0 +1,43 @@
+========================================================================
+RESUMEN EDIFICIO ACTUAL (Edificio de Ingeniería - Edificio A)
+Modelo de palitos: OpenSeesPy / datos_edificio.py + construir.py
+========================================================================
+
+1) RANGOS COORDENADOS TOTALES [m]
+   X: min =     0.000   max =    50.000   ancho =   50.00
+   Y: min =     0.000   max =    16.150   profund. =   16.15
+   Z: min =    -4.210   max =    11.830   altura =   16.04
+
+2) COTAS DE NIVELES Z [m]
+   nivel 0: z =   -4.210
+   nivel 1: z =   -0.050
+   nivel 2: z =    3.910
+   nivel 3: z =    7.870
+   nivel 4: z =   11.830
+
+3) TOTALES
+   Nodos totales:                  190
+   Elementos totales:              321
+     - Columnas hormigón P.70x70:  72
+     - Columnas acero   P.M.:      3
+     - Muros (por piso):           32
+     - Vigas X (incl. V.M.):       110
+     - Vigas Y (incl. V.M.):       104
+   Nota: las losas NO se modelan como elementos (modelo de palitos);
+   su aporte va como carga superficial q_G/q_Q en cargas.py (áreas tributarias).
+
+4) BORDES PERIMETRALES DEL ÚLTIMO PISO (z_max = 11.83 m)
+   Extremos de la retícula del nivel superior:
+     (  0.00,   0.00,  11.83 m)
+     (  0.00,  16.15,  11.83 m)
+     ( 50.00,   0.00,  11.83 m)
+     ( 50.00,  16.15,  11.83 m)
+   --> Las vigas superiores llegan hasta:
+     X: E = 0.00 m  ->  J = 50.00 m  (incluye anexo metálico I'->J)
+     Y: A3 = 0.00 m  ->  A1 = 16.15 m
+   Vigas superiores (nivel 4):
+     - Vigas X de hormigón (E->I', 0..45 m): 25
+     - Vigas metálicas V.M. I'->J (45..50 m, fachadas A3/A2a/A2/A1c/A1): 5
+     - Vigas Y (A3->A1) en cada eje X presente (E..J): 28
+
+========================================================================

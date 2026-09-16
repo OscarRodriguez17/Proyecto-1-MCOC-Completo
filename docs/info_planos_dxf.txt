@@ -1,0 +1,2841 @@
+================================================================================
+CONTENIDO DE LOS PLANOS — EDIFICIO DE INGENIERÍA (Proyecto P1 MCOC)
+Serie: 2017_67-XXX (38 planos DXF) | Conversión DWG→DXF 2018 vía ODA
+================================================================================
+
+NOTA: Unidad de dibujo = CENTÍMETROS (1 cm = 1 unidad).
+Cotas en mm (ej: 360 = 3.60 m entre ejes).
+
+IMPORTANTE PARA LOS CORTES/ELEVACIONES (planos 300-310):
+- En estos planos el contenido (perfiles, textos de vigas/columnas) vive DENTRO
+  de BLOQUES, NO en el modelspace. Por eso aquí solo se ven 3 textos por plano.
+- Hay un documento COMPLEMENTARIO con el detalle completo de cada bloque de los
+  cortes y elevaciones: `docs/info_cortes_elevaciones.txt`
+  (incluye perfiles P.M. 300x300x20, V.M. 300x300x5, +V.I. 20/90 2ªETAPA, etc.)
+
+
+################################################################################
+# CATEGORÍA: PLANTA
+################################################################################
+
+======================================================================
+PLANO: 2017_67-100.dxf
+DESCRIPCIÓN: Planta de fundaciones y corte típico
+Tamaño: 4220 KB | Capas: 27 | Entidades: 1829 | Dims: 193
+Distribución: LINE:985, MTEXT:204, DIMENSION:193, HATCH:162, TEXT:135, CIRCLE:117, LWPOLYLINE:17, INSERT:13
+Capas más activas:
+  RLE-NIVELES: 427 entidades
+  RLE-FUNDACION: 199 entidades
+  DEFPOINTS: 168 entidades
+  RLE-MURO: 158 entidades
+  RLA-COTAS1: 132 entidades
+  RLA-CORTES: 116 entidades
+  RLE-EJE: 88 entidades
+  RLE-TEXTO-1: 82 entidades
+  RLE-VIGA: 69 entidades
+  RLE-EJES: 63 entidades
+  RLE-SOLID: 55 entidades
+  RLE-PROYECCION: 52 entidades
+  RLA-COTAS: 51 entidades
+  RLA-FORMATO: 36 entidades
+  CONTORNOS: 27 entidades
+Bloques insertados (13 total):
+  nivel-el: 4x
+  FLECHA: 4x
+  Alfa: 3x
+  viñeta-rl: 1x
+  A$C275F4B4F: 1x
+Textos TEXT (41):
+  [RLA-FORMATO] (54,595): "INDICADAS"
+  [RLA-FORMATO] (7,664): "DICIEMBRE 2017"
+  [RLA-FORMATO] (7,855): "M. KUPFER C."
+  [RLA-TEXTOS2] (2590,2862): "PLANTA FUNDACIONES"
+  [RLA-TEXTOS2] (2904,2803): "ESCALA 1:75"
+  [0] (2604,2940): "(NIVEL SUPERIOR RADIER S/PLANTA )"
+  [RLA-FORMATO] (2734,170): "CASO EVENTUAL"
+  [RLA-FORMATO] (2734,222): "CASO NORMAL"
+  [RLA-FORMATO] (3013,170): "=   5.6 Kg/cm"
+  [RLA-FORMATO] (3012,222): "=   4.0 Kg/cm"
+  [RLA-FORMATO] (3302,182): "2"
+  [RLA-FORMATO] (3302,234): "2"
+  [RLA-NIVELES] (2682,310): "PRESIONES ADMISIBLES DEL SUELO"
+  [RLA-FORMATO] (2718,504): "TIPO DE SUELO C"
+  [RLA-NIVELES] (2682,631): "ANTECEDENTES SISMICOS"
+  [RLA-FORMATO] (2718,547): "ZONA SISMICA 2"
+  [RLA-TEXTOS-1] (4618,1604): "- CODIGO ACI318S-08"
+  [RLA-TEXTOS-1] (4618,1557): "- DECRETO SUPREMO Nº 60 DEL MINISTERIO DE VIVIENDA Y URBANISMO,"
+  [RLA-TEXTOS-1] (4629,1720): "NORMAS DE DISEÑO"
+  [RLA-TEXTOS-1] (4618,1651): "- Nch 433 Of. 96 MODIF. 2009"
+  [RLA-TEXTOS-1] (4668,1519): "DE FECHA 13/12/2011"
+  [RLA-TEXTOS-1] (4618,1476): "- DECRETO SUPREMO Nº 61 DEL MINISTERIO DE VIVIENDA Y URBANISMO,"
+  [RLA-TEXTOS-1] (4668,1438): "DE FECHA 13/12/2011"
+  [RLA-FORMATO] (4683,1863): "CON FECHA JULIO 2017."
+  [RLA-NIVELES] (4688,2003): "NOTA"
+  [RLA-FORMATO] (4681,1952): "LOS MEJORAMIENTOS DE SUELO DEBERAN SER SEGUN LO INDICADO"
+  [RLA-FORMATO] (4681,1908): "EN INFORME DE MECANICA DE SUELOS EMITIDO POR R Y V INGENIEROS"
+  [RLA-NIVELES] (3766,1305): "MATERIALES"
+  [RLA-CORTES] (1077,373): "CORTE TIP. FUNDACIONES"
+  [RLA-CORTES] (1457,320): "ESCALA 1:25"
+  [RLA-CORTES] (1203,1018): "RADIER"
+  [RLA-CORTES] (1183,952): "RELLENO"
+  [RLA-CORTES] (1161,925): "COMPACTADO"
+  [RLA-CORTES] (1430,738): "(S.I.C.)"
+  [RLA-CORTES] (2069,1018): "RADIER"
+  [RLA-CORTES] (2050,983): "RELLENO"
+  [RLA-CORTES] (2028,871): "COMPACTADO"
+  [RLA-CORTES] (2289,738): "(S.I.C.)"
+  [RLA-CORTES] (664,828): "EMPLANTILLADO"
+  [RLA-CORTES] (1471,828): "EMPLANTILLADO"
+  [RLA-CORTES] (1430,898): "(S.I.C.)"
+MTEXT - Especificaciones (160):
+  [RLA-TEXTOS-1] (3732,1268): "\pxl2.95,a0.83333;HORMIGÓN G35_10: (Desde fundaciones A Cielo piso 3°) | \pi-1,l5;-RESISTENCIA A COMPRESIÓN PROBETA CILÍNDRICA FC' = 35 MPA, EQUIVALENTE A RESISTENCIA A COMPRESIÓN PROBETA CÚBICA R28 = 40 MPA Y 90% NC  | HORMIGÓN G20_10 : (Radier armado %%C8 a 20 ó acma C-257) | -RESISTENCIA A COMPRESIÓ"
+  [RLA-CORTES] (1205,1209): "MALLA %%C8a20 (CENTRAL) o MALLA ACMA C139"
+  [RLA-CORTES] (2095,1209): "MALLA %%C8a20 (CENTRAL) o MALLA ACMA C139"
+  [RLE-TEXTO-1] (2305,5579): "V.F. 20/120"
+  [RLE-TEXTO-1] (3305,5579): "V.F. 20/120"
+  [RLE-TEXTO-1] (4305,5579): "V.F. 20/120"
+  [RLE-TEXTO-1] (5055,5561): "V.F. 20/120"
+  [RLE-TEXTO-1] (5261,5928): "V.F. 20/120"
+  [RLE-TEXTO-1] (5261,5144): "V.F. 20/120"
+  [RLE-TEXTO-1] (5055,4811): "V.F. 20/180"
+  [RLE-TEXTO-1] (3920,4811): "V.F. 20/180"
+  [RLE-TEXTO-1] (2920,4811): "V.F. 20/180"
+  [RLE-TEXTO-1] (2225,4811): "V.F. 20/120"
+  [RLE-TEXTO-1] (736,5667): "V.F. 20/160"
+  [RLE-TEXTO-1] (2219,6418): "V.F. 20/120"
+  [RLE-TEXTO-1] (1032,7339): "V.F. 20/220"
+  [RLE-NIVELES] (2504,5392): "-5.81"
+  [RLE-NIVELES] (3529,5630): "-5.81"
+  [RLE-NIVELES] (3038,6912): "-9.17"
+  [RLE-NIVELES] (2031,6288): "-9.57"
+  [RLE-NIVELES] (1021,6316): "-9.57"
+  [RLE-NIVELES] (934,6185): "-9.57"
+  [RLE-NIVELES] (1675,5188): "-9.57"
+  [RLE-NIVELES] (4614,5905): "-5.21"
+  [RLE-NIVELES] (4999,5735): "-5.21"
+  [RLE-NIVELES] (4662,4197): "-5.21"
+  [RLE-NIVELES] (3520,4920): "-5.81"
+  [RLE-NIVELES] (2518,4654): "-5.81"
+  [RLE-NIVELES] (2154,6577): "-9.17"
+  [RLE-NIVELES] (4445,6211): "-5.81"
+  [RLE-NIVELES] (1246,4616): "-9.57"
+  [RLE-TEXTO-1] (3694,5366): "h=120"
+  [RLE-TEXTO-1] (2914,5372): "h=120"
+  [RLE-TEXTO-1] (2921,6290): "h=120"
+  [RLE-NIVELES] (1943,6894): "N.R.= -7.97"
+  [RLE-NIVELES] (1315,6276): "N.R.= -7.97"
+  [RLE-NIVELES] (1324,5328): "N.R.= -7.97"
+  [RLE-NIVELES] (3426,5965): "N.R.= -4.01"
+  [RLE-NIVELES] (3405,5148): "N.R.= -4.01"
+  [RLE-NIVELES] (2484,4075): "N.R.= -4.01"
+  [RLE-TEXTO-1] (3291,4087): "V.F. 30/170"
+  [RLE-TEXTO-1] (3291,4454): "V.F. 30/136"
+  [RLE-NIVELES] (4076,4179): "N.R.= -4.01"
+  [RLE-TEXTO-1] (1290,5536): "V.F. 20/160"
+  [RLE-TEXTO-1] (887,5841): "V.F. 20/160"
+  [RLE-TEXTO-1] (1305,5841): "V.F. 20/160"
+  [RLE-TEXTO-1] (1690,5841): "V.F. 20/160"
+  [RLE-NIVELES] (1319,5924): "N.O.G.= -9.32"
+  [RLE-TEXTO-1] (1299,5976): "LOSA e=25"
+  [RLE-TEXTO-1] (1087,5760): "h=100"
+
+======================================================================
+PLANO: 2017_67-101.dxf
+DESCRIPCIÓN: Planta cielo piso 1° + cielo 1° subterráneo (PLANTA PRINCIPAL)
+Tamaño: 4114 KB | Capas: 30 | Entidades: 2280 | Dims: 123
+Distribución: LINE:1146, MTEXT:504, TEXT:217, DIMENSION:123, CIRCLE:108, HATCH:88, ARC:70, LWPOLYLINE:12
+Capas más activas:
+  RLE-TEXTO-1: 407 entidades
+  RLE-VIGA: 197 entidades
+  RLA-LOSAS: 172 entidades
+  DEFPOINTS: 168 entidades
+  RLA-TEXTOS1: 141 entidades
+  RLE-PROYECCION: 140 entidades
+  RLE-MURO: 137 entidades
+  RLE-EJE: 130 entidades
+  RLA-SEGMENTOS1: 120 entidades
+  RLA-MURO INV DILATADO: 104 entidades
+  RLE-PILAR: 94 entidades
+  RLE-EJES: 90 entidades
+  RLA-COTAS: 90 entidades
+  RLE-SOLID: 66 entidades
+  A-ANNO-TEXT: 32 entidades
+Bloques insertados (7 total):
+  Alfa: 6x
+  viñeta-rl: 1x
+Textos TEXT (123):
+  [RLA-FORMATO] (54,595): "INDICADAS"
+  [RLA-FORMATO] (7,664): "DICIEMBRE 2017"
+  [RLA-FORMATO] (7,855): "M. KUPFER C."
+  [RLA-TEXTOS2] (2002,5049): "PLANTA CIELO 1º SUBTERRANEO"
+  [RLA-TEXTOS2] (2508,5004): "ESCALA 1:75"
+  [RLA-TEXTOS2] (3052,101): "PLANTA CIELO PISO 1º"
+  [RLA-TEXTOS2] (3386,42): "ESCALA 1:75"
+  [0] (2185,5105): "(NIVEL SUPERIOR LOSA -4.01 (S.I.C.))"
+  [0] (3162,180): "(NIVEL SUPERIOR LOSA -0.05)"
+  [0] (2376,5151): "(LOSA e=15 (S.I.C.))"
+  [0] (3296,233): "(LOSA e=15 (S.I.C.))"
+  [RLA-CORTES] (4846,7141): "V.S.I. 20/150"
+  [RLA-CORTES] (5015,7082): "ESCALA 1:25"
+  [RLE-TEXTO-1] (2284,7778): "0101"
+  [RLE-TEXTO-1] (2534,7778): "0101"
+  [RLE-TEXTO-1] (2784,7778): "0101"
+  [RLE-TEXTO-1] (1784,7778): "0101"
+  [RLE-TEXTO-1] (1534,7778): "0101"
+  [RLE-TEXTO-1] (1284,7778): "0101"
+  [RLE-TEXTO-1] (2514,3232): "101"
+  [RLE-TEXTO-1] (2514,2480): "100"
+  [RLE-TEXTO-1] (3514,3232): "103"
+  [RLE-TEXTO-1] (3514,2480): "102"
+  [RLE-TEXTO-1] (4514,3232): "105"
+  [RLE-TEXTO-1] (4514,2480): "104"
+  [RLE-TEXTO-1] (5386,3730): "111"
+  [RLE-TEXTO-1] (4770,1754): "106"
+  [RLE-TEXTO-1] (2466,1575): "107"
+  [RLE-TEXTO-1] (4673,1626): "108"
+  [RLE-TEXTO-1] (4929,1626): "109"
+  [RLE-TEXTO-1] (4802,780): "110"
+  [RLE-TEXTO-1] (2763,1829): "112"
+  [RLE-TEXTO-1] (2732,2286): "113"
+  [RLA-TEXTOS1] (5193,6230): "105"
+  [RLA-TEXTOS1] (5192,6275): "104"
+  [RLA-TEXTOS1] (5193,6320): "103"
+  [RLA-TEXTOS1] (5563,6275): "1"
+  [RLA-TEXTOS1] (5560,6322): "-"
+  [RLA-TEXTOS1] (5560,6367): "-"
+  [RLA-TEXTOS1] (5103,6561): "CUADRO DE CONTRAFLECHAS"
+  [RLA-TEXTOS1] (5433,6502): "CONTRAFLECHA (cm.)"
+  [RLA-TEXTOS1] (5193,6365): "102"
+  [RLA-TEXTOS1] (5195,6410): "101"
+  [RLA-TEXTOS1] (5186,6500): "LOSA"
+  [RLA-TEXTOS1] (5560,6412): "-"
+  [RLA-TEXTOS1] (5550,6455): "0.5"
+  [RLA-TEXTOS1] (5193,6005): "110"
+  [RLA-TEXTOS1] (5193,6050): "109"
+  [RLA-TEXTOS1] (5193,6095): "108"
+  [RLA-TEXTOS1] (5563,6050): "1"
+  [RLA-TEXTOS1] (5563,6095): "1"
+  [RLA-TEXTOS1] (5563,6140): "1"
+  [RLA-TEXTOS1] (5193,6140): "107"
+  [RLA-TEXTOS1] (5193,6185): "106"
+  [RLA-TEXTOS1] (5563,6185): "1"
+  [RLA-TEXTOS1] (5563,6230): "1"
+  [RLA-TEXTOS1] (5193,5780): "115"
+  [RLA-TEXTOS1] (5192,5825): "114"
+  [RLA-TEXTOS1] (5193,5870): "113"
+  [RLA-TEXTOS1] (5550,5825): "0.5"
+MTEXT - Especificaciones (366):
+  [RLE-TEXTO-1] (3220,7653): "M.H.A. e= 30"
+  [RLE-TEXTO-1] (999,7752): "M.H.A. e= 20"
+  [RLE-TEXTO-1] (996,6968): "M.H.A. e= 20"
+  [RLE-TEXTO-1] (1377,6656): "M.H.A. e= 30"
+  [RLE-TEXTO-1] (1668,6667): "M.H.A. e= 30"
+  [RLE-TEXTO-1] (2038,6703): "M.H.A. e= 30"
+  [RLE-TEXTO-1] (2040,5919): "M.H.A. e= 30"
+  [RLE-TEXTO-1] (1552,5817): "M.H.A. e= 20"
+  [RLE-TEXTO-1] (1352,5860): "M.H.A. e= 25"
+  [RLE-TEXTO-1] (1755,5860): "M.H.A. e= 25"
+  [RLE-TEXTO-1] (1573,5508): "M.H.A. e= 30"
+  [RLE-TEXTO-1] (998,5884): "M.H.A. e= 20"
+  [RLE-TEXTO-1] (1098,6229): "P. | 70x70"
+  [RLE-TEXTO-1] (1100,5650): "P. | 70x70"
+  [RLE-TEXTO-1] (1926,5650): "P. | 70x70"
+  [RLE-TEXTO-1] (1921,6379): "P. | 70x70"
+  [RLE-TEXTO-1] (1946,7131): "P. | 70x70"
+  [RLE-TEXTO-1] (1098,7131): "P. | 70x70"
+  [RLE-TEXTO-1] (1551,6810): "M.H.A. e= 20"
+  [RLE-TEXTO-1] (1242,6810): "M.I. e= 20"
+  [RLE-TEXTO-1] (1547,7132): "V. 60/80"
+  [RLE-TEXTO-1] (1095,6559): "V. 60/80"
+  [RLE-TEXTO-1] (1095,6946): "V. 60/80"
+  [RLE-TEXTO-1] (2005,6709): "V. 60/80"
+  [RLE-TEXTO-1] (2005,5915): "V. 60/80"
+  [RLE-TEXTO-1] (1560,5601): "V. 60/80"
+  [RLE-TEXTO-1] (1096,5920): "V. 60/80"
+  [RLE-TEXTO-1] (1000,6434): "M.H.A. e=20"
+  [RLE-TEXTO-1] (971,6359): "(DILATADO)"
+  [RLE-TEXTO-1] (1537,6336): "V. 60/80"
+  [RLA-LOSAS] (1419,7714): "0110"
+  [RLA-LOSAS] (1547,7000): "0118"
+  [RLA-LOSAS] (1547,6480): "0119"
+  [RLA-LOSAS] (1190,6054): "0120"
+  [RLA-LOSAS] (1896,6054): "0121"
+  [RLA-LOSAS] (1547,5709): "0122"
+  [RLE-TEXTO-1] (3107,7136): "P. | 70x70"
+  [RLE-TEXTO-1] (2665,8072): "M.H.A. e= 20"
+  [RLA-LOSAS] (1170,7714): "0109"
+  [RLE-TEXTO-1] (2675,7267): "M.H.A. e= 30"
+  [RLE-TEXTO-1] (1866,7175): "M.H.A. e= 20"
+  [RLE-TEXTO-1] (956,8113): "V. 20/VAR"
+  [RLE-TEXTO-1] (2134,8278): "V.S.I. 20/150"
+  [RLE-TEXTO-1] (1270,8112): "V. 20/VAR"
+  [RLE-TEXTO-1] (1770,8112): "V. 20/VAR"
+  [RLE-TEXTO-1] (2020,8106): "V. 20/VAR"
+  [RLE-TEXTO-1] (2270,8106): "V. 20/VAR"
+  [RLE-TEXTO-1] (3023,8116): "V. 20/VAR"
+  [RLE-TEXTO-1] (3216,8141): "V. 30/VAR."
+  [RLE-TEXTO-1] (1272,7674): "V. 20/VAR"
+
+======================================================================
+PLANO: 2017_67-102.dxf
+DESCRIPCIÓN: Plantas cielo pisos 2° y 3°
+Tamaño: 4384 KB | Capas: 26 | Entidades: 3038 | Dims: 113
+Distribución: LINE:1581, MTEXT:671, TEXT:231, ARC:176, DIMENSION:113, CIRCLE:98, LWPOLYLINE:90, HATCH:70
+Capas más activas:
+  RLE-PROYECCION: 979 entidades
+  RLE-TEXTO-1: 598 entidades
+  RLE-VIGA: 237 entidades
+  RLE-PILAR: 196 entidades
+  RLA-LOSAS: 188 entidades
+  DEFPOINTS: 168 entidades
+  RLA-TEXTOS1: 159 entidades
+  RLE-EJE: 102 entidades
+  RLA-COTAS: 70 entidades
+  RLE-SOLID: 51 entidades
+  RLE-EJES: 47 entidades
+  RLA-COTAS1: 39 entidades
+  RLE-MURO: 36 entidades
+  RLE-LOSA: 36 entidades
+  A-ANNO-TEXT: 36 entidades
+Bloques insertados (8 total):
+  Alfa: 4x
+  viñeta-rl: 1x
+  RLA-VIGAS-CAJONES - V_M_ 300x300x5-397154-2º: 1x
+  RLA-VIGAS-CAJONES - V_M_ 300x300x5-394662-2º: 1x
+  RLA-VIGAS-CAJONES - V_M_ 300x300x5-438199-2º: 1x
+Textos TEXT (137):
+  [RLA-FORMATO] (54,595): "INDICADAS"
+  [RLA-FORMATO] (7,663): "DICIEMBRE 2017"
+  [RLA-FORMATO] (7,855): "M. KUPFER C."
+  [RLA-TEXTOS2] (2754,5091): "PLANTA CIELO PISO 2º"
+  [RLA-TEXTOS2] (3088,5032): "ESCALA 1:75"
+  [RLA-TEXTOS2] (2778,1480): "PLANTA CIELO PISO 3º"
+  [RLA-TEXTOS2] (3113,1421): "ESCALA 1:75"
+  [0] (2867,5168): "(NIVEL SUPERIOR LOSA +3.91)"
+  [0] (2904,1557): "(NIVEL SUPERIOR LOSA +7.87)"
+  [0] (2964,5216): "(LOSA e=15 (S.I.C.))"
+  [0] (2977,1605): "(LOSA e=15 (S.I.C.))"
+  [RLA-CORTES] (1377,500): "V. 60-30/80-40"
+  [RLA-CORTES] (1612,441): "ESCALA 1:25"
+  [RLE-TEXTO-1] (2348,7542): "201"
+  [RLE-TEXTO-1] (2348,6732): "200"
+  [RLE-TEXTO-1] (3348,7542): "204"
+  [RLE-TEXTO-1] (3348,6730): "203"
+  [RLE-TEXTO-1] (3315,6122): "202"
+  [RLE-TEXTO-1] (4348,7542): "206"
+  [RLE-TEXTO-1] (4348,6730): "205"
+  [RLE-TEXTO-1] (2289,5901): "207"
+  [RLE-TEXTO-1] (3196,6052): "208"
+  [RLE-TEXTO-1] (3687,6052): "209"
+  [RLE-TEXTO-1] (1619,2427): "308"
+  [RLE-TEXTO-1] (3100,2276): "309"
+  [RLE-TEXTO-1] (1710,2502): "300"
+  [RLE-TEXTO-1] (1710,3058): "301"
+  [RLE-TEXTO-1] (1989,3121): "302"
+  [RLE-TEXTO-1] (1989,3940): "303"
+  [RLE-TEXTO-1] (2989,3121): "304"
+  [RLE-TEXTO-1] (2989,3940): "305"
+  [RLE-TEXTO-1] (3989,3121): "302"
+  [RLE-TEXTO-1] (3989,3940): "303"
+  [RLE-TEXTO-1] (5254,3121): "306"
+  [RLE-TEXTO-1] (5254,3940): "307"
+  [RLA-TEXTOS1] (4622,1047): "305"
+  [RLA-TEXTOS1] (4621,1092): "304"
+  [RLA-TEXTOS1] (4622,1137): "303"
+  [RLA-TEXTOS1] (4991,1092): "1"
+  [RLA-TEXTOS1] (4987,1138): "-"
+  [RLA-TEXTOS1] (4987,1183): "-"
+  [RLA-TEXTOS1] (4531,1377): "CUADRO DE CONTRAFLECHAS"
+  [RLA-TEXTOS1] (4861,1318): "CONTRAFLECHA (cm.)"
+  [RLA-TEXTOS1] (4622,1182): "302"
+  [RLA-TEXTOS1] (4624,1227): "301"
+  [RLA-TEXTOS1] (4614,1317): "LOSA"
+  [RLA-TEXTOS1] (4987,1228): "-"
+  [RLA-TEXTOS1] (4987,1273): "-"
+  [RLA-TEXTOS1] (4622,822): "310"
+  [RLA-TEXTOS1] (4622,867): "309"
+  [RLA-TEXTOS1] (4622,912): "308"
+  [RLA-TEXTOS1] (4991,867): "1"
+  [RLA-TEXTOS1] (4991,912): "1"
+  [RLA-TEXTOS1] (4991,957): "1"
+  [RLA-TEXTOS1] (4622,957): "307"
+  [RLA-TEXTOS1] (4622,1002): "306"
+  [RLA-TEXTOS1] (4991,1002): "1"
+  [RLA-TEXTOS1] (4991,1047): "1"
+  [RLA-TEXTOS1] (4622,597): "315"
+  [RLA-TEXTOS1] (4621,642): "314"
+MTEXT - Especificaciones (526):
+  [RLE-TEXTO-1] (4677,7843): "V. 60/80"
+  [RLE-TEXTO-1] (4067,7843): "V. 60/80"
+  [RLE-TEXTO-1] (4332,7443): "V. 60/80"
+  [RLE-TEXTO-1] (4332,6635): "V. 60/80"
+  [RLE-TEXTO-1] (3832,6635): "V. 60/80"
+  [RLE-TEXTO-1] (3832,7443): "V. 60/80"
+  [RLE-TEXTO-1] (3332,7443): "V. 60/80"
+  [RLE-TEXTO-1] (3332,6635): "V. 60/80"
+  [RLE-TEXTO-1] (2832,6635): "V. 60/80"
+  [RLE-TEXTO-1] (2832,7443): "V. 60/80"
+  [RLE-TEXTO-1] (2332,7443): "V. 60/80"
+  [RLE-TEXTO-1] (2332,6635): "V. 60/80"
+  [RLE-TEXTO-1] (1832,6635): "V. 60/80"
+  [RLE-TEXTO-1] (1832,7443): "V. 60/80"
+  [RLE-TEXTO-1] (832,7281): "V. 60/80"
+  [RLE-TEXTO-1] (1396,7946): "V. 60/80"
+  [RLE-TEXTO-1] (2125,7946): "V. 60/80"
+  [RLE-TEXTO-1] (2600,7946): "V. 60/80"
+  [RLE-TEXTO-1] (3140,7946): "V. 60/80"
+  [RLE-TEXTO-1] (3649,7946): "V. 60/80"
+  [RLE-TEXTO-1] (5332,7571): "V. 60/80"
+  [RLE-TEXTO-1] (5332,6661): "V. 60/80"
+  [RLE-TEXTO-1] (5146,7056): "V. 60/80"
+  [RLE-TEXTO-1] (4147,7056): "V. 60/80"
+  [RLE-TEXTO-1] (4639,7056): "V. 60/80"
+  [RLE-TEXTO-1] (3617,7056): "V. 60/80"
+  [RLE-TEXTO-1] (3140,7056): "V. 60/80"
+  [RLE-TEXTO-1] (2622,7056): "V. 60/80"
+  [RLE-TEXTO-1] (2151,7056): "V. 60/80"
+  [RLE-TEXTO-1] (1396,7056): "V. 60/80"
+  [RLE-TEXTO-1] (1396,6331): "V. 60/80"
+  [RLE-TEXTO-1] (931,6635): "V. 60/80"
+  [RLE-TEXTO-1] (1390,6481): "M.H.A. e= 20"
+  [RLE-TEXTO-1] (1182,6578): "M.H.A. e= 25"
+  [RLE-TEXTO-1] (1529,6588): "M.H.A. e= 25"
+  [RLE-TEXTO-1] (1049,7531): "M.H.A. e= 20"
+  [RLE-TEXTO-1] (1210,7378): "M.H.A. e= 30"
+  [RLE-TEXTO-1] (1501,7385): "M.H.A. e= 30"
+  [RLE-TEXTO-1] (1395,7531): "M.H.A. e= 20"
+  [RLE-TEXTO-1] (832,7709): "V. 60/80"
+  [RLE-TEXTO-1] (2149,6331): "V. 60/80"
+  [RLE-TEXTO-1] (2763,6331): "V. 60/80"
+  [RLE-TEXTO-1] (3108,6331): "V. 60/80"
+  [RLE-TEXTO-1] (3617,6331): "V. 60/80"
+  [RLE-TEXTO-1] (4160,6326): "V. 60/80"
+  [RLE-TEXTO-1] (4471,6359): "V. | 60/80"
+  [RLE-TEXTO-1] (4832,6635): "V. 60/80"
+  [RLE-TEXTO-1] (4832,7443): "V. 60/80"
+  [RLE-TEXTO-1] (5146,7946): "V. 60/80"
+  [RLE-TEXTO-1] (3958,7842): "P. | 70x70"
+
+======================================================================
+PLANO: 2017_67-103.dxf
+DESCRIPCIÓN: Planta cielo piso 4° (techo)
+Tamaño: 3627 KB | Capas: 25 | Entidades: 1681 | Dims: 42
+Distribución: LINE:884, MTEXT:387, TEXT:167, ARC:73, CIRCLE:53, HATCH:46, DIMENSION:42, LWPOLYLINE:19
+Capas más activas:
+  RLE-TEXTO-1: 336 entidades
+  RLA-MURO INV DILATADO: 285 entidades
+  RLE-PILAR: 200 entidades
+  DEFPOINTS: 168 entidades
+  RLE-VIGA: 146 entidades
+  RLA-LOSAS: 108 entidades
+  RLA-TEXTOS1: 90 entidades
+  RLE-VANOS: 53 entidades
+  RLE-EJE: 52 entidades
+  RLE-LOSA: 50 entidades
+  RLE-SOLID: 36 entidades
+  RLA-COTAS: 35 entidades
+  A-ANNO-TEXT: 29 entidades
+  RLE-EJES: 21 entidades
+  RLE-PROYECCION: 19 entidades
+Bloques insertados (10 total):
+  Alfa: 3x
+  viñeta-rl: 1x
+  FP_1-3º: 1x
+  FP_2-3º: 1x
+  FP_3-3º: 1x
+  FP_4-3º: 1x
+  FP_5-3º: 1x
+  FP_6-3º: 1x
+Textos TEXT (73):
+  [RLA-FORMATO] (54,595): "INDICADAS"
+  [RLA-FORMATO] (7,663): "DICIEMBRE 2017"
+  [RLA-FORMATO] (7,855): "M. KUPFER C."
+  [RLA-TEXTOS2] (2629,3446): "PLANTA CIELO PISO 4º"
+  [RLA-TEXTOS2] (2963,3387): "ESCALA 1:75"
+  [0] (2742,3518): "(NIVEL SUPERIOR LOSA +11.83)"
+  [0] (2854,3563): "(LOSA e=15 (S.I.C.))"
+  [RLE-TEXTO-1] (1942,5123): "400"
+  [RLE-TEXTO-1] (1942,5944): "401"
+  [RLE-TEXTO-1] (2942,5069): "402"
+  [RLE-TEXTO-1] (2942,5944): "403"
+  [RLE-TEXTO-1] (3942,5064): "400"
+  [RLE-TEXTO-1] (3942,5944): "401"
+  [RLE-TEXTO-1] (5207,5944): "405"
+  [RLE-TEXTO-1] (5207,5131): "404"
+  [RLE-TEXTO-1] (3029,4297): "406"
+  [RLA-TEXTOS1] (4298,2168): "405"
+  [RLA-TEXTOS1] (4298,2213): "404"
+  [RLA-TEXTOS1] (4298,2258): "403"
+  [RLA-TEXTOS1] (4664,2214): "-"
+  [RLA-TEXTOS1] (4664,2259): "-"
+  [RLA-TEXTOS1] (4664,2304): "-"
+  [RLA-TEXTOS1] (4208,2498): "CUADRO DE CONTRAFLECHAS"
+  [RLA-TEXTOS1] (4537,2439): "CONTRAFLECHA (cm.)"
+  [RLA-TEXTOS1] (4298,2303): "402"
+  [RLA-TEXTOS1] (4300,2348): "401"
+  [RLA-TEXTOS1] (4290,2438): "LOSA"
+  [RLA-TEXTOS1] (4664,2349): "-"
+  [RLA-TEXTOS1] (4654,2393): "0.5"
+  [RLA-TEXTOS1] (4298,1943): "410"
+  [RLA-TEXTOS1] (4298,1988): "409"
+  [RLA-TEXTOS1] (4298,2033): "408"
+  [RLA-TEXTOS1] (4667,1988): "1"
+  [RLA-TEXTOS1] (4654,2033): "0.5"
+  [RLA-TEXTOS1] (4667,2078): "1"
+  [RLA-TEXTOS1] (4298,2078): "407"
+  [RLA-TEXTOS1] (4298,2123): "406"
+  [RLA-TEXTOS1] (4664,2124): "-"
+  [RLA-TEXTOS1] (4664,2169): "-"
+  [RLA-TEXTOS1] (4298,1718): "415"
+  [RLA-TEXTOS1] (4298,1763): "414"
+  [RLA-TEXTOS1] (4298,1808): "413"
+  [RLA-TEXTOS1] (4667,1763): "1"
+  [RLA-TEXTOS1] (4667,1808): "1"
+  [RLA-TEXTOS1] (4667,1853): "1"
+  [RLA-TEXTOS1] (4298,1853): "412"
+  [RLA-TEXTOS1] (4300,1898): "411"
+  [RLA-TEXTOS1] (4667,1898): "1"
+  [RLA-TEXTOS1] (4667,1943): "1"
+  [RLA-TEXTOS1] (4298,1493): "420"
+  [RLA-TEXTOS1] (4298,1538): "419"
+  [RLA-TEXTOS1] (4298,1583): "418"
+  [RLA-TEXTOS1] (4667,1538): "1"
+  [RLA-TEXTOS1] (4667,1583): "1"
+  [RLA-TEXTOS1] (4654,1628): "0.5"
+  [RLA-TEXTOS1] (4298,1628): "417"
+  [RLA-TEXTOS1] (4298,1673): "416"
+  [RLA-TEXTOS1] (4654,1673): "0.5"
+  [RLA-TEXTOS1] (4654,1718): "0.5"
+  [RLA-TEXTOS1] (4298,1268): "425"
+MTEXT - Especificaciones (307):
+  [RLE-TEXTO-1] (4246,6340): "V. 60/80"
+  [RLE-TEXTO-1] (3724,6340): "V. 60/80"
+  [RLE-TEXTO-1] (3929,5837): "V. 60/80"
+  [RLE-TEXTO-1] (3929,4971): "V. 60/80"
+  [RLE-TEXTO-1] (3429,5029): "V. 60/80"
+  [RLE-TEXTO-1] (3429,5837): "V. 60/80"
+  [RLE-TEXTO-1] (2929,5837): "V. 60/80"
+  [RLE-TEXTO-1] (2929,4976): "V. 60/80"
+  [RLE-TEXTO-1] (2429,5029): "V. 60/80"
+  [RLE-TEXTO-1] (2429,5837): "V. 60/80"
+  [RLE-TEXTO-1] (1929,5837): "V. 60/80"
+  [RLE-TEXTO-1] (1929,5029): "V. 60/80"
+  [RLE-TEXTO-1] (1429,5010): "V. 60/80"
+  [RLE-TEXTO-1] (1429,5837): "V. 60/80"
+  [RLE-TEXTO-1] (532,5649): "V. 60/80"
+  [RLE-TEXTO-1] (993,6340): "V. 60/80"
+  [RLE-TEXTO-1] (1722,6340): "V. 60/80"
+  [RLE-TEXTO-1] (2197,6340): "V. 60/80"
+  [RLE-TEXTO-1] (2737,6340): "V. 60/80"
+  [RLE-TEXTO-1] (3246,6340): "V. 60/80"
+  [RLE-TEXTO-1] (4929,5837): "V. 60/80"
+  [RLE-TEXTO-1] (4929,5492): "V. 60/80"
+  [RLE-TEXTO-1] (4712,5450): "V. 60/80"
+  [RLE-TEXTO-1] (3744,5450): "V. 60/80"
+  [RLE-TEXTO-1] (4236,5450): "V. 60/80"
+  [RLE-TEXTO-1] (3214,5450): "V. 60/80"
+  [RLE-TEXTO-1] (2737,5450): "V. 60/80"
+  [RLE-TEXTO-1] (2219,5450): "V. 60/80"
+  [RLE-TEXTO-1] (1713,5450): "V. 60/80"
+  [RLE-TEXTO-1] (993,5450): "V. 60/80"
+  [RLE-TEXTO-1] (993,4621): "V. 60/80"
+  [RLE-TEXTO-1] (987,4875): "M.H.A. e= 20"
+  [RLE-TEXTO-1] (777,4973): "M.H.A. e= 25"
+  [RLE-TEXTO-1] (1123,4982): "M.H.A. e= 25"
+  [RLE-TEXTO-1] (646,5925): "M.H.A. e= 20"
+  [RLE-TEXTO-1] (802,5772): "M.H.A. e= 30"
+  [RLE-TEXTO-1] (1093,5779): "M.H.A. e= 30"
+  [RLE-TEXTO-1] (992,5925): "M.H.A. e= 20"
+  [RLE-TEXTO-1] (529,6076): "V. 60/80"
+  [RLE-TEXTO-1] (1736,4619): "V. 60/80"
+  [RLE-TEXTO-1] (2238,4619): "V. 60/80"
+  [RLE-TEXTO-1] (2718,4619): "V. 60/80"
+  [RLE-TEXTO-1] (3225,4619): "V. 60/80"
+  [RLE-TEXTO-1] (3743,4619): "V. 60/80"
+  [RLE-TEXTO-1] (4220,4619): "V. 60/80"
+  [RLE-TEXTO-1] (4429,5029): "V. 60/80"
+  [RLE-TEXTO-1] (4429,5837): "V. 60/80"
+  [RLE-TEXTO-1] (4743,6340): "V. 60/80"
+  [RLE-TEXTO-1] (4743,4619): "V. 60/80"
+  [RLE-TEXTO-1] (3561,6236): "P. | 70x70"
+
+################################################################################
+# CATEGORÍA: ELEVACION
+################################################################################
+
+======================================================================
+PLANO: 2017_67-300.dxf
+DESCRIPCIÓN: Elevación Eje 1-1' (vista lateral)
+Tamaño: 15781 KB | Capas: 25 | Entidades: 182 | Dims: 0
+Distribución: TEXT:97, LINE:58, HATCH:18, INSERT:9
+Capas más activas:
+  DEFPOINTS: 165 entidades
+  RLA-FORMATO: 9 entidades
+  0: 8 entidades
+Bloques insertados (9 total):
+  Alfa: 7x
+  viñeta-rl: 1x
+  EJE1-1': 1x
+Textos TEXT (3):
+  [RLA-FORMATO] (5290,104): "INDICADAS"
+  [RLA-FORMATO] (5247,73): "DICIEMBRE 2017"
+  [RLA-FORMATO] (5106,73): "M. KUPFER C."
+
+======================================================================
+PLANO: 2017_67-301.dxf
+DESCRIPCIÓN: Elevación Eje 2-2a (vista lateral)
+Tamaño: 7969 KB | Capas: 90 | Entidades: 187 | Dims: 0
+Distribución: TEXT:97, LINE:58, HATCH:18, INSERT:14
+Capas más activas:
+  DEFPOINTS: 165 entidades
+  0: 13 entidades
+  RLA-FORMATO: 9 entidades
+Bloques insertados (14 total):
+  Alfa: 7x
+  viñeta-rl: 1x
+  EJE1'': 1x
+  EJE1C: 1x
+  EJE1A: 1x
+  EJE1B: 1x
+  EJE1BB: 1x
+  EJE1AA: 1x
+Textos TEXT (3):
+  [RLA-FORMATO] (5290,104): "INDICADAS"
+  [RLA-FORMATO] (5247,73): "DICIEMBRE 2017"
+  [RLA-FORMATO] (5106,73): "M. KUPFER C."
+
+======================================================================
+PLANO: 2017_67-302.dxf
+DESCRIPCIÓN: Elevación Eje 3 (vista lateral)
+Tamaño: 13878 KB | Capas: 21 | Entidades: 182 | Dims: 0
+Distribución: TEXT:97, LINE:58, HATCH:18, INSERT:9
+Capas más activas:
+  DEFPOINTS: 165 entidades
+  RLA-FORMATO: 9 entidades
+  0: 8 entidades
+Bloques insertados (9 total):
+  Alfa: 7x
+  viñeta-rl: 1x
+  EJE2: 1x
+Textos TEXT (3):
+  [RLA-FORMATO] (5290,104): "INDICADAS"
+  [RLA-FORMATO] (5247,73): "DICIEMBRE 2017"
+  [RLA-FORMATO] (5106,73): "M. KUPFER C."
+
+======================================================================
+PLANO: 2017_67-303.dxf
+DESCRIPCIÓN: Elevación Eje A3 (fachada trasera)
+Tamaño: 35606 KB | Capas: 25 | Entidades: 183 | Dims: 0
+Distribución: TEXT:97, LINE:58, HATCH:18, INSERT:10
+Capas más activas:
+  DEFPOINTS: 165 entidades
+  RLA-FORMATO: 9 entidades
+  0: 9 entidades
+Bloques insertados (10 total):
+  Alfa: 7x
+  EJE3-3': 2x
+  viñeta-rl: 1x
+Textos TEXT (3):
+  [RLA-FORMATO] (5290,104): "INDICADAS"
+  [RLA-FORMATO] (5247,73): "DICIEMBRE 2017"
+  [RLA-FORMATO] (5106,73): "M. KUPFER C."
+
+======================================================================
+PLANO: 2017_67-304.dxf
+DESCRIPCIÓN: Elevación Eje A2 (fachada interior)
+Tamaño: 10768 KB | Capas: 86 | Entidades: 187 | Dims: 0
+Distribución: TEXT:97, LINE:58, HATCH:18, INSERT:14
+Capas más activas:
+  DEFPOINTS: 165 entidades
+  0: 13 entidades
+  RLA-FORMATO: 9 entidades
+Bloques insertados (14 total):
+  Alfa: 7x
+  viñeta-rl: 1x
+  EJE2a: 1x
+  EJE8: 1x
+  EJEEa: 1x
+  EJEEd: 1x
+  EJEEb: 1x
+  EJEEc: 1x
+Textos TEXT (3):
+  [RLA-FORMATO] (5290,104): "INDICADAS"
+  [RLA-FORMATO] (5247,73): "DICIEMBRE 2017"
+  [RLA-FORMATO] (5106,73): "M. KUPFER C."
+
+======================================================================
+PLANO: 2017_67-310.dxf
+DESCRIPCIÓN: Elevación Eje J (fachada - anexo metálico)
+Tamaño: 184088 KB | Capas: 66 | Entidades: 185 | Dims: 0
+Distribución: TEXT:97, LINE:58, HATCH:18, INSERT:12
+Capas más activas:
+  DEFPOINTS: 165 entidades
+  0: 11 entidades
+  RLA-FORMATO: 9 entidades
+Bloques insertados (12 total):
+  Alfa: 7x
+  viñeta-rl: 1x
+  EJEIA: 1x
+  EJEI: 1x
+  EJEJ: 1x
+  EJEIB: 1x
+Textos TEXT (3):
+  [RLA-FORMATO] (5290,104): "INDICADAS"
+  [RLA-FORMATO] (5247,73): "DICIEMBRE 2017"
+  [RLA-FORMATO] (5106,73): "M. KUPFER C."
+
+################################################################################
+# CATEGORÍA: CORTE
+################################################################################
+
+======================================================================
+PLANO: 2017_67-305.dxf
+DESCRIPCIÓN: Corte por eje E (sección transversal)
+Tamaño: 10830 KB | Capas: 59 | Entidades: 184 | Dims: 0
+Distribución: TEXT:97, LINE:58, HATCH:18, INSERT:11
+Capas más activas:
+  DEFPOINTS: 165 entidades
+  0: 10 entidades
+  RLA-FORMATO: 9 entidades
+Bloques insertados (11 total):
+  Alfa: 7x
+  viñeta-rl: 1x
+  EJEE-E': 1x
+  EJEGa: 1x
+  EJEH': 1x
+Textos TEXT (3):
+  [RLA-FORMATO] (5290,104): "INDICADAS"
+  [RLA-FORMATO] (5247,73): "DICIEMBRE 2017"
+  [RLA-FORMATO] (5106,73): "M. KUPFER C."
+
+======================================================================
+PLANO: 2017_67-306.dxf
+DESCRIPCIÓN: Corte por eje F (sección transversal)
+Tamaño: 11266 KB | Capas: 53 | Entidades: 185 | Dims: 0
+Distribución: TEXT:97, LINE:58, HATCH:18, INSERT:12
+Capas más activas:
+  DEFPOINTS: 165 entidades
+  0: 11 entidades
+  RLA-FORMATO: 9 entidades
+Bloques insertados (12 total):
+  Alfa: 7x
+  EJEF-F': 2x
+  viñeta-rl: 1x
+  EJEH1: 1x
+  EJEH2: 1x
+Textos TEXT (3):
+  [RLA-FORMATO] (5290,104): "INDICADAS"
+  [RLA-FORMATO] (5247,73): "DICIEMBRE 2017"
+  [RLA-FORMATO] (5106,73): "M. KUPFER C."
+
+======================================================================
+PLANO: 2017_67-307.dxf
+DESCRIPCIÓN: Corte por eje G (sección transversal)
+Tamaño: 10598 KB | Capas: 25 | Entidades: 182 | Dims: 0
+Distribución: TEXT:97, LINE:58, HATCH:18, INSERT:9
+Capas más activas:
+  DEFPOINTS: 165 entidades
+  RLA-FORMATO: 9 entidades
+  0: 8 entidades
+Bloques insertados (9 total):
+  Alfa: 7x
+  viñeta-rl: 1x
+  EJEG: 1x
+Textos TEXT (3):
+  [RLA-FORMATO] (5290,104): "INDICADAS"
+  [RLA-FORMATO] (5247,73): "DICIEMBRE 2017"
+  [RLA-FORMATO] (5106,73): "M. KUPFER C."
+
+======================================================================
+PLANO: 2017_67-308.dxf
+DESCRIPCIÓN: Corte por eje H (sección transversal)
+Tamaño: 9779 KB | Capas: 27 | Entidades: 182 | Dims: 0
+Distribución: TEXT:97, LINE:58, HATCH:18, INSERT:9
+Capas más activas:
+  DEFPOINTS: 165 entidades
+  RLA-FORMATO: 9 entidades
+  0: 8 entidades
+Bloques insertados (9 total):
+  Alfa: 7x
+  viñeta-rl: 1x
+  EJEH: 1x
+Textos TEXT (3):
+  [RLA-FORMATO] (5290,104): "INDICADAS"
+  [RLA-FORMATO] (5247,73): "DICIEMBRE 2017"
+  [RLA-FORMATO] (5106,73): "M. KUPFER C."
+
+======================================================================
+PLANO: 2017_67-309.dxf
+DESCRIPCIÓN: Corte por eje I (sección transversal)
+Tamaño: 8417 KB | Capas: 25 | Entidades: 182 | Dims: 0
+Distribución: TEXT:97, LINE:58, HATCH:18, INSERT:9
+Capas más activas:
+  DEFPOINTS: 165 entidades
+  RLA-FORMATO: 9 entidades
+  0: 8 entidades
+Bloques insertados (9 total):
+  Alfa: 7x
+  viñeta-rl: 1x
+  EJEI: 1x
+Textos TEXT (3):
+  [RLA-FORMATO] (5290,104): "INDICADAS"
+  [RLA-FORMATO] (5247,73): "DICIEMBRE 2017"
+  [RLA-FORMATO] (5106,73): "M. KUPFER C."
+
+################################################################################
+# CATEGORÍA: ARMADURA
+################################################################################
+
+======================================================================
+PLANO: 2017_67-200-I.dxf
+DESCRIPCIÓN: Malla de armadura inferior - Fundaciones
+Tamaño: 7500 KB | Capas: 33 | Entidades: 571 | Dims: 0
+Distribución: TEXT:306, LWPOLYLINE:117, LINE:64, LEADER:58, HATCH:18, INSERT:8
+Capas más activas:
+  TEXTOS-SM: 206 entidades
+  fe: 176 entidades
+  DEFPOINTS: 168 entidades
+  RLA-FORMATO: 9 entidades
+  0: 7 entidades
+  RLA-TEXTOS2: 5 entidades
+Bloques insertados (8 total):
+  Alfa: 6x
+  viñeta-rl: 1x
+  2017_67-100: 1x
+Textos TEXT (212):
+  [RLA-FORMATO] (54,595): "INDICADAS"
+  [RLA-FORMATO] (7,664): "DICIEMBRE 2017"
+  [RLA-FORMATO] (7,855): "M. KUPFER C."
+  [RLA-TEXTOS2] (2498,2951): "ARMADURA INFERIOR DE FUNDACIONES"
+  [RLA-TEXTOS2] (3117,2892): "ESCALA 1:75"
+  [TEXTOS-SM] (947,6777): "F=%%C12a20i  L=150"
+  [TEXTOS-SM] (989,6802): "(50+50+50)"
+  [TEXTOS-SM] (1102,6515): "F=%%C12a12s  L=370"
+  [TEXTOS-SM] (1075,6552): "(50+270+50)"
+  [TEXTOS-SM] (1115,6291): "(50+280+50)"
+  [TEXTOS-SM] (1004,6198): "F=%%C12a12i L=290"
+  [TEXTOS-SM] (838,6155): "F=%%C12a12s L=610"
+  [TEXTOS-SM] (814,6208): "(560+50)"
+  [TEXTOS-SM] (843,5579): "F=%%C12a12s L=950"
+  [TEXTOS-SM] (842,4778): "F=%%C12a12s   L=600"
+  [TEXTOS-SM] (819,4846): "(50+550)"
+  [TEXTOS-SM] (1045,4911): "F=%%c22a13s     L=1000 (50+950)"
+  [TEXTOS-SM] (1622,4907): "F=%%C22a13s     L=530"
+  [TEXTOS-SM] (1227,5215): "F=%%C22a13s   L=640"
+  [TEXTOS-SM] (1147,4476): "(52+265+53)"
+  [TEXTOS-SM] (1489,4764): "F=%%C16a10i   L=710  (53+604+53)"
+  [TEXTOS-SM] (2003,6155): "F=%%C18a12s L=610"
+  [TEXTOS-SM] (1980,6208): "(560+50)"
+  [TEXTOS-SM] (2008,5579): "F=%%C12a12s L=950"
+  [TEXTOS-SM] (2007,4778): "F=%%C18a12s   L=600"
+  [TEXTOS-SM] (1984,4846): "(50+550)"
+  [TEXTOS-SM] (1872,4417): "F=%%C12a12i  L=390"
+  [TEXTOS-SM] (1002,5319): "F=%%C12a12i L=290"
+  [TEXTOS-SM] (1311,5646): "F=%%C12a12s L=290"
+  [TEXTOS-SM] (1068,5441): "F=%%c16a12i     L=1000 (50+950)"
+  [TEXTOS-SM] (1646,5437): "F=%%C16a12i     L=500"
+  [TEXTOS-SM] (1818,5519): "F=%%C12a12s  L=620"
+  [TEXTOS-SM] (1038,5519): "F=%%C12a12s  L=620"
+  [TEXTOS-SM] (1067,5910): "F=%%C12a12s L=290"
+  [TEXTOS-SM] (1725,5952): "(50+190+50)"
+  [TEXTOS-SM] (1200,6060): "F=%%c25a12i     L=580 (50+480+50)"
+  [TEXTOS-SM] (1388,5790): "F=%%C12a11s L=510"
+  [TEXTOS-SM] (1365,5832): "(50+410+50)"
+  [TEXTOS-SM] (963,5864): "F=%%C22a12i     L=1000"
+  [TEXTOS-SM] (1626,5860): "F=%%c22a12i     L=480 (430+50)"
+  [TEXTOS-SM] (2070,6059): "F=%%C12a12i  L=290"
+  [TEXTOS-SM] (1894,6569): "F=%%C12a12s  L=390"
+  [TEXTOS-SM] (1867,6607): "(50+290+50)"
+  [TEXTOS-SM] (1531,6289): "F=%%C12a12i  L=380"
+  [TEXTOS-SM] (1531,6538): "F=%%C16a16i  L=180"
+  [TEXTOS-SM] (1280,6428): "F=%%c12a20s     L=870"
+  [TEXTOS-SM] (2051,5144): "F=%%C12a12i L=290"
+  [TEXTOS-SM] (2141,6390): "F=%%c12a20s     L=850"
+  [TEXTOS-SM] (2554,6514): "F=%%C12a20i  L=290"
+  [TEXTOS-SM] (2854,6257): "F=%%C18a10i  L=450"
+  [TEXTOS-SM] (2841,6224): "F=%%C18a10s L=490"
+  [TEXTOS-SM] (2888,6282): "(50+350+50)"
+  [TEXTOS-SM] (2817,6254): "(50+390+50)"
+  [TEXTOS-SM] (2739,5385): "F=%%C18a10i  L=490"
+  [TEXTOS-SM] (3040,5381): "F=%%C18a10s   L=490"
+  [TEXTOS-SM] (2773,5409): "(50+390+50)"
+  [TEXTOS-SM] (3016,5412): "(50+390+50)"
+  [TEXTOS-SM] (3739,5385): "F=%%C18a10i  L=490"
+  [TEXTOS-SM] (4040,5381): "F=%%C18a10s   L=490"
+  [TEXTOS-SM] (3773,5409): "(50+390+50)"
+
+======================================================================
+PLANO: 2017_67-200-S.dxf
+DESCRIPCIÓN: Malla de armadura superior - Fundaciones
+Tamaño: 7381 KB | Capas: 33 | Entidades: 262 | Dims: 0
+Distribución: TEXT:141, LINE:64, LWPOLYLINE:25, HATCH:18, INSERT:8, LEADER:6
+Capas más activas:
+  DEFPOINTS: 168 entidades
+  TEXTOS-SM: 42 entidades
+  fe: 31 entidades
+  RLA-FORMATO: 9 entidades
+  0: 7 entidades
+  RLA-TEXTOS2: 5 entidades
+Bloques insertados (8 total):
+  Alfa: 6x
+  viñeta-rl: 1x
+  2017_67-100: 1x
+Textos TEXT (47):
+  [RLA-FORMATO] (54,595): "INDICADAS"
+  [RLA-FORMATO] (7,664): "DICIEMBRE 2017"
+  [RLA-FORMATO] (7,855): "M. KUPFER C."
+  [RLA-TEXTOS2] (2484,2951): "ARMADURA SUPERIOR DE FUNDACIONES"
+  [RLA-TEXTOS2] (3117,2892): "ESCALA 1:75"
+  [TEXTOS-SM] (1044,4911): "F'=%%C16a14i     L=1000 (50+950)"
+  [TEXTOS-SM] (1621,4907): "F'=%%C16a14i     L=530"
+  [TEXTOS-SM] (1227,5215): "F'=%%C16a14i   L=640"
+  [TEXTOS-SM] (1489,4757): "F'=%%C12a12s   L=710  (53+604+53)"
+  [TEXTOS-SM] (1196,6060): "F'=%%C22a11i     L=580 (50+480+50)"
+  [TEXTOS-SM] (1388,5787): "F'=%%C12a11s L=510"
+  [TEXTOS-SM] (1365,5832): "(50+410+50)"
+  [TEXTOS-SM] (1707,5860): "F'=%%C22a11i  L=480"
+  [TEXTOS-SM] (1894,6566): "F'=%%C12a14s  L=390"
+  [TEXTOS-SM] (1867,6607): "(50+290+50)"
+  [TEXTOS-SM] (1531,6534): "F'=%%C12a14i  L=180"
+  [TEXTOS-SM] (2137,6390): "F'=%%C12a20s     L=850"
+  [TEXTOS-SM] (2554,6511): "F'=%%C12a20i  L=290"
+  [TEXTOS-SM] (2841,6220): "F'=%%C12a10s L=490"
+  [TEXTOS-SM] (2817,6254): "(50+390+50)"
+  [TEXTOS-SM] (2530,6548): "(50+190+50)"
+  [TEXTOS-SM] (4943,4713): "F'=%%C12a14s     L=880 (52+775+53)"
+  [TEXTOS-SM] (4989,5437): "F'=%%C12a14s  L=780"
+  [TEXTOS-SM] (5030,5458): "(52+675+53)"
+  [TEXTOS-SM] (3877,6340): "F'=%%C12a10i     L=850 (50+800)"
+  [TEXTOS-SM] (4980,6329): "F'=%%C22a10i     L=1200 (1150+50)"
+  [TEXTOS-SM] (3833,6240): "F'=%%C12a10i     L=490"
+  [TEXTOS-SM] (3893,6263): "(50+390+50)"
+  [TEXTOS-SM] (3833,6565): "F'=%%C12a10i     L=490"
+  [TEXTOS-SM] (3893,6587): "(50+390+50)"
+  [TEXTOS-SM] (4521,6034): "F'=%%C12a10s L=390"
+  [TEXTOS-SM] (4497,6068): "(50+290+50)"
+  [TEXTOS-SM] (5131,6034): "F'=%%C12a10s L=390"
+  [TEXTOS-SM] (5108,6068): "(50+290+50)"
+  [TEXTOS-SM] (1505,6579): "(50+80+50)"
+  [TEXTOS-SM] (1272,5239): "(52+535+53)"
+  [TEXTOS-SM] (1727,4927): "(480+50)"
+  [TEXTOS-SM] (941,5864): "F'=%%C22a11i     L=1000"
+  [TEXTOS-SM] (973,5830): "(50+950)"
+  [TEXTOS-SM] (1769,5882): "(430+50)"
+  [TEXTOS-SM] (1355,5651): "F'=%%C22a11s  L=200"
+  [TEXTOS-SM] (1396,5674): "(50+100+50)"
+  [TEXTOS-SM] (1024,6001): "F'=%%C25a11i  L=210"
+  [TEXTOS-SM] (1022,6025): "(52+105+53)"
+  [TEXTOS-SM] (1585,6001): "F'=%%C25a11i  L=210"
+  [TEXTOS-SM] (1662,6025): "(52+105+53)"
+  [TEXTOS-SM] (1196,5934): "F'=%%C25a11i     L=580 (50+480+50)"
+
+======================================================================
+PLANO: 2017_67-201.dxf
+DESCRIPCIÓN: Armadura - Losa piso 1°
+Tamaño: 7442 KB | Capas: 41 | Entidades: 669 | Dims: 0
+Distribución: TEXT:262, LWPOLYLINE:120, LINE:114, MTEXT:92, CIRCLE:46, HATCH:18, INSERT:11, LEADER:4
+Capas más activas:
+  RLA-LOSAS: 184 entidades
+  DEFPOINTS: 168 entidades
+  fe: 102 entidades
+  TEXTOS-SM: 68 entidades
+  RLA-TEXTOS-SM: 53 entidades
+  RLA-FE: 34 entidades
+  TEXTOS50A: 33 entidades
+  RLA-TEXTOS2: 10 entidades
+  RLA-FORMATO: 9 entidades
+  0: 8 entidades
+Bloques insertados (11 total):
+  Alfa: 6x
+  2017_67-101: 2x
+  viñeta-rl: 1x
+  det-5: 1x
+  det-3: 1x
+Textos TEXT (168):
+  [RLA-FORMATO] (54,595): "INDICADAS"
+  [RLA-FORMATO] (7,664): "DICIEMBRE 2017"
+  [RLA-FORMATO] (7,855): "M. KUPFER C."
+  [RLA-TEXTOS2] (2216,5028): "ARMADURA MALLA INFERIOR LOSA CIELO 1° SUBTERRANEO"
+  [RLA-TEXTOS2] (3198,4969): "ESCALA 1:75"
+  [TEXTOS-SM] (1910,7557): "%%C8a18s   L=290"
+  [TEXTOS-SM] (2513,6795): "F=F'=2%%C16"
+  [TEXTOS-SM] (2489,6822): "L=240"
+  [TEXTOS-SM] (2223,6795): "F=F'=2%%C16"
+  [TEXTOS-SM] (2199,6822): "L=240"
+  [TEXTOS-SM] (2223,6421): "F=F'=2%%C16"
+  [TEXTOS-SM] (2199,6448): "L=240"
+  [TEXTOS-SM] (2513,6421): "F=F'=2%%C16"
+  [TEXTOS-SM] (2489,6448): "L=240"
+  [RLA-TEXTOS2] (2201,446): "ARMADURA MALLA SUPERIOR LOSA CIELO 1° SUBTERRANEO"
+  [RLA-TEXTOS2] (3198,387): "ESCALA 1:75"
+  [RLA-TEXTOS-SM] (3801,3235): "F'=%%C8a10 L=250"
+  [RLA-TEXTOS-SM] (3502,2659): "F'=%%C10a11 L=250"
+  [RLA-TEXTOS-SM] (3477,2659): "(30+220)"
+  [RLA-TEXTOS-SM] (3896,3259): "(30+220)"
+  [RLA-TEXTOS-SM] (2041,2659): "F'=%%C10a11 L=250"
+  [RLA-TEXTOS-SM] (2016,2659): "(30+220)"
+  [RLA-TEXTOS-SM] (2997,3220): "F'=%%C10a12 L=460"
+  [RLA-TEXTOS-SM] (2974,3255): "(425+11+24)"
+  [RLA-TEXTOS-SM] (4037,3532): "F'=%%C8a18 L=250"
+  [RLA-TEXTOS-SM] (4062,3559): "(220+11+24)"
+  [RLA-TEXTOS-SM] (1646,3535): "F'=%%C8a18 L=395"
+  [RLA-TEXTOS-SM] (1679,3559): "(360+11+24)"
+  [fe] (2513,2256): "R.L."
+  [fe] (2223,2256): "R.L."
+  [fe] (2223,1883): "R.L."
+  [fe] (2513,1883): "R.L."
+  [RLA-TEXTOS-SM] (2730,2355): "F'=%%C8a14 L=180"
+  [RLA-TEXTOS-SM] (2706,2442): "(30+150)"
+  [RLA-TEXTOS-SM] (2072,2355): "F'=%%C8a14 L=180"
+  [RLA-TEXTOS-SM] (2048,2442): "(30+150)"
+  [RLA-TEXTOS-SM] (1877,2333): "F'=%%C8a14 L=190"
+  [RLA-TEXTOS-SM] (1913,2359): "(30+160)"
+  [RLA-TEXTOS-SM] (2655,2333): "F'=%%C8a14 L=190"
+  [RLA-TEXTOS-SM] (2740,2359): "(30+160)"
+  [RLA-TEXTOS-SM] (2099,2064): "F'=%%C8a14  L=220"
+  [TEXTOS50A] (2485,2095): "47"
+  [TEXTOS50A] (2696,2096): "397"
+  [TEXTOS50A] (2922,2096): "46"
+  [TEXTOS-SM] (2579,2137): "F'=%%c10a18i     L=490"
+  [TEXTOS50A] (1820,2095): "47"
+  [TEXTOS50A] (2031,2096): "397"
+  [TEXTOS50A] (2257,2096): "46"
+  [TEXTOS-SM] (1914,2137): "F'=%%c10a18i     L=490"
+  [RLA-TEXTOS-SM] (2056,1542): "F'=%%C8a18     L=225"
+  [RLA-TEXTOS-SM] (2694,1542): "F'=%%C8a18     L=225"
+  [RLA-TEXTOS-SM] (2655,1862): "F'=%%C8a16 L=190"
+  [RLA-TEXTOS-SM] (2740,1888): "(30+160)"
+  [RLA-TEXTOS-SM] (1877,1442): "F'=%%C8a18 L=190"
+  [RLA-TEXTOS-SM] (1913,1468): "(30+160)"
+  [TEXTOS50A] (2515,1264): "47"
+  [TEXTOS50A] (2711,1267): "372"
+  [TEXTOS50A] (2922,1264): "46"
+  [TEXTOS-SM] (2609,1305): "F'=%%C10a14i   L=465"
+  [TEXTOS50A] (1820,1253): "47"
+MTEXT - Especificaciones (46):
+  [RLA-LOSAS] (2329,6913): "0118"
+  [RLA-LOSAS] (2305,6516): "0119"
+  [RLA-LOSAS] (2122,6034): "0120"
+  [RLA-LOSAS] (2666,6054): "0121"
+  [RLA-LOSAS] (2279,5630): "0122"
+  [RLA-LOSAS] (2196,7762): "0110"
+  [RLA-LOSAS] (1947,7762): "0109"
+  [RLA-LOSAS] (2454,7762): "0111"
+  [RLA-LOSAS] (2952,7752): "0113"
+  [RLA-LOSAS] (3452,7762): "0115"
+  [RLA-LOSAS] (3685,7762): "0116"
+  [RLA-LOSAS] (3903,7762): "0117"
+  [RLA-LOSAS] (1889,8206): "0100"
+  [RLA-LOSAS] (2183,8225): "0101"
+  [RLA-LOSAS] (2693,8223): "0103"
+  [RLA-LOSAS] (2941,8224): "0104"
+  [RLA-LOSAS] (3188,8222): "0105"
+  [RLA-LOSAS] (3683,8222): "0107"
+  [RLA-LOSAS] (3896,8207): "0108"
+  [RLA-LOSAS] (2435,8220): "0102"
+  [RLA-LOSAS] (3437,8216): "0106"
+  [RLA-LOSAS] (2683,7752): "0112"
+  [RLA-LOSAS] (3193,7752): "0114"
+  [RLA-LOSAS] (2329,2331): "0118"
+  [RLA-LOSAS] (2317,1934): "0119"
+  [RLA-LOSAS] (2122,1452): "0120"
+  [RLA-LOSAS] (2666,1431): "0121"
+  [RLA-LOSAS] (2318,1115): "0122"
+  [RLA-LOSAS] (2225,3180): "0110"
+  [RLA-LOSAS] (1980,3180): "0109"
+  [RLA-LOSAS] (2475,3180): "0111"
+  [RLA-LOSAS] (2998,3170): "0113"
+  [RLA-LOSAS] (3508,3180): "0115"
+  [RLA-LOSAS] (3762,3180): "0116"
+  [RLA-LOSAS] (3956,3180): "0117"
+  [RLA-LOSAS] (2011,3624): "0100"
+  [RLA-LOSAS] (2213,3643): "0101"
+  [RLA-LOSAS] (2693,3641): "0103"
+  [RLA-LOSAS] (2941,3642): "0104"
+  [RLA-LOSAS] (3188,3641): "0105"
+  [RLA-LOSAS] (3683,3640): "0107"
+  [RLA-LOSAS] (3896,3625): "0108"
+  [RLA-LOSAS] (2466,3638): "0102"
+  [RLA-LOSAS] (3437,3634): "0106"
+  [RLA-LOSAS] (2755,3170): "0112"
+  [RLA-LOSAS] (3249,3170): "0114"
+
+======================================================================
+PLANO: 2017_67-202-I.dxf
+DESCRIPCIÓN: Armadura inferior - Losa piso 2°
+Tamaño: 7424 KB | Capas: 41 | Entidades: 608 | Dims: 1
+Distribución: TEXT:280, LINE:110, LWPOLYLINE:107, MTEXT:40, SOLID:22, CIRCLE:20, HATCH:18, INSERT:10
+Capas más activas:
+  DEFPOINTS: 168 entidades
+  fe: 165 entidades
+  TEXTOS-SM: 92 entidades
+  RLA-LOSAS: 80 entidades
+  TEXTOS50A: 79 entidades
+  RLA-FORMATO: 9 entidades
+  0: 8 entidades
+  RLA-TEXTOS2: 5 entidades
+  RLA-COTAS1: 1 entidades
+  RLA-COTAS2: 1 entidades
+Bloques insertados (10 total):
+  Alfa: 6x
+  viñeta-rl: 1x
+  det-5: 1x
+  det-3: 1x
+  2017_67-101: 1x
+Textos TEXT (186):
+  [RLA-FORMATO] (54,595): "INDICADAS"
+  [RLA-FORMATO] (7,664): "DICIEMBRE 2017"
+  [RLA-FORMATO] (7,855): "M. KUPFER C."
+  [RLA-TEXTOS2] (2385,3203): "ARMADURA MALLA INFERIOR LOSA CIELO 1° PISO"
+  [RLA-TEXTOS2] (3198,3144): "ESCALA 1:75"
+  [TEXTOS50A] (1126,5149): "6"
+  [TEXTOS50A] (1099,5160): "11"
+  [TEXTOS50A] (1087,5082): "110"
+  [TEXTOS50A] (1101,5019): "11"
+  [TEXTOS50A] (1131,5392): "787"
+  [TEXTOS-SM] (1093,5329): "%%C8a18i L=925"
+  [TEXTOS50A] (1057,5641): "372"
+  [TEXTOS50A] (1274,5668): "10"
+  [TEXTOS50A] (1224,5678): "65"
+  [TEXTOS50A] (1178,5669): "10"
+  [TEXTOS50A] (1203,5642): "8"
+  [TEXTOS-SM] (976,5671): "%%C8a18s L=465"
+  [TEXTOS50A] (1651,5648): "8"
+  [TEXTOS50A] (1662,5678): "10"
+  [TEXTOS50A] (1617,5688): "65"
+  [TEXTOS50A] (1564,5674): "10"
+  [TEXTOS50A] (1786,5649): "367"
+  [TEXTOS-SM] (1721,5681): "%%C8a18s L=460"
+  [TEXTOS-SM] (1437,5185): "%%C8a18s L=1060"
+  [TEXTOS50A] (1358,5096): "208"
+  [TEXTOS50A] (1333,5260): "11"
+  [TEXTOS50A] (1321,5226): "50"
+  [TEXTOS50A] (1326,5179): "11"
+  [TEXTOS50A] (1356,5204): "5"
+  [TEXTOS-SM] (1297,5081): "L=285"
+  [TEXTOS-SM] (1325,5083): "%%C8a18i"
+  [TEXTOS50A] (1826,5149): "6"
+  [TEXTOS50A] (1799,5160): "11"
+  [TEXTOS50A] (1786,5082): "110"
+  [TEXTOS50A] (1800,5019): "11"
+  [TEXTOS50A] (1831,5392): "787"
+  [TEXTOS-SM] (1793,5329): "%%C8a18i L=925"
+  [TEXTOS-SM] (2094,5669): "%%C10a18i L=555"
+  [TEXTOS-SM] (2273,5360): "%%C8a18s L=780"
+  [TEXTOS-SM] (2222,4780): "%%C8a18s L=805"
+  [TEXTOS-SM] (2111,4809): "%%C10a14i L=570"
+  [TEXTOS-SM] (2468,5471): "%%C10a18i L=305"
+  [TEXTOS-SM] (2721,5462): "%%C10a18i L=305"
+  [TEXTOS-SM] (2501,5257): "%%C8a18s L=780"
+  [TEXTOS-SM] (2741,5257): "%%C8a18s L=780"
+  [TEXTOS-SM] (3094,5669): "%%C10a18i L=555"
+  [TEXTOS-SM] (3273,5360): "%%C8a18s L=780"
+  [TEXTOS-SM] (3594,5657): "%%C10a18i L=555"
+  [TEXTOS-SM] (3773,5360): "%%C8a18s L=780"
+  [TEXTOS-SM] (4094,5669): "%%C10a18i L=555"
+  [TEXTOS-SM] (4273,5360): "%%C8a18s L=780"
+  [TEXTOS-SM] (4594,5657): "%%C10a18i L=555"
+  [TEXTOS-SM] (4773,5360): "%%C8a18s L=780"
+  [TEXTOS50A] (1518,5862): "339"
+  [TEXTOS50A] (1489,6097): "11"
+  [TEXTOS50A] (1480,6052): "60"
+  [TEXTOS50A] (1487,6004): "11"
+  [TEXTOS50A] (1517,6029): "9"
+  [TEXTOS-SM] (1487,5808): "%%C8a15i L=430"
+  [TEXTOS-SM] (1199,5961): "%%C8a15i L=535"
+MTEXT - Especificaciones (1):
+  [RLA-LOSAS] (2576,5686): "112a"
+
+======================================================================
+PLANO: 2017_67-202-S.dxf
+DESCRIPCIÓN: Armadura superior - Losa piso 2°
+Tamaño: 7611 KB | Capas: 41 | Entidades: 534 | Dims: 1
+Distribución: TEXT:192, LWPOLYLINE:115, LINE:90, SOLID:48, MTEXT:40, CIRCLE:20, HATCH:18, INSERT:10
+Capas más activas:
+  DEFPOINTS: 168 entidades
+  fe: 143 entidades
+  RLA-LOSAS: 80 entidades
+  RLA-TEXTOS-SM: 78 entidades
+  RLA-FE: 40 entidades
+  RLA-FORMATO: 9 entidades
+  0: 6 entidades
+  RLA-TEXTOS2: 5 entidades
+  RLA-COTAS2: 4 entidades
+  RLA-COTAS1: 1 entidades
+Bloques insertados (10 total):
+  Alfa: 6x
+  viñeta-rl: 1x
+  det-5: 1x
+  det-3: 1x
+  2017_67-101: 1x
+Textos TEXT (98):
+  [RLA-FORMATO] (54,595): "INDICADAS"
+  [RLA-FORMATO] (7,664): "DICIEMBRE 2017"
+  [RLA-FORMATO] (7,855): "M. KUPFER C."
+  [RLA-TEXTOS2] (2370,3203): "ARMADURA MALLA SUPERIOR LOSA CIELO 1° PISO"
+  [RLA-TEXTOS2] (3198,3144): "ESCALA 1:75"
+  [RLA-TEXTOS-SM] (1674,6530): "F'=%%C8a18 L=280"
+  [RLA-TEXTOS-SM] (1649,6562): "(27+11+242)"
+  [RLA-TEXTOS-SM] (1160,5376): "L=150"
+  [RLA-TEXTOS-SM] (1140,5397): "(30+120)"
+  [RLA-TEXTOS-SM] (1141,5353): "F'=%%C8a10"
+  [RLA-TEXTOS-SM] (1153,6099): "F'=%%C10a12"
+  [RLA-TEXTOS-SM] (1196,6119): "L=165"
+  [RLA-TEXTOS-SM] (1169,6143): "(30+135)"
+  [RLA-TEXTOS-SM] (1606,6098): "F'=%%C10a12"
+  [RLA-TEXTOS-SM] (1612,6121): "L=160"
+  [RLA-TEXTOS-SM] (1602,6148): "(30+130)"
+  [RLA-TEXTOS-SM] (1648,6201): "L=475"
+  [RLA-TEXTOS-SM] (1619,6177): "F'=%%C10a15"
+  [RLA-TEXTOS-SM] (2274,4791): "F'=%%C16a14 L=745"
+  [RLA-TEXTOS-SM] (2249,4823): "(67+11+667)"
+  [fe] (1416,5235): "R.L."
+  [fe] (1249,5566): "R.L."
+  [fe] (1592,5566): "R.L."
+  [fe] (1429,5759): "R.L."
+  [fe] (1570,6355): "R.L."
+  [fe] (1418,6101): "R.L."
+  [fe] (1283,6355): "R.L."
+  [fe] (1563,5998): "R.L."
+  [fe] (1274,6004): "R.L."
+  [fe] (1637,6322): "R.L."
+  [RLA-TEXTOS-SM] (1262,6195): "L=475"
+  [RLA-TEXTOS-SM] (1235,6171): "F'=%%C10a15"
+  [RLA-TEXTOS-SM] (1083,6167): "F'=%%C10a15  L=195"
+  [RLA-TEXTOS-SM] (1111,5668): "F'=%%C8a16    L=215"
+  [RLA-TEXTOS-SM] (1361,5147): "L=250"
+  [RLA-TEXTOS-SM] (1340,5105): "(27+11+212)"
+  [RLA-TEXTOS-SM] (1383,5121): "F'=%%C8a18"
+  [RLA-TEXTOS-SM] (1623,5386): "F'=%%C8a18"
+  [RLA-TEXTOS-SM] (1623,5405): "L=150"
+  [RLA-TEXTOS-SM] (1621,5427): "(30+120)"
+  [RLA-TEXTOS-SM] (1518,5878): "L=250"
+  [RLA-TEXTOS-SM] (1497,5837): "(27+11+212)"
+  [RLA-TEXTOS-SM] (1542,5852): "F'=%%C8a18"
+  [RLA-TEXTOS-SM] (2498,5439): "F'=%%C10a10"
+  [RLA-TEXTOS-SM] (2523,5412): "L=780"
+  [RLA-TEXTOS-SM] (3283,5465): "F'=%%C10a10    L=280"
+  [RLA-TEXTOS-SM] (3783,5465): "F'=%%C10a10    L=280"
+  [RLA-TEXTOS-SM] (4283,5465): "F'=%%C10a10    L=280"
+  [RLA-TEXTOS-SM] (2184,5647): "F'=%%C10a12     L=280"
+  [RLA-TEXTOS-SM] (3184,5647): "F'=%%C10a12     L=280"
+  [RLA-TEXTOS-SM] (4184,5647): "F'=%%C10a12     L=280"
+  [RLA-TEXTOS-SM] (2683,6535): "F'=%%C10a16 L=295"
+  [RLA-TEXTOS-SM] (2655,6548): "(27+11+257)"
+  [RLA-TEXTOS-SM] (3683,6535): "F'=%%C10a16 L=295"
+  [RLA-TEXTOS-SM] (3655,6548): "(27+11+257)"
+  [RLA-TEXTOS-SM] (4194,6535): "F'=%%C10a16 L=295"
+  [RLA-TEXTOS-SM] (4166,6547): "(27+11+257)"
+  [RLA-TEXTOS-SM] (2277,6314): "F'=%%C10a10     L=280"
+  [RLA-TEXTOS-SM] (2777,6314): "F'=%%C10a10     L=280"
+  [RLA-TEXTOS-SM] (3277,6314): "F'=%%C10a10     L=280"
+MTEXT - Especificaciones (1):
+  [RLA-LOSAS] (2571,5686): "112a"
+
+======================================================================
+PLANO: 2017_67-203.dxf
+DESCRIPCIÓN: Armadura - Losa piso 3°
+Tamaño: 8030 KB | Capas: 39 | Entidades: 932 | Dims: 6
+Distribución: TEXT:330, LWPOLYLINE:217, LINE:144, MTEXT:88, SOLID:74, CIRCLE:44, HATCH:18, INSERT:11
+Capas más activas:
+  fe: 308 entidades
+  RLA-LOSAS: 176 entidades
+  DEFPOINTS: 168 entidades
+  TEXTOS-SM: 88 entidades
+  TEXTOS50A: 59 entidades
+  RLA-TEXTOS-SM: 57 entidades
+  RLA-FE: 35 entidades
+  RLA-TEXTOS2: 10 entidades
+  RLA-FORMATO: 9 entidades
+  RLA-COTAS2: 9 entidades
+  0: 7 entidades
+  RLA-COTAS1: 6 entidades
+Bloques insertados (11 total):
+  Alfa: 6x
+  2017_67-102: 2x
+  viñeta-rl: 1x
+  det-5: 1x
+  det-3: 1x
+Textos TEXT (236):
+  [RLA-FORMATO] (54,595): "INDICADAS"
+  [RLA-FORMATO] (7,664): "DICIEMBRE 2017"
+  [RLA-FORMATO] (7,855): "M. KUPFER C."
+  [RLA-TEXTOS2] (2385,5141): "ARMADURA MALLA INFERIOR LOSA CIELO 2° PISO"
+  [RLA-TEXTOS2] (3198,5082): "ESCALA 1:75"
+  [RLA-TEXTOS2] (2370,1385): "ARMADURA MALLA SUPERIOR LOSA CIELO 2° PISO"
+  [RLA-TEXTOS2] (3198,1326): "ESCALA 1:75"
+  [TEXTOS50A] (1165,6394): "6"
+  [TEXTOS50A] (1138,6405): "11"
+  [TEXTOS50A] (1126,6327): "110"
+  [TEXTOS50A] (1140,6264): "11"
+  [TEXTOS50A] (1170,6637): "787"
+  [TEXTOS-SM] (1132,6573): "%%C8a18i L=925"
+  [TEXTOS50A] (1139,6886): "372"
+  [TEXTOS50A] (1313,6912): "10"
+  [TEXTOS50A] (1263,6923): "65"
+  [TEXTOS50A] (1217,6913): "10"
+  [TEXTOS50A] (1243,6886): "9"
+  [TEXTOS-SM] (1058,6938): "%%C8a18s L=560"
+  [TEXTOS50A] (1690,6893): "8"
+  [TEXTOS50A] (1701,6922): "10"
+  [TEXTOS50A] (1656,6932): "65"
+  [TEXTOS50A] (1603,6918): "10"
+  [TEXTOS50A] (1825,6893): "367"
+  [TEXTOS-SM] (1760,6925): "%%C8a18s L=460"
+  [TEXTOS50A] (1397,6341): "208"
+  [TEXTOS50A] (1372,6505): "11"
+  [TEXTOS50A] (1360,6471): "50"
+  [TEXTOS50A] (1365,6423): "11"
+  [TEXTOS50A] (1395,6449): "5"
+  [TEXTOS-SM] (1336,6325): "L=285"
+  [TEXTOS-SM] (1364,6327): "%%C8a18i"
+  [TEXTOS50A] (1865,6394): "6"
+  [TEXTOS50A] (1838,6405): "11"
+  [TEXTOS50A] (1825,6327): "110"
+  [TEXTOS50A] (1839,6264): "11"
+  [TEXTOS50A] (1870,6637): "787"
+  [TEXTOS-SM] (1832,6573): "%%C8a18i L=925"
+  [TEXTOS-SM] (2133,6913): "%%C10a18i L=555"
+  [TEXTOS-SM] (2312,6605): "%%C8a18s L=780"
+  [TEXTOS-SM] (2261,6024): "%%C8a18s L=805"
+  [TEXTOS-SM] (2150,6054): "%%C10a12i L=570"
+  [TEXTOS-SM] (2507,6715): "%%C10a18i L=305"
+  [TEXTOS-SM] (2760,6707): "%%C10a18i L=305"
+  [TEXTOS-SM] (2540,6501): "%%C8a18s L=780"
+  [TEXTOS-SM] (2780,6501): "%%C8a18s L=780"
+  [TEXTOS-SM] (3136,6913): "%%C8a14s L=555"
+  [TEXTOS-SM] (3312,6608): "%%C8a18i L=780"
+  [TEXTOS-SM] (3614,6902): "%%C8a14s L=555"
+  [TEXTOS-SM] (3812,6608): "%%C8a18i L=780"
+  [TEXTOS-SM] (4133,6913): "%%C10a18i L=555"
+  [TEXTOS-SM] (4312,6605): "%%C8a18s L=780"
+  [TEXTOS-SM] (4633,6902): "%%C10a18i L=555"
+  [TEXTOS-SM] (4812,6605): "%%C8a18s L=780"
+  [TEXTOS50A] (1557,7107): "319"
+  [TEXTOS50A] (1528,7341): "11"
+  [TEXTOS50A] (1519,7297): "60"
+  [TEXTOS50A] (1526,7249): "11"
+  [TEXTOS50A] (1556,7274): "9"
+  [TEXTOS-SM] (1526,7052): "%%C8a15i L=410"
+
+======================================================================
+PLANO: 2017_67-204.dxf
+DESCRIPCIÓN: Armadura - Losa piso 4° (techo)
+Tamaño: 8042 KB | Capas: 39 | Entidades: 1010 | Dims: 6
+Distribución: TEXT:396, LWPOLYLINE:230, LINE:147, MTEXT:100, SOLID:51, CIRCLE:50, HATCH:18, INSERT:11
+Capas más activas:
+  fe: 291 entidades
+  RLA-LOSAS: 200 entidades
+  DEFPOINTS: 168 entidades
+  TEXTOS-SM: 101 entidades
+  TEXTOS50A: 84 entidades
+  RLA-TEXTOS-SM: 81 entidades
+  RLA-FE: 47 entidades
+  RLA-TEXTOS2: 10 entidades
+  RLA-FORMATO: 9 entidades
+  0: 8 entidades
+  RLA-COTAS1: 6 entidades
+  RLA-COTAS2: 5 entidades
+Bloques insertados (11 total):
+  Alfa: 6x
+  2017_67-102: 2x
+  viñeta-rl: 1x
+  det-5: 1x
+  det-3: 1x
+Textos TEXT (302):
+  [RLA-FORMATO] (54,595): "INDICADAS"
+  [RLA-FORMATO] (7,664): "DICIEMBRE 2017"
+  [RLA-FORMATO] (7,855): "M. KUPFER C."
+  [RLA-TEXTOS2] (2385,5075): "ARMADURA MALLA INFERIOR LOSA CIELO 3° PISO"
+  [RLA-TEXTOS2] (3198,5016): "ESCALA 1:75"
+  [RLA-TEXTOS2] (2356,1519): "ARMADURA MALLA SUPERIOR LOSA CIELO 3° PISO"
+  [RLA-TEXTOS2] (3133,1460): "ESCALA 1:75"
+  [TEXTOS50A] (1161,6373): "208"
+  [TEXTOS50A] (1137,6512): "11"
+  [TEXTOS50A] (1123,6476): "50"
+  [TEXTOS50A] (1131,6436): "11"
+  [TEXTOS50A] (1161,6459): "5"
+  [TEXTOS-SM] (1135,6351): "%%C8a18i"
+  [TEXTOS-SM] (1111,6352): "L=285"
+  [TEXTOS-SM] (1309,6704): "%%C8a18s L=365"
+  [TEXTOS50A] (1316,6403): "6"
+  [TEXTOS50A] (1287,6411): "11"
+  [TEXTOS50A] (1274,6338): "110"
+  [TEXTOS50A] (1287,6273): "11"
+  [TEXTOS50A] (1315,6588): "787"
+  [TEXTOS-SM] (1286,6512): "%%C8a18i L=925"
+  [TEXTOS50A] (1243,6895): "8"
+  [TEXTOS50A] (1252,6922): "10"
+  [TEXTOS50A] (1206,6930): "70"
+  [TEXTOS50A] (1152,6914): "10"
+  [TEXTOS50A] (1368,6894): "367"
+  [TEXTOS-SM] (1302,6924): "%%C8a18s L=465"
+  [TEXTOS-SM] (639,6480): "%%C8a18s L=1060"
+  [TEXTOS-SM] (723,6659): "%%C8a18i L=785"
+  [TEXTOS-SM] (638,6600): "%%C8a18s L=370"
+  [TEXTOS50A] (642,6946): "372"
+  [TEXTOS50A] (858,6971): "10"
+  [TEXTOS50A] (810,6985): "65"
+  [TEXTOS50A] (761,6974): "10"
+  [TEXTOS50A] (789,6947): "8"
+  [TEXTOS-SM] (574,6974): "%%C8a18s L=465"
+  [TEXTOS50A] (1570,6216): "7"
+  [TEXTOS50A] (1582,6239): "11"
+  [TEXTOS50A] (1522,6250): "90"
+  [TEXTOS50A] (1466,6236): "11"
+  [TEXTOS50A] (1612,6207): "277"
+  [TEXTOS50A] (1769,6237): "11"
+  [TEXTOS50A] (1711,6251): "90"
+  [TEXTOS50A] (1651,6240): "11"
+  [TEXTOS50A] (1678,6214): "7"
+  [TEXTOS-SM] (1596,6261): "L=515"
+  [TEXTOS-SM] (1595,6282): "%%C8a18i"
+  [TEXTOS-SM] (1577,6108): "%%C8a18s"
+  [TEXTOS-SM] (1601,6113): "L=315"
+  [TEXTOS50A] (588,7437): "8"
+  [TEXTOS50A] (599,7460): "10"
+  [TEXTOS50A] (550,7472): "110"
+  [TEXTOS50A] (457,7460): "10"
+  [TEXTOS50A] (724,7436): "402"
+  [TEXTOS-SM] (651,7462): "%%C8a18s L=540"
+  [TEXTOS50A] (610,7156): "5"
+  [TEXTOS50A] (618,7187): "10"
+  [TEXTOS50A] (537,7193): "130"
+  [TEXTOS50A] (457,7178): "10"
+  [TEXTOS50A] (809,7157): "845"
+
+======================================================================
+PLANO: 2017_67-205.dxf
+DESCRIPCIÓN: Armadura - Losa adicional
+Tamaño: 7356 KB | Capas: 38 | Entidades: 1378 | Dims: 4
+Distribución: TEXT:677, LWPOLYLINE:320, LINE:148, MTEXT:108, CIRCLE:54, SOLID:38, HATCH:18, INSERT:11
+Capas más activas:
+  fe: 366 entidades
+  RLA-LOSAS: 216 entidades
+  TEXTOS50A: 215 entidades
+  TEXTOS-SM: 209 entidades
+  DEFPOINTS: 168 entidades
+  RLA-TEXTOS-SM: 96 entidades
+  RLA-FE: 58 entidades
+  RLA-COTAS2: 18 entidades
+  RLA-TEXTOS2: 10 entidades
+  RLA-FORMATO: 9 entidades
+  0: 9 entidades
+  RLA-COTAS1: 4 entidades
+Bloques insertados (11 total):
+  Alfa: 6x
+  2017_67-103: 2x
+  viñeta-rl: 1x
+  det-5: 1x
+  det-3: 1x
+Textos TEXT (583):
+  [RLA-FORMATO] (54,595): "INDICADAS"
+  [RLA-FORMATO] (7,664): "DICIEMBRE 2017"
+  [RLA-FORMATO] (7,855): "M. KUPFER C."
+  [RLA-TEXTOS2] (2385,5075): "ARMADURA MALLA INFERIOR LOSA CIELO 4° PISO"
+  [RLA-TEXTOS2] (3198,5016): "ESCALA 1:75"
+  [RLA-TEXTOS2] (2356,1480): "ARMADURA MALLA SUPERIOR LOSA CIELO 4° PISO"
+  [RLA-TEXTOS2] (3133,1421): "ESCALA 1:75"
+  [RLA-TEXTOS-SM] (1200,4008): "F'=%%C8a16 L=280"
+  [RLA-TEXTOS-SM] (1174,4040): "(27+11+242)"
+  [RLA-TEXTOS-SM] (1835,4024): "F'=%%C10a13     L=280"
+  [RLA-TEXTOS-SM] (2332,4024): "F'=%%C10a13     L=280"
+  [RLA-TEXTOS-SM] (2832,4024): "F'=%%C10a11     L=280"
+  [RLA-TEXTOS-SM] (3328,4026): "F'=%%C10a13     L=280"
+  [RLA-TEXTOS-SM] (3832,4024): "F'=%%C10a11     L=280"
+  [RLA-TEXTOS-SM] (4332,4024): "F'=%%C10a13     L=280"
+  [RLA-TEXTOS-SM] (4629,3184): "F'=%%C10a15     L=280"
+  [RLA-TEXTOS-SM] (4334,2972): "F'=%%C10a15"
+  [RLA-TEXTOS-SM] (4358,2947): "L=280"
+  [RLA-TEXTOS-SM] (3144,2330): "F'=%%C12a13 L=745"
+  [RLA-TEXTOS-SM] (3119,2362): "(67+11+667)"
+  [RLA-TEXTOS-SM] (5408,4301): "F'=%%C8a18 L=265"
+  [RLA-TEXTOS-SM] (5432,4327): "(230+11+24)"
+  [RLA-TEXTOS-SM] (5133,3207): "F'=%%C8a18    L=165"
+  [RLA-TEXTOS-SM] (5027,3857): "F'=%%C10a11 L=975"
+  [RLA-TEXTOS-SM] (5048,3882): "(842+11+122)"
+  [TEXTOS50A] (543,7953): "8"
+  [TEXTOS50A] (553,7980): "11"
+  [TEXTOS50A] (493,7992): "95"
+  [TEXTOS50A] (429,7973): "11"
+  [TEXTOS50A] (878,7952): "875"
+  [TEXTOS-SM] (808,7986): "%%C8a18i L=1000"
+  [fe] (1285,7982): "(50)"
+  [TEXTOS-SM] (1668,7982): "%%C8a18i L=1000"
+  [fe] (2235,7986): "(50)"
+  [TEXTOS-SM] (2645,7986): "%%C8a18i L=1000"
+  [fe] (3185,7982): "(50)"
+  [TEXTOS-SM] (3595,7982): "%%C8a18i L=1000"
+  [fe] (4135,7986): "(50)"
+  [TEXTOS-SM] (4545,7986): "%%C8a18i L=1000"
+  [fe] (5085,7982): "(50)"
+  [TEXTOS-SM] (5288,7982): "%%C8a20i L=520"
+  [TEXTOS-SM] (691,7676): "%%C8a18s L=510"
+  [TEXTOS50A] (563,7620): "8"
+  [TEXTOS50A] (572,7648): "11"
+  [TEXTOS50A] (494,7659): "115"
+  [TEXTOS50A] (426,7639): "11"
+  [TEXTOS50A] (955,7619): "855"
+  [TEXTOS-SM] (887,7649): "%%C8a18i L=1000"
+  [fe] (1265,7648): "(50)"
+  [TEXTOS-SM] (1366,7669): "%%C8a18i"
+  [TEXTOS-SM] (1366,7644): "L=250"
+  [TEXTOS-SM] (1244,7454): "%%C8a18i L=395"
+  [TEXTOS-SM] (1219,7205): "%%C8a18s L=1030"
+  [TEXTOS50A] (553,7114): "8"
+  [TEXTOS50A] (567,7140): "11"
+  [TEXTOS50A] (519,7153): "105"
+  [TEXTOS50A] (426,7134): "11"
+  [TEXTOS50A] (871,7113): "870"
+  [TEXTOS-SM] (816,7143): "%%C8a18i L=1005"
+  [fe] (1275,7142): "(50)"
+
+################################################################################
+# CATEGORÍA: METALICO
+################################################################################
+
+======================================================================
+PLANO: 2017_67-800.dxf
+DESCRIPCIÓN: Elevación eje con vigas metálicas V.M. - Perno Nelson (1)
+Tamaño: 24065 KB | Capas: 31 | Entidades: 1074 | Dims: 45
+Distribución: LINE:596, TEXT:141, INSERT:91, HATCH:54, CIRCLE:53, LWPOLYLINE:46, DIMENSION:45, ARC:32
+Capas más activas:
+  DEFPOINTS: 165 entidades
+  RLA-PERFILES: 152 entidades
+  FE: 140 entidades
+  0: 84 entidades
+  RLA-SOLDADURAS: 84 entidades
+  RLA-MUROS: 65 entidades
+  RLA-TEXTOS: 64 entidades
+  RLA-CONTORNO: 60 entidades
+  RLA-EJES: 42 entidades
+  RLA-COTAS1: 41 entidades
+  RLA-SEGMENTO1: 26 entidades
+  RLA-COTAS2: 26 entidades
+  RL-CORTES: 16 entidades
+  RLA-ACHURADO: 15 entidades
+  RLA-FE: 14 entidades
+Bloques insertados (91 total):
+  A$C056A6877: 35x
+  Alfa: 17x
+  FLECHA: 9x
+  *U60: 6x
+  SEAN: 5x
+  T-DETALL: 4x
+  *U57: 4x
+  A$C1B1873A6: 4x
+  nivel-el: 2x
+  TITULO-CORTE: 2x
+  *U64: 2x
+  viñeta-rl: 1x
+Textos TEXT (47):
+  [RLA-FORMATO] (5290,104): "INDICADAS"
+  [RLA-FORMATO] (5247,73): "DICIEMBRE 2017"
+  [RLA-FORMATO] (5106,73): "M. KUPFER C."
+  [RLA-TEXTOS] (3305,3493): "5+5+5 PERNOS NELSON"
+  [RLA-TEXTOS] (3334,3470): "STUD %%C3/4"x6""
+  [RLA-TEXTOS] (3349,3088): "SOLDAR POR"
+  [RLA-TEXTOS] (3349,3067): "RESISTENCIA"
+  [RLA-TEXTOS] (3385,3535): "PL 500x400x12"
+  [RLA-TEXTOS] (3719,3399): "TIP."
+  [RLA-TEXTOS] (3708,3062): "2+2+2 PERNOS NELSON"
+  [RLA-TEXTOS] (3737,3040): "STUD %%C3/4"x6""
+  [RLA-TEXTOS] (3706,3232): "PL 200x400x12"
+  [RLA-TEXTOS] (3789,3099): "RESISTENCIA"
+  [RLA-TEXTOS] (3784,3121): "SOLDAR POR"
+  [RLA-TEXTOS] (4876,3062): "2+2+2 PERNOS NELSON"
+  [RLA-TEXTOS] (4904,3040): "STUD %%C3/4"x6""
+  [RLA-TEXTOS] (4870,3232): "PL 400x400x12"
+  [RLA-TEXTOS] (4957,3099): "RESISTENCIA"
+  [RLA-TEXTOS] (4951,3121): "SOLDAR POR"
+  [RLA-TEXTOS] (4923,3282): "TIP."
+  [RLA-TEXTOS] (1068,1682): "TIP."
+  [RLA-TEXTOS] (440,1445): "TIP."
+  [RLA-TEXTOS] (3916,1461): "TIP."
+  [RLA-TEXTOS] (3749,1319): "TIP."
+  [RLA-TEXTOS] (3091,1386): "TIP."
+  [RLA-TEXTOS] (950,1719): "PL 1000x810x12"
+  [RLA-TEXTOS] (3688,1754): "PL 1000x1260x12"
+  [RLA-FE] (4928,1387): "ESTRIBO DOBLE"
+  [RLA-FE] (4949,1830): "23"
+  [RLA-FE] (4895,1609): "76"
+  [RLA-FE] (4915,1347): "S/DETALLE ELEV."
+  [RLA-TEXTOS] (4611,1274): "DESTAJAR PERFILES"
+  [RLA-FE] (2277,1046): "ESTRIBO DOBLE"
+  [RLA-FE] (2298,1490): "23"
+  [RLA-FE] (2244,1269): "76"
+  [RLA-FE] (2264,1006): "S/DETALLE ELEV."
+  [RLA-TEXTOS] (1911,1585): "DESTAJAR PERFILES"
+  [RLA-TEXTOS] (4154,1746): "4+6+8 PERNOS NELSON"
+  [RLA-TEXTOS] (4182,1723): "STUD %%C3/4"x6""
+  [RLA-TEXTOS] (1454,1118): "6+6+6 PERNOS NELSON"
+  [RLA-TEXTOS] (1482,1096): "STUD %%C3/4"x6""
+  [TEXTOS] (2003,1429): "PROYECCION FE S/ELEV."
+  [TEXTOS] (4399,1940): "PROYECCION FE S/ELEV."
+  [TEXTOS] (4271,1360): "COUPLERS S/VIGA"
+  [TEXTOS] (4271,1382): "LENTON WELDABLE"
+  [TEXTOS] (1571,1451): "COUPLERS S/VIGA"
+  [TEXTOS] (1571,1473): "LENTON WELDABLE"
+MTEXT - Especificaciones (11):
+  [RLA-TITULO] (1074,2763): "{\LELEVACION EJE 1-2-3}"
+  [RLA-TITULO] (1074,2707): "\LESCALA 1:50"
+  [RLA-TEXTOS-1] (1040,3474): "V. 60/80"
+  [RLA-TEXTOS-1] (1267,3474): "V. 60/80"
+  [RLA-TEXTOS-1] (1268,3075): "V. 60/80"
+  [RLA-TEXTOS-1] (1040,3075): "V. 60/80"
+  [RLA-TEXTOS-1] (1119,3204): "P.M. 300x300x20"
+  [RLA-TEXTOS-1] (1356,3246): "P.M. 300x300x20"
+  [RLA-TEXTOS-1] (978,3307): "P. 70x70"
+  [RLA-TEXTOS-1] (1010,3256): "V.M. 300x300x5"
+  [RLA-TEXTOS-1] (1276,3260): "V.M. 300x300x5"
+
+======================================================================
+PLANO: 2017_67-801.dxf
+DESCRIPCIÓN: Elevación eje con vigas metálicas V.M. - Perno Nelson (2)
+Tamaño: 23955 KB | Capas: 31 | Entidades: 852 | Dims: 24
+Distribución: LINE:450, TEXT:128, INSERT:74, HATCH:47, CIRCLE:44, LWPOLYLINE:43, ARC:32, DIMENSION:24
+Capas más activas:
+  DEFPOINTS: 165 entidades
+  FE: 140 entidades
+  RLA-PERFILES: 114 entidades
+  0: 57 entidades
+  RLA-MUROS: 56 entidades
+  RLA-CONTORNO: 51 entidades
+  RLA-SOLDADURAS: 41 entidades
+  RLA-TEXTOS: 40 entidades
+  RLA-EJES: 24 entidades
+  RLA-COTAS1: 23 entidades
+  RLA-SEGMENTO1: 16 entidades
+  RL-CORTES: 16 entidades
+  RLA-COTAS2: 15 entidades
+  RLA-FE: 14 entidades
+  TEXTOS50A: 14 entidades
+Bloques insertados (74 total):
+  A$C056A6877: 18x
+  Alfa: 17x
+  FLECHA: 7x
+  *U20: 6x
+  *U17: 4x
+  A$C1B1873A6: 4x
+  T-DETALL: 3x
+  SEAN: 3x
+  FP_5-EJE G: 2x
+  FP_6-EJE G: 2x
+  nivel-el: 2x
+  TITULO-CORTE: 2x
+  viñeta-rl: 1x
+  Grid - RLE-EJE-192293-EJE G: 1x
+  *U35: 1x
+  *U47: 1x
+Textos TEXT (34):
+  [RLA-FORMATO] (5290,104): "INDICADAS"
+  [RLA-FORMATO] (5247,73): "DICIEMBRE 2017"
+  [RLA-FORMATO] (5106,73): "M. KUPFER C."
+  [RLA-TEXTOS] (798,1716): "2+2+2 PERNOS NELSON"
+  [RLA-TEXTOS] (827,1693): "STUD %%C3/4"x6""
+  [RLA-TEXTOS] (792,1550): "PL 400x400x12"
+  [RLA-TEXTOS] (879,1636): "RESISTENCIA"
+  [RLA-TEXTOS] (873,1658): "SOLDAR POR"
+  [RLA-TEXTOS] (845,1473): "TIP."
+  [RLA-FE] (3618,1387): "ESTRIBO DOBLE"
+  [RLA-FE] (3638,1830): "23"
+  [RLA-FE] (3585,1609): "76"
+  [RLA-FE] (3604,1347): "S/DETALLE ELEV."
+  [RLA-TEXTOS] (3301,1274): "DESTAJAR PERFILES"
+  [RLA-FE] (3748,2834): "ESTRIBO DOBLE"
+  [RLA-FE] (3768,3277): "23"
+  [RLA-FE] (3715,3056): "76"
+  [RLA-FE] (3734,2794): "S/DETALLE ELEV."
+  [RLA-TEXTOS] (3454,3373): "DESTAJAR PERFILES"
+  [RLA-TEXTOS] (2843,1746): "4+6+8 PERNOS NELSON"
+  [RLA-TEXTOS] (2872,1723): "STUD %%C3/4"x6""
+  [RLA-TEXTOS] (2925,2905): "6+6+6 PERNOS NELSON"
+  [RLA-TEXTOS] (2953,2883): "STUD %%C3/4"x6""
+  [TEXTOS] (3474,3316): "PROYECCION FE S/ELEV."
+  [TEXTOS] (3089,1940): "PROYECCION FE S/ELEV."
+  [TEXTOS] (2968,1360): "COUPLERS S/VIGA"
+  [TEXTOS] (2968,1382): "LENTON WELDABLE"
+  [TEXTOS] (3041,3339): "COUPLERS S/VIGA"
+  [TEXTOS] (3041,3360): "LENTON WELDABLE"
+  [RLA-TEXTOS] (2350,3476): "TIP."
+  [RLA-TEXTOS] (2645,3237): "TIP."
+  [RLA-TEXTOS] (1856,3506): "PL 1000x1085x12"
+  [RLA-TEXTOS] (2364,1788): "PL 1000x1075x12"
+  [RLA-TEXTOS] (1665,1409): "TIP."
+MTEXT - Especificaciones (8):
+  [RLA-TEXTOS-1] (811,3074): "V. 60/80"
+  [RLA-TEXTOS-1] (812,3471): "V. 60/80"
+  [RLA-TEXTOS-1] (1125,2898): "P. 70x70"
+  [RLA-TEXTOS-1] (1125,3294): "P. 70x70"
+  [RLA-TEXTOS-1] (576,3198): "P.M. 300x300x20"
+  [RLA-TEXTOS-1] (801,3255): "V.M. 300x300x5"
+  [RLA-TITULO] (798,2763): "{\LELEVACION EJE F-G-H}"
+  [RLA-TITULO] (798,2707): "\LESCALA 1:50"
+
+======================================================================
+PLANO: 2017_67-802.dxf
+DESCRIPCIÓN: Elevación eje con vigas metálicas V.M. - Perno Nelson (3)
+Tamaño: 23776 KB | Capas: 32 | Entidades: 1362 | Dims: 47
+Distribución: LINE:734, INSERT:176, TEXT:142, HATCH:86, LWPOLYLINE:71, CIRCLE:51, DIMENSION:47, MTEXT:39
+Capas más activas:
+  RLA-CONTORNO: 270 entidades
+  DEFPOINTS: 165 entidades
+  0: 160 entidades
+  RLA-PERFILES: 149 entidades
+  RLA-SOLDADURAS: 83 entidades
+  FE: 70 entidades
+  RLA-TEXTOS: 64 entidades
+  RLA-MUROS: 59 entidades
+  RLA-EJES: 53 entidades
+  RLA-COTAS1: 47 entidades
+  RLA-ACHURADO: 46 entidades
+  RLA-SEGMENTO1: 24 entidades
+  RLA-TEXTOS-1: 23 entidades
+  RLA-EJE: 20 entidades
+  RLA-CORTES: 18 entidades
+Bloques insertados (176 total):
+  A$C056A6877: 109x
+  Alfa: 17x
+  Grid - RLE-EJE-192293-EJE 3-3_: 9x
+  FLECHA: 7x
+  SEAN: 6x
+  T-DETALL: 5x
+  *U17: 4x
+  A$C1B1873A6: 4x
+  nivel-el: 4x
+  *U20: 3x
+  *U34: 2x
+  TITULO-CORTE: 2x
+  viñeta-rl: 1x
+  FP_5-EJE G: 1x
+  Grid - RLE-EJE-192293-EJE G: 1x
+  *U2522: 1x
+Textos TEXT (48):
+  [RLA-FORMATO] (5290,104): "INDICADAS"
+  [RLA-FORMATO] (5247,73): "DICIEMBRE 2017"
+  [RLA-FORMATO] (5106,73): "M. KUPFER C."
+  [RLA-TEXTOS] (707,2166): "2+2+2 PERNOS NELSON"
+  [RLA-TEXTOS] (735,2143): "STUD %%C3/4"x6""
+  [RLA-TEXTOS] (700,2000): "PL 400x400x12"
+  [RLA-TEXTOS] (788,2086): "RESISTENCIA"
+  [RLA-TEXTOS] (782,2108): "SOLDAR POR"
+  [RLA-TEXTOS] (754,1923): "TIP."
+  [RLA-FE] (2898,2984): "ESTRIBO DOBLE"
+  [RLA-FE] (2918,3427): "23"
+  [RLA-FE] (2865,3206): "76"
+  [RLA-FE] (2884,2944): "S/DETALLE ELEV."
+  [RLA-TEXTOS] (2114,3523): "DESTAJAR PERFILES"
+  [RLA-TEXTOS] (2075,3055): "6+6+6 PERNOS NELSON"
+  [RLA-TEXTOS] (2103,3033): "STUD %%C3/4"x6""
+  [TEXTOS] (2624,3466): "PROYECCION FE S/ELEV."
+  [TEXTOS] (2542,3489): "COUPLERS S/VIGA"
+  [TEXTOS] (2542,3511): "LENTON WELDABLE"
+  [RLA-TEXTOS] (1900,3626): "TIP."
+  [RLA-TEXTOS] (1406,3656): "PL 1000x1085x12"
+  [RLA-FE] (5148,2984): "ESTRIBO DOBLE"
+  [RLA-FE] (5168,3249): "23"
+  [RLA-FE] (5115,3028): "76"
+  [RLA-FE] (5134,2944): "S/DETALLE ELEV."
+  [RLA-TEXTOS] (4325,3743): "6+6+6 PERNOS NELSON"
+  [RLA-TEXTOS] (4353,3720): "STUD %%C3/4"x6""
+  [TEXTOS] (4882,3340): "PROYECCION FE S/ELEV."
+  [TEXTOS] (4441,3265): "COUPLERS S/VIGA"
+  [TEXTOS] (4441,3286): "LENTON WELDABLE"
+  [RLA-TEXTOS] (3900,3148): "TIP."
+  [RLA-TEXTOS] (4195,3387): "TIP."
+  [RLA-TEXTOS] (3406,3146): "PL 1000x1085x12"
+  [RLA-TEXTOS] (4862,3279): "DESTAJAR PERFILES"
+  [RLA-TEXTOS] (1863,1999): "TIP."
+  [RLA-TEXTOS] (2354,2006): "PL 1000x400x12"
+  [RLA-TEXTOS] (2378,1772): "5+5+5 PERNOS NELSON"
+  [RLA-TEXTOS] (2406,1749): "STUD %%C3/4"x6""
+  [RLA-TEXTOS] (2455,1863): "RESISTENCIA"
+  [RLA-TEXTOS] (2449,1885): "SOLDAR POR"
+  [RLA-TEXTOS] (2303,2004): "TIP."
+  [RLA-TEXTOS] (3537,1888): "RESISTENCIA"
+  [RLA-TEXTOS] (3531,1909): "SOLDAR POR"
+  [RLA-TEXTOS] (3287,1888): "RESISTENCIA"
+  [RLA-TEXTOS] (3281,1909): "SOLDAR POR"
+  [RLA-TEXTOS] (3382,2024): "PL 35700X300x20"
+  [RLA-TEXTOS] (3493,1787): "2 PERNOS NELSON"
+  [RLA-TEXTOS] (3490,1764): "STUD %%C3/4"x6"@500"
+MTEXT - Especificaciones (27):
+  [RLA-TEXTOS-1] (661,3224): "V. 60/80"
+  [RLA-TEXTOS-1] (662,3621): "V. 60/80"
+  [RLA-TEXTOS-1] (975,3444): "P. 70x70"
+  [RLA-TEXTOS-1] (426,3348): "P.M. 300x300x20"
+  [RLA-TEXTOS-1] (770,3315): "V.M. 300x300x5"
+  [RLA-TITULO] (648,2913): "{\LELEVACION VIGA 112}"
+  [RLA-TITULO] (648,2857): "\LESCALA 1:50"
+  [RLA-TITULO] (2930,520): "{\LELEVACION EJE 1-1' (ENTRE EJE F - I') }"
+  [RLA-TITULO] (2930,414): "\LESCALA 1:50"
+  [RLA-TEXTOS-1] (903,778): "V. 60/80"
+  [RLA-TEXTOS-1] (1831,781): "V. 60/80"
+  [RLA-TEXTOS-1] (2856,786): "V. 60/80"
+  [RLA-TEXTOS-1] (5105,774): "V. 60/80"
+  [RLA-TEXTOS-1] (4624,777): "V. 60/80"
+  [RLA-TEXTOS-1] (3778,777): "V. 60/80"
+  [RLA-TEXTOS-1] (410,598): "P. 70x70"
+  [RLA-TEXTOS-1] (5089,871): "+V.I. 20/87 (2ºETAPA)"
+  [RLA-TEXTOS-1] (4611,871): "+V.I. 20/90 (2ºETAPA)"
+  [RLA-TEXTOS-1] (3810,871): "+V.I. 20/90 (2ºETAPA)"
+  [RLA-TEXTOS-1] (2738,871): "+V.I. 20/90 (2ºETAPA)"
+  [RLA-TEXTOS-1] (1746,871): "+V.I. 20/90 (2ºETAPA)"
+  [RLA-TEXTOS-1] (847,871): "+V.I. 20/90 (2ºETAPA)"
+  [RLA-TEXTOS-1] (1410,598): "P. 70x70"
+  [RLA-TEXTOS-1] (2410,598): "P. 70x70"
+  [RLA-TEXTOS-1] (3410,598): "P. 70x70"
+  [RLA-TEXTOS-1] (4410,598): "P. 70x70"
+  [RLA-TEXTOS-1] (4910,598): "P. 70x70"
+
+################################################################################
+# CATEGORÍA: ESCALERA
+################################################################################
+
+======================================================================
+PLANO: 2017_67-500.dxf
+DESCRIPCIÓN: Escalera típica - Planta
+Tamaño: 3754 KB | Capas: 25 | Entidades: 1105 | Dims: 53
+Distribución: LINE:476, TEXT:309, LWPOLYLINE:156, INSERT:57, DIMENSION:53, HATCH:29, CIRCLE:18, MTEXT:7
+Capas más activas:
+  RLA-CORTES: 436 entidades
+  DEFPOINTS: 165 entidades
+  RLA-GRADAS: 93 entidades
+  RLA-TEXTOS1: 91 entidades
+  RLA-LOSA: 53 entidades
+  CONTORNOS: 43 entidades
+  RLA-EJES: 38 entidades
+  RLA-FE: 35 entidades
+  TEXTOS-SM: 31 entidades
+  RLE-MURO: 16 entidades
+  RLA-COTAS: 16 entidades
+  RLA-TEXTOS-SM: 15 entidades
+  RLA-BORDE DE LOSAS: 14 entidades
+  RLA-COTAS2: 12 entidades
+  RLA-TEXTOS2: 10 entidades
+Bloques insertados (57 total):
+  EJE-1: 19x
+  nivel-el: 8x
+  Alfa: 7x
+  T-CORTE: 7x
+  CORTE9: 6x
+  corte2: 4x
+  Flecha: 3x
+  corte3: 2x
+  viñeta-rl: 1x
+Textos TEXT (215):
+  [RLA-FORMATO] (5290,104): "INDICADAS"
+  [RLA-FORMATO] (5250,73): "FEBRERO 2018"
+  [RLA-FORMATO] (5086,73): "M. KUPFER C."
+  [RLA-CORTES] (3201,308): "ESCALA 1:10"
+  [RLA-CORTES] (3040,347): "GRADAS ARMADAS"
+  [RLA-CORTES] (2990,425): "DETALLE ALTERNATIVO"
+  [RLA-TEXTOS1] (3190,959): "1%%c10"
+  [RLA-TEXTOS1] (3190,942): "L=S/O"
+  [RLA-TEXTOS1] (3111,992): "(15+S/O+S/O+15)"
+  [RLA-TEXTOS1] (3114,1012): "%%C8a30 L=S/O"
+  [RLA-TEXTOS1] (3260,533): "SEGUN CORTES"
+  [RLA-TEXTOS1] (3262,506): "ESCALERA"
+  [RLA-TEXTOS1] (2140,752): "2%%c12"
+  [RLA-TEXTOS1] (2421,872): "2%%c12"
+  [RLA-TEXTOS1] (2272,874): "S/CORTE"
+  [RLA-TEXTOS-SM] (2256,599): "F'=%%C8a18 L=180"
+  [RLA-TEXTOS-SM] (2246,621): "(11+8+142+8+11)"
+  [RLA-TEXTOS-SM] (2251,509): "F=%%C8a18 L=140"
+  [RLA-TEXTOS1] (2336,749): "DILATACION"
+  [RLA-TEXTOS1] (2335,728): "1cm."
+  [RLA-TEXTOS1] (2289,850): "(TIP.)"
+  [RLA-GRADAS] (636,3749): "1"
+  [RLA-GRADAS] (636,3719): "2"
+  [RLA-GRADAS] (636,3689): "3"
+  [RLA-GRADAS] (636,3659): "4"
+  [RLA-GRADAS] (636,3629): "5"
+  [RLA-GRADAS] (636,3599): "6"
+  [RLA-GRADAS] (636,3569): "7"
+  [RLA-GRADAS] (636,3539): "8"
+  [RLA-GRADAS] (636,3509): "9"
+  [RLA-GRADAS] (630,3479): "10"
+  [RLA-GRADAS] (630,3449): "11"
+  [RLA-GRADAS] (457,3479): "12"
+  [RLA-GRADAS] (457,3509): "13"
+  [RLA-GRADAS] (457,3539): "14"
+  [RLA-GRADAS] (457,3569): "15"
+  [RLA-GRADAS] (457,3599): "16"
+  [RLA-GRADAS] (457,3629): "17"
+  [RLA-GRADAS] (457,3659): "18"
+  [RLA-GRADAS] (457,3689): "19"
+  [RLA-GRADAS] (457,3719): "20"
+  [RLA-GRADAS] (457,3749): "21"
+  [RLA-GRADAS] (457,3779): "22"
+  [RLA-TEXTOS1] (217,3686): "DILATACION"
+  [RLA-TEXTOS1] (230,3664): "1cm."
+  [RLA-TEXTOS2] (64,2932): "PLANTA ESCALERA 1ºSUBT. a 1ºPISO"
+  [RLA-TEXTOS2] (465,2893): "ESCALA 1:50"
+  [RLA-GRADAS] (3570,3357): "2"
+  [RLA-GRADAS] (3510,3393): "3"
+  [RLA-GRADAS] (3630,3321): "1"
+  [RLA-GRADAS] (3450,3429): "4"
+  [RLA-GRADAS] (3390,3465): "5"
+  [RLA-GRADAS] (3330,3501): "6"
+  [RLA-GRADAS] (3270,3537): "7"
+  [RLA-GRADAS] (3210,3573): "8"
+  [RLA-GRADAS] (3150,3609): "9"
+  [RLA-GRADAS] (3090,3645): "10"
+  [RLA-GRADAS] (3030,3681): "11"
+  [RLA-GRADAS] (687,2069): "12"
+  [RLA-GRADAS] (747,2105): "13"
+MTEXT - Especificaciones (7):
+  [A- ACOTADO INTERIOR] (3736,565): "\A1;300"
+  [RLA-NIVELES] (380,3816): "N.O.G.= -4.01"
+  [RLA-NIVELES] (608,3835): "N.O.G.= -7.97"
+  [RLA-NIVELES] (505,3425): "N.O.G.= -5.94"
+  [RLA-NIVELES] (1605,3822): "N.O.G.= C"
+  [RLA-NIVELES] (1832,3822): "N.O.G.= A"
+  [RLA-NIVELES] (1730,3407): "N.O.G.= B"
+
+======================================================================
+PLANO: 2017_67-501.dxf
+DESCRIPCIÓN: Escalera típica - Desarrollo y niveles
+Tamaño: 3697 KB | Capas: 25 | Entidades: 969 | Dims: 46
+Distribución: LINE:448, TEXT:274, LWPOLYLINE:111, DIMENSION:46, INSERT:31, HATCH:26, CIRCLE:26, MTEXT:7
+Capas más activas:
+  RLA-CORTES: 364 entidades
+  DEFPOINTS: 165 entidades
+  RLA-GRADAS: 93 entidades
+  RLA-TEXTOS1: 70 entidades
+  CONTORNOS: 47 entidades
+  TEXTOS-SM: 24 entidades
+  RLE-PROYECCION: 23 entidades
+  RLA-COTAS: 22 entidades
+  RLA-FE: 22 entidades
+  RLA-EJES: 20 entidades
+  RLE-VIGA: 17 entidades
+  RLA-PROYECCION: 16 entidades
+  RLA-BORDE DE LOSAS: 14 entidades
+  RLE-PILAR: 12 entidades
+  RLA-COTAS2: 12 entidades
+Bloques insertados (31 total):
+  Alfa: 7x
+  EJE-1: 7x
+  nivel-el: 6x
+  Flecha: 3x
+  T-CORTE: 3x
+  corte3: 2x
+  CORTE9: 2x
+  viñeta-rl: 1x
+Textos TEXT (180):
+  [RLA-FORMATO] (5290,104): "INDICADAS"
+  [RLA-FORMATO] (5250,73): "FEBRERO 2018"
+  [RLA-FORMATO] (5086,73): "M. KUPFER C."
+  [RLA-CORTES] (3201,308): "ESCALA 1:10"
+  [RLA-CORTES] (3040,347): "GRADAS ARMADAS"
+  [RLA-CORTES] (2990,425): "DETALLE ALTERNATIVO"
+  [RLA-TEXTOS1] (3190,959): "1%%c10"
+  [RLA-TEXTOS1] (3190,942): "L=S/O"
+  [RLA-TEXTOS1] (3111,992): "(15+S/O+S/O+15)"
+  [RLA-TEXTOS1] (3114,1012): "%%C8a30 L=S/O"
+  [RLA-TEXTOS1] (3260,533): "SEGUN CORTES"
+  [RLA-TEXTOS1] (3262,506): "ESCALERA"
+  [RLA-TEXTOS1] (2140,741): "2%%c12"
+  [RLA-TEXTOS1] (2584,872): "2%%c12"
+  [RLA-TEXTOS1] (2272,874): "S/CORTE"
+  [RLA-TEXTOS1] (2336,738): "DILATACION"
+  [RLA-TEXTOS1] (2335,717): "1cm."
+  [RLA-TEXTOS1] (2289,850): "(TIP.)"
+  [RLA-GRADAS] (1251,3588): "1"
+  [RLA-GRADAS] (1223,3588): "2"
+  [RLA-GRADAS] (1189,3588): "3"
+  [RLA-GRADAS] (1161,3588): "4"
+  [RLA-GRADAS] (1133,3588): "5"
+  [RLA-GRADAS] (1100,3588): "6"
+  [RLA-GRADAS] (1072,3588): "7"
+  [RLA-GRADAS] (1040,3587): "8"
+  [RLA-GRADAS] (1010,3587): "9"
+  [RLA-GRADAS] (974,3587): "10"
+  [RLA-GRADAS] (942,3587): "11"
+  [RLA-GRADAS] (824,3587): "12"
+  [RLA-GRADAS] (794,3587): "13"
+  [RLA-GRADAS] (764,3587): "14"
+  [RLA-GRADAS] (734,3587): "15"
+  [RLA-GRADAS] (704,3587): "16"
+  [RLA-GRADAS] (674,3587): "17"
+  [RLA-GRADAS] (644,3587): "18"
+  [RLA-GRADAS] (614,3587): "19"
+  [RLA-GRADAS] (584,3587): "20"
+  [RLA-GRADAS] (554,3587): "21"
+  [RLA-GRADAS] (524,3587): "22"
+  [RLA-TEXTOS2] (436,3155): "PLANTA ESCALERA 1ºPISO a 2ºPISO"
+  [RLA-TEXTOS2] (823,3115): "ESCALA 1:50"
+  [RLA-GRADAS] (2890,3588): "1"
+  [RLA-GRADAS] (2862,3588): "2"
+  [RLA-GRADAS] (2828,3588): "3"
+  [RLA-GRADAS] (2800,3588): "4"
+  [RLA-GRADAS] (2772,3588): "5"
+  [RLA-GRADAS] (2739,3588): "6"
+  [RLA-GRADAS] (2711,3588): "7"
+  [RLA-GRADAS] (2679,3587): "8"
+  [RLA-GRADAS] (2649,3587): "9"
+  [RLA-GRADAS] (2613,3587): "10"
+  [RLA-GRADAS] (2580,3587): "11"
+  [RLA-GRADAS] (2463,3587): "12"
+  [RLA-GRADAS] (2433,3587): "13"
+  [RLA-GRADAS] (2403,3587): "14"
+  [RLA-GRADAS] (2373,3587): "15"
+  [RLA-GRADAS] (2343,3587): "16"
+  [RLA-GRADAS] (2313,3587): "17"
+  [RLA-GRADAS] (2283,3587): "18"
+MTEXT - Especificaciones (7):
+  [A- ACOTADO INTERIOR] (3736,565): "\A1;300"
+  [RLA-NIVELES] (1319,3513): "N.O.G.= -0.05"
+  [RLA-NIVELES] (433,3513): "N.O.G.= +3.91"
+  [RLA-NIVELES] (3045,3513): "N.O.G.= +3.91"
+  [RLA-NIVELES] (2038,3513): "N.O.G.= +7.87"
+  [RLA-NIVELES] (910,3513): "N.O.G.= +1.98"
+  [RLA-NIVELES] (2550,3513): "N.O.G.= +5.94"
+
+======================================================================
+PLANO: 2017_67-502.dxf
+DESCRIPCIÓN: Escalera típica - Detalle
+Tamaño: 3783 KB | Capas: 22 | Entidades: 1100 | Dims: 73
+Distribución: LINE:558, TEXT:235, LWPOLYLINE:153, DIMENSION:73, CIRCLE:24, INSERT:23, HATCH:19, MTEXT:9
+Capas más activas:
+  RLA-CORTES: 581 entidades
+  DEFPOINTS: 165 entidades
+  RLA-GRADAS: 65 entidades
+  RLA-FE: 51 entidades
+  CONTORNOS: 50 entidades
+  RLA-TEXTOS1: 45 entidades
+  RLA-COTAS: 30 entidades
+  RLA-COTAS2: 27 entidades
+  RLA-TEXTOS-SM: 22 entidades
+  0: 18 entidades
+  RLA-EJE: 12 entidades
+  RLA-FORMATO: 9 entidades
+  RLE-PROYECCION: 7 entidades
+  RLA-EJES: 6 entidades
+  RLA-TEXTOS2: 5 entidades
+Bloques insertados (23 total):
+  Alfa: 7x
+  nivel-el: 4x
+  T-CORTE: 3x
+  CORTE9: 3x
+  Flecha: 2x
+  corte3: 2x
+  viñeta-rl: 1x
+  corte2: 1x
+Textos TEXT (141):
+  [RLA-FORMATO] (5290,104): "INDICADAS"
+  [RLA-FORMATO] (5250,73): "FEBRERO 2018"
+  [RLA-FORMATO] (5086,73): "M. KUPFER C."
+  [RLA-CORTES] (3201,308): "ESCALA 1:10"
+  [RLA-CORTES] (3040,347): "GRADAS ARMADAS"
+  [RLA-CORTES] (2990,425): "DETALLE ALTERNATIVO"
+  [RLA-TEXTOS1] (3190,959): "1%%c10"
+  [RLA-TEXTOS1] (3190,942): "L=S/O"
+  [RLA-TEXTOS1] (3111,992): "(15+S/O+S/O+15)"
+  [RLA-TEXTOS1] (3114,1012): "%%C8a30 L=S/O"
+  [RLA-TEXTOS1] (3260,533): "SEGUN CORTES"
+  [RLA-TEXTOS1] (3262,506): "ESCALERA"
+  [RLA-TEXTOS1] (3802,1561): "2%%c12"
+  [RLA-TEXTOS1] (5240,1696): "2%%c12"
+  [RLA-TEXTOS1] (3935,1697): "S/CORTE"
+  [RLA-TEXTOS1] (3951,1674): "(TIP.)"
+  [TEXTOS-SM] (4322,1450): "F'=%%C10a20 L=775 (12+16+721+16+10)"
+  [TEXTOS-SM] (4421,1372): "F=%%C10a20 L=720"
+  [RLA-GRADAS] (394,2976): "1"
+  [RLA-GRADAS] (514,2976): "2"
+  [RLA-GRADAS] (634,2976): "3"
+  [RLA-GRADAS] (754,2976): "4"
+  [RLA-GRADAS] (874,2976): "5"
+  [RLA-GRADAS] (994,2976): "6"
+  [RLA-GRADAS] (1114,2976): "7"
+  [RLA-GRADAS] (1234,2976): "8"
+  [RLA-GRADAS] (373,3669): "1"
+  [RLA-GRADAS] (403,3669): "2"
+  [RLA-GRADAS] (433,3669): "3"
+  [RLA-GRADAS] (493,3669): "4"
+  [RLA-GRADAS] (523,3669): "5"
+  [RLA-GRADAS] (553,3669): "6"
+  [RLA-GRADAS] (613,3669): "7"
+  [RLA-GRADAS] (643,3669): "8"
+  [RLA-GRADAS] (673,3669): "9"
+  [RLA-GRADAS] (733,3669): "10"
+  [RLA-GRADAS] (763,3669): "11"
+  [RLA-GRADAS] (793,3669): "12"
+  [RLA-GRADAS] (853,3669): "13"
+  [RLA-GRADAS] (883,3669): "14"
+  [RLA-GRADAS] (913,3669): "15"
+  [RLA-GRADAS] (973,3669): "16"
+  [RLA-GRADAS] (1003,3669): "17"
+  [RLA-GRADAS] (1033,3669): "18"
+  [RLA-GRADAS] (1093,3669): "19"
+  [RLA-GRADAS] (1123,3669): "20"
+  [RLA-GRADAS] (1153,3669): "21"
+  [RLA-GRADAS] (1213,3669): "22"
+  [RLA-TEXTOS2] (444,2739): "PLANTA ESCALERA 1ºSUBTE. a 1ºPISO"
+  [RLA-TEXTOS2] (859,2700): "ESCALA 1:50"
+  [RLA-GRADAS] (383,1521): "1"
+  [RLA-GRADAS] (643,1621): "2"
+  [RLA-GRADAS] (883,1722): "3"
+  [RLA-GRADAS] (1123,1822): "4"
+  [RLA-GRADAS] (1363,1922): "5"
+  [RLA-GRADAS] (1603,2022): "6"
+  [RLA-GRADAS] (1843,2123): "7"
+  [RLA-GRADAS] (2083,2223): "8"
+  [RLA-GRADAS] (2874,3001): "1"
+  [RLA-GRADAS] (2934,3034): "2"
+MTEXT - Especificaciones (3):
+  [A- ACOTADO INTERIOR] (3736,565): "\A1;300"
+  [RLA-NIVELES] (1343,3325): "N.O.G.= -0.05"
+  [RLA-NIVELES] (314,3325): "N.O.G.= -4.01"
+
+======================================================================
+PLANO: 2017_67-503.dxf
+DESCRIPCIÓN: Escalera típica - Refuerzo
+Tamaño: 3580 KB | Capas: 26 | Entidades: 718 | Dims: 28
+Distribución: LINE:318, TEXT:209, LWPOLYLINE:81, DIMENSION:28, CIRCLE:26, HATCH:25, INSERT:18, MTEXT:13
+Capas más activas:
+  RLA-CORTES: 280 entidades
+  DEFPOINTS: 165 entidades
+  RLA-GRADAS: 54 entidades
+  RLA-TEXTOS1: 42 entidades
+  CONTORNOS: 37 entidades
+  RLA-EJE: 20 entidades
+  0: 19 entidades
+  RLA-FE: 17 entidades
+  RLA-TEXTOS-SM: 13 entidades
+  RLA-EJES: 11 entidades
+  RLE-MURO: 11 entidades
+  RLA-COTAS: 10 entidades
+  RLA-FORMATO: 9 entidades
+  RLE-PROYECCION: 5 entidades
+  RLA-TEXTOS2: 5 entidades
+Bloques insertados (18 total):
+  Alfa: 7x
+  Flecha: 2x
+  CORTE9: 2x
+  nivel-el: 2x
+  T-CORTE: 2x
+  viñeta-rl: 1x
+  corte3: 1x
+  corte1: 1x
+Textos TEXT (115):
+  [RLA-FORMATO] (5290,104): "INDICADAS"
+  [RLA-FORMATO] (5250,73): "FEBRERO 2018"
+  [RLA-FORMATO] (5086,73): "M. KUPFER C."
+  [RLA-CORTES] (1731,1956): "ESCALA 1:10"
+  [RLA-CORTES] (1571,1995): "GRADAS ARMADAS"
+  [RLA-CORTES] (1520,2073): "DETALLE ALTERNATIVO"
+  [RLA-TEXTOS1] (1720,2607): "1%%c10"
+  [RLA-TEXTOS1] (1720,2590): "L=S/O"
+  [RLA-TEXTOS1] (1642,2640): "(15+S/O+S/O+15)"
+  [RLA-TEXTOS1] (1644,2660): "%%C8a30 L=S/O"
+  [RLA-TEXTOS1] (1790,2181): "SEGUN CORTES"
+  [RLA-TEXTOS1] (1793,2154): "ESCALERA"
+  [RLA-GRADAS] (438,3498): "1"
+  [RLA-GRADAS] (468,3498): "2"
+  [RLA-GRADAS] (498,3498): "3"
+  [RLA-GRADAS] (528,3498): "4"
+  [RLA-GRADAS] (559,3498): "5"
+  [RLA-GRADAS] (589,3498): "6"
+  [RLA-GRADAS] (620,3498): "7"
+  [RLA-GRADAS] (650,3498): "8"
+  [RLA-GRADAS] (681,3498): "9"
+  [RLA-GRADAS] (711,3498): "10"
+  [RLA-GRADAS] (742,3498): "11"
+  [RLA-GRADAS] (772,3498): "12"
+  [RLA-GRADAS] (803,3498): "13"
+  [RLA-GRADAS] (1096,3498): "14"
+  [RLA-GRADAS] (1127,3498): "15"
+  [RLA-GRADAS] (1157,3498): "16"
+  [RLA-GRADAS] (1188,3498): "17"
+  [RLA-GRADAS] (1218,3498): "18"
+  [RLA-GRADAS] (1249,3498): "19"
+  [RLA-GRADAS] (1279,3498): "20"
+  [RLA-GRADAS] (1310,3498): "21"
+  [RLA-GRADAS] (1340,3498): "22"
+  [RLA-GRADAS] (1371,3498): "23"
+  [RLA-GRADAS] (1401,3498): "24"
+  [RLA-GRADAS] (1481,3498): "25"
+  [RLA-TEXTOS2] (474,3065): "PLANTA ESCALERA 1ºSUBTE. a 1ºPISO"
+  [RLA-TEXTOS2] (889,3026): "ESCALA 1:50"
+  [RLA-GRADAS] (2783,2913): "1"
+  [RLA-GRADAS] (2844,2945): "2"
+  [RLA-GRADAS] (2905,2977): "3"
+  [RLA-GRADAS] (2966,3008): "4"
+  [RLA-GRADAS] (3027,3040): "5"
+  [RLA-GRADAS] (3088,3072): "6"
+  [RLA-GRADAS] (3149,3103): "7"
+  [RLA-GRADAS] (3210,3135): "8"
+  [RLA-GRADAS] (3271,3167): "9"
+  [RLA-GRADAS] (3332,3199): "10"
+  [RLA-GRADAS] (3393,3230): "11"
+  [RLA-GRADAS] (3454,3262): "12"
+  [RLA-GRADAS] (3515,3294): "13"
+  [RLA-GRADAS] (4102,3325): "14"
+  [RLA-GRADAS] (4163,3357): "15"
+  [RLA-GRADAS] (4224,3389): "16"
+  [RLA-GRADAS] (4285,3420): "17"
+  [RLA-GRADAS] (4346,3452): "18"
+  [RLA-GRADAS] (4407,3484): "19"
+  [RLA-GRADAS] (4468,3515): "20"
+  [RLA-GRADAS] (4529,3547): "21"
+MTEXT - Especificaciones (3):
+  [A- ACOTADO INTERIOR] (2266,2213): "\A1;300"
+  [RLA-NIVELES] (1522,3393): "N.O.G.= %%P0.00"
+  [RLA-NIVELES] (387,3393): "N.O.G.= -4.01"
+
+################################################################################
+# CATEGORÍA: CARGA
+################################################################################
+
+======================================================================
+PLANO: 2017_67-700.dxf
+DESCRIPCIÓN: Cuadro de cargas de diseño (SC, PM.adic, PP)
+Tamaño: 17771 KB | Capas: 80 | Entidades: 520 | Dims: 0
+Distribución: TEXT:227, LINE:188, HATCH:60, LWPOLYLINE:31, INSERT:8, LEADER:6
+Capas más activas:
+  HATCH CARGAS: 385 entidades
+  DEFPOINTS: 83 entidades
+  RLA-TEXTOS2: 25 entidades
+  0: 18 entidades
+  RLA-FORMATO: 9 entidades
+Bloques insertados (8 total):
+  Alfa: 2x
+  2017_67-101: 2x
+  2017_67-102: 2x
+  viñeta-rl: 1x
+  2017_67-103: 1x
+Textos TEXT (181):
+  [RLA-FORMATO] (13543,-2302): "INDICADAS"
+  [RLA-FORMATO] (13405,-2395): "DICIEMBRE 2017"
+  [RLA-FORMATO] (13023,-2395): "R. LAGOS C."
+  [HATCH CARGAS] (-1917,3514): "CARGAS DE DISEÑO"
+  [HATCH CARGAS] (-253,3514): "CARGAS DE DISEÑO"
+  [HATCH CARGAS] (616,3245): "2"
+  [HATCH CARGAS] (-628,3107): "SC             = 300 Kg/m"
+  [HATCH CARGAS] (-627,3219): "PM. ADIC.        = 260  Kg/m"
+  [HATCH CARGAS] (-630,3327): "PP. LOSA        = e(m)x2500 Kg/m"
+  [HATCH CARGAS] (771,3374): "3"
+  [HATCH CARGAS] (529,3144): "2"
+  [HATCH CARGAS] (-1917,4559): "CARGAS DE DISEÑO"
+  [HATCH CARGAS] (6654,3306): "CARGAS DE DISEÑO"
+  [HATCH CARGAS] (3326,3306): "CARGAS DE DISEÑO"
+  [HATCH CARGAS] (4137,3037): "2"
+  [HATCH CARGAS] (2951,2899): "SC             = 400 Kg/m"
+  [HATCH CARGAS] (2940,3011): "PM. ADIC.        = 260 Kg/m"
+  [HATCH CARGAS] (2949,3120): "PP. LOSA        = e(m)x2500 Kg/m"
+  [HATCH CARGAS] (4350,3166): "3"
+  [HATCH CARGAS] (4113,2929): "2"
+  [HATCH CARGAS] (1411,3514): "CARGAS DE DISEÑO"
+  [HATCH CARGAS] (2224,3245): "2"
+  [HATCH CARGAS] (1036,3107): "SC             = 250 Kg/m"
+  [HATCH CARGAS] (1037,3219): "PM. ADIC.        = 260 Kg/m"
+  [HATCH CARGAS] (1034,3327): "PP. LOSA        = e(m)x2500 Kg/m"
+  [HATCH CARGAS] (2435,3374): "3"
+  [HATCH CARGAS] (2194,3141): "2"
+  [HATCH CARGAS] (-1048,4291): "2"
+  [HATCH CARGAS] (-2292,4153): "SC              = 500 Kg/m"
+  [HATCH CARGAS] (-2291,4264): "PM. ADIC.        = 300  Kg/m"
+  [HATCH CARGAS] (-2294,4373): "PP. LOSA        = e(m)x2500 Kg/m"
+  [HATCH CARGAS] (-893,4419): "3"
+  [HATCH CARGAS] (-1079,4190): "2"
+  [HATCH CARGAS] (7550,3037): "2"
+  [HATCH CARGAS] (6280,3011): "PM. ADIC.        = 2800  Kg/m"
+  [HATCH CARGAS] (6277,3120): "PP. LOSA        = e(m)x2500 Kg/m"
+  [HATCH CARGAS] (7678,3166): "3"
+  [HATCH CARGAS] (-1048,3245): "2"
+  [HATCH CARGAS] (-2292,3107): "SC             = 500 Kg/m"
+  [HATCH CARGAS] (-2291,3219): "PM. ADIC.        = 260  Kg/m"
+  [HATCH CARGAS] (-2294,3327): "PP. LOSA        = e(m)x2500 Kg/m"
+  [HATCH CARGAS] (-893,3374): "3"
+  [HATCH CARGAS] (-1135,3144): "2"
+  [HATCH CARGAS] (6279,2899): "SC             = 500 Kg/m"
+  [HATCH CARGAS] (7441,2924): "2"
+  [RLA-TEXTOS2] (-1470,5407): "PLANTA CIELO 1º SUBTERRANEO"
+  [RLA-TEXTOS2] (-449,5289): "ESCALA 1:150"
+  [RLA-TEXTOS2] (4808,4762): "PLANTA CIELO PISO 1º"
+  [RLA-TEXTOS2] (5472,4644): "ESCALA 1:150"
+  [HATCH CARGAS] (-253,4559): "CARGAS DE DISEÑO"
+  [HATCH CARGAS] (616,4291): "2"
+  [HATCH CARGAS] (-628,4153): "SC              = 500 Kg/m"
+  [HATCH CARGAS] (-627,4264): "PM. ADIC.        = 300  Kg/m"
+  [HATCH CARGAS] (-630,4373): "PP. LOSA        = e(m)x2500 Kg/m"
+  [HATCH CARGAS] (771,4419): "3"
+  [HATCH CARGAS] (585,4190): "2"
+  [HATCH CARGAS] (4990,3306): "CARGAS DE DISEÑO"
+  [HATCH CARGAS] (5814,3034): "2"
+  [HATCH CARGAS] (4615,2899): "SC             = 200 Kg/m"
+  [HATCH CARGAS] (4616,3011): "PM. ADIC.        = 200  Kg/m"
+
+################################################################################
+# CATEGORÍA: RESUMEN
+################################################################################
+
+======================================================================
+PLANO: 2017_67-600.dxf
+DESCRIPCIÓN: Plantas resumen + Elevaciones eje EA/EB
+Tamaño: 5224 KB | Capas: 38 | Entidades: 1317 | Dims: 108
+Distribución: LINE:613, TEXT:262, DIMENSION:108, INSERT:105, CIRCLE:75, MTEXT:64, LWPOLYLINE:48, HATCH:29
+Capas más activas:
+  RLA-EJES: 175 entidades
+  DEFPOINTS: 165 entidades
+  RLA-CONTORNOS: 119 entidades
+  RLA-SEGMENTOS1: 116 entidades
+  RLA-FE: 57 entidades
+  0: 54 entidades
+  RLA-TEXTOS2: 54 entidades
+  FE: 47 entidades
+  RLA-COTAS: 46 entidades
+  RLA-MUROS: 43 entidades
+  RLA-COTAS2: 43 entidades
+  RLA-TEXTOS1: 42 entidades
+  RLA-VIGAS: 40 entidades
+  RLA-TEXTOS-FE: 38 entidades
+  TEXTOS-SM: 36 entidades
+Bloques insertados (105 total):
+  nivel-el: 20x
+  Alfa: 15x
+  losa-ne: 12x
+  nivel-f: 5x
+  *U96: 4x
+  *U125: 4x
+  L: 4x
+  *U88: 3x
+  *U93: 3x
+  *U94: 3x
+  *U106: 2x
+  *U130: 2x
+  *U136: 2x
+  *U137: 2x
+  *U138: 2x
+  viñeta-rl: 1x
+  *U91: 1x
+  *U98: 1x
+  *U99: 1x
+  *U100: 1x
+Textos TEXT (168):
+  [RLA-FORMATO] (5290,104): "INDICADAS"
+  [RLA-FORMATO] (5247,73): "DICIEMBRE 2017"
+  [RLA-FORMATO] (5106,73): "M. KUPFER C."
+  [RLA-TEXTOS1] (2005,2607): "M.H.A. e=30"
+  [RLA-TEXTOS1] (2024,3740): "M.H.A. e=30"
+  [RLA-TEXTOS1] (2465,3105): "M.H.A. e=30"
+  [RLA-TEXTOS1] (1988,2985): "V.S.I. 20/40"
+  [RLA-TEXTOS1] (1988,3351): "V.S.I. 20/40"
+  [RLA-TEXTOS1] (2170,2702): "V.S.I. 20/40"
+  [RLA-TEXTOS1] (2170,3096): "V.S.I. 20/40"
+  [RLA-TEXTOS1] (2170,3451): "V.S.I. 20/40"
+  [RLA-TEXTOS1] (1878,2725): "V.S.I. 20/40"
+  [RLA-TEXTOS1] (1878,3096): "V.S.I. 20/40"
+  [RLA-TEXTOS1] (1878,3468): "V.S.I. 20/40"
+  [RLA-TEXTOS2] (532,2246): "PLANTA FUNDACIONES"
+  [RLA-TEXTOS2] (741,2207): "ESCALA 1:50"
+  [RLA-TEXTOS1] (2286,2985): "V. 20/40"
+  [RLA-TEXTOS1] (2286,3351): "V. 20/40"
+  [RLA-TEXTOS2] (1871,2246): "PLANTA CIELO 1º PISO"
+  [RLA-TEXTOS2] (2096,2207): "ESCALA 1:50"
+  [RLA-TEXTOS1] (2174,3581): "100b"
+  [RLA-TEXTOS1] (2174,3228): "100a"
+  [RLA-TEXTOS1] (2174,2839): "100"
+  [RLA-TEXTOS2] (476,230): "ELEVACION EJE  E2"
+  [RLA-TEXTOS2] (594,195): "ESCALA 1:50"
+  [RLA-TEXTOS2] (1617,230): "ELEVACION EJE  E1"
+  [RLA-TEXTOS2] (1735,195): "ESCALA 1:50"
+  [RLA-NIVELES] (1969,3463): "N.O.G.=+2.52"
+  [RLA-NIVELES] (1969,3088): "N.O.G.=+2.52"
+  [RLA-NIVELES] (1969,2715): "N.O.G.=+2.52"
+  [RLA-NIVELES] (2284,2715): "N.O.G.=+2.52"
+  [RLA-NIVELES] (1853,3136): "N.O.G.=+2.345"
+  [RLA-TEXTOS2] (2603,230): "ELEVACION EJE  E2' = E1'"
+  [RLA-TEXTOS2] (2721,195): "ESCALA 1:50"
+  [RLA-TEXTOS1] (2791,853): "V.S.I. 20/40"
+  [RLA-TEXTOS1] (3089,853): "V. 20/40"
+  [RLA-TEXTOS-FE] (2540,655): "E%%C8a20"
+  [RLA-TEXTOS1] (2525,675): "M.H.A. e=20"
+  [RLA-TEXTOS2] (729,1268): "ELEVACION EJE  EB"
+  [RLA-TEXTOS2] (847,1234): "ESCALA 1:50"
+  [RLA-TEXTOS2] (2568,1268): "ELEVACION EJE  EA"
+  [RLA-TEXTOS2] (2687,1234): "ESCALA 1:50"
+  [RLA-TEXTOS1] (2373,1892): "V.S.I. 20/40"
+  [RLA-TEXTOS1] (2724,1892): "V.S.I. 20/40"
+  [RLA-TEXTOS1] (3093,1892): "V.S.I. 20/40"
+  [RLA-TEXTOS1] (4154,1892): "V.S.I. 20/40"
+  [RLA-TEXTOS1] (4504,1892): "V.S.I. 20/40"
+  [RLA-TEXTOS1] (4873,1892): "V.S.I. 20/40"
+  [RLA-TEXTOS1] (5012,1893): "100b"
+  [RLA-TEXTOS1] (4643,1893): "100a"
+  [RLA-TEXTOS1] (4292,1893): "100"
+  [RLA-CORTES] (3614,889): "ESCALA 1:20"
+  [RLA-CORTES] (3516,929): "V.S.I. 20/40"
+  [RLA-TEXTOS-FE] (902,1692): "(NOTA 1)"
+  [RLA-TEXTOS-FE] (663,636): "(NOTA 1)"
+  [RLA-TEXTOS-FE] (1805,636): "(NOTA 1)"
+  [RLA-FE] (3772,400): "(ALT.)"
+  [RLA-TEXTOS-FE] (2529,641): "+T%%C8a20 (ALT.)"
+  [RLA-TEXTOS-FE] (3402,1621): "VER ELEV. EJE  E2"
+  [RLA-TEXTOS-FE] (2201,1621): "VER ELEV. EJE  E1"
+MTEXT - Especificaciones (2):
+  [RLA-TEXTOS-FE] (230,1281): "NOTA 1: | VER DET. DE DISPOSICION DE MALLAS | EN MURO DE CONTENCION EN PLANO | N° 001"
+  [RLA-FORMATO] (4095,1277): "\pxl2.95,a0.83333,sm1;HORMIGÓN G25_10: | \pi-1,l5;-RESISTENCIA A COMPRESIÓN PROBETA CILÍNDRICA FC' = 25 MPA, EQUIVALENTE A RESISTENCIA A COMPRESIÓN PROBETA CÚBICA R28 = 30 MPA Y 90% NC  | \pi0,l2.95;-TAMAÑO MÁXIMO DE ÁRIDO Y ASENTAMIENTO DE CONO DEBERÁN SER DEFINIDOS POR LA CONSTRUCTORA DE MODO DE GAR"
+
+################################################################################
+# CATEGORÍA: DETALLE
+################################################################################
+
+======================================================================
+PLANO: 2017_67-000.dxf
+DESCRIPCIÓN: Detalles típicos - Trabas y mallas de fundación
+Tamaño: 3807 KB | Capas: 16 | Entidades: 2170 | Dims: 69
+Distribución: LINE:1143, TEXT:604, LWPOLYLINE:158, ARC:79, DIMENSION:69, HATCH:44, INSERT:31, ELLIPSE:14
+Capas más activas:
+  RLA-CORTES: 1148 entidades
+  RLA-TEXTOS1: 677 entidades
+  DEFPOINTS: 165 entidades
+  Structural Rebar: 85 entidades
+  0: 56 entidades
+  RLA-TEXTOS2: 12 entidades
+  RLA-CONTORNOS: 12 entidades
+  RLA-FORMATO: 8 entidades
+  RLA-FE: 4 entidades
+  niveles: 2 entidades
+  contraflechas: 1 entidades
+Bloques insertados (31 total):
+  *U82: 11x
+  nivel-fm: 2x
+  eje-1: 1x
+  corte3: 1x
+  losa-ne: 1x
+  sim-pilr: 1x
+  NIVELESCALERA: 1x
+  malla-1: 1x
+  nivel-el: 1x
+  ver-det: 1x
+  t-corte: 1x
+  rev-1: 1x
+  nivel-f: 1x
+  losa-niv: 1x
+  viñeta-rl: 1x
+  cf-viga: 1x
+  TICK1: 1x
+  Alfa: 1x
+  *U83: 1x
+  *U85: 1x
+Textos TEXT (510):
+  [RLA-FORMATO] (5089,73): "M. KUPFER C."
+  [RLA-FORMATO] (5290,102): "INDICADAS"
+  [RLA-CORTES] (3713,2327): "TRABA: DIAMETRO Y SEPARACION IDEM"
+  [RLA-CORTES] (3703,2304): "MALLA VERTICAL DEL MURO (S.I.C.)"
+  [RLA-CORTES] (3714,2615): "MALLA VERTICAL DEL MURO (S.I.C.)"
+  [RLA-TEXTOS1] (3624,2714): "SIGUIENTE DISPOSICION (S.I.C.):"
+  [RLA-TEXTOS1] (3636,2757): "PARA EL ANCLAJE DE BARRAS HORIZONTALES EN MURO"
+  [RLA-TEXTOS1] (3636,2736): "DEBERA  USARSE  TRABAS O  ESTRIBOS  SEGUN  LA"
+  [RLA-TEXTOS1] (3629,3918): "LAS TRABAS INDICADAS EN ELEVACION PARA LAS"
+  [RLA-TEXTOS1] (3629,3875): "VERTICALES DEBERAN CUMPLIR LO SIGUIENTE (S.I.C.):"
+  [RLA-CORTES] (3687,2639): "TRABA: DIAMETRO Y SEPARACION IDEM"
+  [RLA-TEXTOS2] (3496,988): "UBICACION CAPAS DE FIERROS"
+  [RLA-TEXTOS1] (3692,1080): "CAPAS SERA IGUAL AL %%c DE LA 1° CAPA"
+  [RLA-TEXTOS1] (3634,1102): "NOTA: LA SEPARACION DE LOS FIERROS ENTRE LAS"
+  [RLA-CORTES] (2218,1908): "V.S.I. e/h  ="
+  [RLA-CORTES] (2225,2295): "V.I. e/h  ="
+  [RLA-CORTES] (2311,2748): "NOMENCLATURA DE VIGAS"
+  [RLA-CORTES] (2236,2632): "V. e/h  ="
+  [RLA-CORTES] (4334,3911): "DET. 2a"
+  [RLA-CORTES] (4352,1343): "DET. 4"
+  [RLA-TEXTOS1] (259,3975): "CUADRO DE SIMBOLOGIAS"
+  [RLA-TEXTOS1] (437,3729): "EJE ESTRUCTURAL"
+  [RLA-TEXTOS1] (441,3631): "NUMERO DE LOSA"
+  [RLA-TEXTOS1] (437,3604): "ESPESOR DE LOSA"
+  [RLA-TEXTOS1] (437,3522): "NUMERO DE PILAR"
+  [RLA-TEXTOS1] (437,3436): "NIVEL SELLO DE FUNDACION"
+  [RLA-TEXTOS1] (437,2519): "NUMERO DE REVISION"
+  [RLA-TEXTOS1] (437,2629): "MALLA EN ARM. DE ELEVACION Y/O LOSAS"
+  [RLA-TEXTOS1] (437,2829): "NIVEL EN ELEVACION"
+  [RLA-TEXTOS1] (442,3817): "LAMINA EN QUE SE ENCUENTRA"
+  [RLA-TEXTOS1] (467,3844): "CORTE , VISTA ó DETALLE"
+  [RLA-TEXTOS1] (437,2735): "NIVEL SUPERIOR DE RADIER EN FUNDACIONES"
+  [RLA-TEXTOS1] (437,2384): "NUBE DE REVISION"
+  [RLA-TEXTOS1] (437,1679): "EJE DE SIMETRIA"
+  [RLA-TEXTOS1] (118,2088): "101"
+  [RLA-TEXTOS1] (129,1612): "EJE DE SIMETRIA"
+  [RLA-TEXTOS1] (503,1238): "ESCALA"
+  [RLA-TEXTOS1] (505,1108): "ESCALA"
+  [RLA-TEXTOS1] (443,1265): "TITULO DE ELEVACION"
+  [RLA-TEXTOS1] (440,1135): "TITULO DE PLANTA"
+  [RLA-TEXTOS1] (98,1242): "ESCALA 1:50"
+  [RLA-TEXTOS1] (154,1109): "ESCALA 1:50"
+  [RLA-TEXTOS1] (26,1264): "ELEVACION EJE  5"
+  [RLA-TEXTOS1] (14,1134): "PLANTA CIELO PISO 2°"
+  [RLA-TEXTOS1] (37,1522): "V.S.I. 20/120  0102"
+  [RLA-TEXTOS1] (437,1521): "TITULO DETALLE DE VIGA / NUMERO DE VIGA"
+  [RLA-TEXTOS1] (437,2085): "NUMERO DE DETALLE DE VIGA"
+  [RLA-TEXTOS1] (440,2259): "AMPLIACION DE PLANTA , CORTE , VISTA ó DETALLE"
+  [RLA-TEXTOS1] (545,2232): "LAMINA EN QUE SE ENCUENTRA"
+  [RLA-TEXTOS1] (436,1378): "ESCALA / LAMINA EN QUE SE ENCUENTRA"
+  [RLA-TEXTOS1] (504,1405): "CORTE , VISTA ó DETALLE"
+  [RLA-TEXTOS1] (1351,3973): "NOMENCLATURA"
+  [RLA-TEXTOS1] (1311,3735): "ARMADURA"
+  [RLA-TEXTOS1] (1311,3660): "CADENA"
+  [RLA-TEXTOS1] (1311,3585): "CADENA DE FUNDACION"
+  [RLA-TEXTOS1] (1311,3773): "APROXIMADAMENTE"
+  [RLA-TEXTOS1] (1311,3398): "DETALLE"
+  [RLA-TEXTOS1] (1311,3360): "DOBLE MALLA"
+  [RLA-TEXTOS1] (1311,3510): "CADENA SEMI-INVERTIDA"
+  [RLA-TEXTOS1] (1311,3548): "CADENA INVERTIDA"
+MTEXT - Especificaciones (9):
+  [RLA-TEXTOS1] (152,1991): "CF 1.5cm"
+  [RLA-CORTES] (3733,1752): "\A1;DIMENSION"
+  [RLA-CORTES] (3852,1533): "\A1;K"
+  [RLA-CORTES] (3866,1519): "\A1;75mm min."
+  [RLA-CORTES] (3951,1731): "\A1;L"
+  [RLA-CORTES] (3501,1578): "\A1;H"
+  [RLA-CORTES] (3650,1681): "\A1;d"
+  [RLA-CORTES] (3660,1676): "\A1;b"
+  [0] (3979,3261): "\A1;45°"
+
+======================================================================
+PLANO: 2017_67-001.dxf
+DESCRIPCIÓN: Detalles típicos - Contención y juntas
+Tamaño: 4109 KB | Capas: 20 | Entidades: 1173 | Dims: 18
+Distribución: LINE:503, TEXT:217, INSERT:180, ARC:111, LWPOLYLINE:78, HATCH:46, DIMENSION:18, CIRCLE:9
+Capas más activas:
+  RLA-CORTES: 409 entidades
+  DEFPOINTS: 165 entidades
+  0: 161 entidades
+  RLA-FE: 128 entidades
+  RLA-TEXTOS-FE: 94 entidades
+  Structural Rebar: 72 entidades
+  CORTES: 36 entidades
+  RLA-CONTORNOS: 28 entidades
+  RLA-SOLID: 18 entidades
+  RLA-PROYECCIONES: 18 entidades
+  CONTORNOS: 12 entidades
+  RLA-FORMATO: 9 entidades
+  RLA-TEXTOS2: 8 entidades
+  TEXTOS2: 7 entidades
+  RLA-BORDE DE LOSAS: 4 entidades
+Bloques insertados (180 total):
+  *U12: 97x
+  PUNTO1: 28x
+  TICK1: 18x
+  FLECHA: 15x
+  nivel-el: 5x
+  corte9: 3x
+  corte8: 2x
+  *U46: 2x
+  viñeta-rl: 1x
+  *U17: 1x
+  *U22: 1x
+  *U21: 1x
+  Alfa: 1x
+  corte2: 1x
+  *U41: 1x
+  *U43: 1x
+  *U45: 1x
+  *U44: 1x
+Textos TEXT (123):
+  [RLA-FORMATO] (5084,73): "M. KUPFER C."
+  [RLA-FORMATO] (5290,102): "INDICADAS"
+  [RLA-FORMATO] (5254,74): "DICIEMBRE 2017"
+  [RLA-TEXTOS-FE] (657,2425): "M.V. S/ELEV. (NOTA 2)"
+  [RLA-TEXTOS-FE] (801,2574): "(NOTA 3)"
+  [RLA-TEXTOS-FE] (295,2423): "CABEZALES"
+  [RLA-TEXTOS-FE] (308,2402): "S/ELEV."
+  [RLA-TEXTOS-FE] (2021,2423): "CABEZALES"
+  [RLA-TEXTOS-FE] (2034,2402): "S/ELEV."
+  [RLA-TEXTOS-FE] (638,3386): "(CONF.)"
+  [RLA-TEXTOS-FE] (577,3361): "M.H.:S/ELEV (NOTA 4)"
+  [RLA-TEXTOS-FE] (578,3341): "M.V.:S/ELEV (NOTA 2)"
+  [RLA-TEXTOS-FE] (589,3321): "T:S/ELEV (NOTA 1)"
+  [RLA-TEXTOS-FE] (1332,3389): "M.H. S/ELEV"
+  [RLA-TEXTOS-FE] (1332,3369): "M.V. S/ELEV."
+  [RLA-TEXTOS-FE] (510,3096): "LONGITUD DE CONFINAMIENTO"
+  [RLA-TEXTOS-FE] (1068,3096): "NO REQUIERE CONFINAMIENTO"
+  [RLA-TEXTOS-FE] (221,1643): "(1) T:%%CAaB(V)aC(H):"
+  [RLA-TEXTOS-FE] (221,1393): "(2) LA MALLA VERTICAL O LATERALES UBICADOS EN LA ZONA DE CONFINAMIENTO SE TRASLAPARÁ PISO A PISO"
+  [RLA-TEXTOS-FE] (258,1368): "CON LA SIGUIENTE LONGITUD DE EMPALME DEPENDIENDO DEL DIÁMETRO DE LA BARRA:"
+  [RLA-TEXTOS-FE] (1373,1643): "(3) EL EMPALME ENTRE LA MALLA HORIZONTAL Y LA MALLA O ESTRIBO DE"
+  [RLA-TEXTOS-FE] (1412,1587): "CONFINADA PARA MALLA HORIZONTAL DE DIAMETRO MENOR O IGUAL A %%C18."
+  [RLA-TEXTOS-FE] (624,2655): "M.H. S/ELEV"
+  [RLA-TEXTOS-FE] (1326,2777): "M.H. S/ELEV"
+  [RLA-TEXTOS-FE] (262,3212): "CABEZALES"
+  [RLA-TEXTOS-FE] (276,3188): "S/ELEV."
+  [RLA-TEXTOS-FE] (2040,3212): "CABEZALES"
+  [RLA-TEXTOS-FE] (2053,3188): "S/ELEV."
+  [RLA-TEXTOS-FE] (303,1338): "%%C16   EMPALMES 130cm"
+  [RLA-TEXTOS-FE] (303,1313): "%%C18   EMPALMES 140cm"
+  [RLA-TEXTOS-FE] (1490,1096): "AMBAS ALTERNATIVAS SON VALIDAS PARA DAR CONFINAMIENTO"
+  [RLA-TEXTOS-FE] (1587,982): "M.H."
+  [RLA-TEXTOS-FE] (1854,982): "ESTRIBO"
+  [RLA-TEXTOS-FE] (2527,1459): "(5) LOS ESTRIBOS Y TRABAS DE CONFINAMIENTO (O MALLAS DE CONFINAMIENTO)"
+  [RLA-TEXTOS-FE] (620,2264): "T:S/ELEV"
+  [RLA-TEXTOS-FE] (619,2242): "(NOTA 1)"
+  [RLA-TEXTOS-FE] (1412,1562): "PARA DIÁMETROS MAYORES A %%C18 EL EMPALME DEBERÁ SER DE MÍNIMO 45cm"
+  [RLA-TEXTOS-FE] (1515,1525): "CONF."
+  [RLA-TEXTOS-FE] (1960,1525): "CONF."
+  [RLA-CORTES] (405,1004): "PISO"
+  [RLA-CORTES] (717,1014): "M.H.A."
+  [RLA-CORTES] (597,1061): "LONGITUD"
+  [RLA-CORTES] (573,1044): "CONFINAMIENTO"
+  [RLA-TEXTOS-FE] (2668,1092): "EXTENDER ELEMENTOS"
+  [RLA-TEXTOS-FE] (2668,1074): "DE CONFINAMIENTO"
+  [RLA-TEXTOS-FE] (2668,1056): "(TRABAS, ESTRIBOS O M.H.)"
+  [RLA-TEXTOS-FE] (2668,1038): "30cm EN FUNDACION"
+  [RLA-CORTES] (2800,1186): "CONFINAMIENTO"
+  [0] (505,738): "ELEVACIÓN MURO"
+  [RLA-TEXTOS-FE] (1077,2264): "DISPONER 5 TRABAS POR m"
+  [RLA-TEXTOS-FE] (1326,2270): "2"
+  [RLA-TEXTOS2] (870,1985): "EN PUNTAS DE MURO"
+  [RLA-TEXTOS2] (548,2041): "DETALLE TIPICO DE CONFINAMIENTO CON MALLAS"
+  [RLA-TEXTOS2] (941,3013): "ELEVACIÓN MURO"
+  [RLA-CORTES] (2458,1205): "NIV. SUP."
+  [RLA-TEXTOS2] (657,3884): "DETALLES TIPICOS DE ARMADO DE MUROS CON CONFINAMIENTO (SALVO INDICACIÓN CONTRARIA)"
+  [RLA-TEXTOS-FE] (1359,1192): "(4) LAS MALLAS HORIZONTALES DEBERÁN TENER EN AMBOS EXTREMOS UN DOBLEZ EN 90ª"
+  [RLA-TEXTOS-FE] (1398,1167): "Y OTRO EN 135ª. LOS ESTRIBOS DEBERAN TENER DOS DOBLECES EN 135°."
+  [RLA-TEXTOS2] (221,1688): "NOTAS:"
+  [0] (2576,869): "DETALLE TIP. INICIO DE"
+MTEXT - Especificaciones (8):
+  [RLA-CONTORNOS] (636,1090): "\A1;S/ELEV."
+  [RLA-CORTES] (2359,1257): "\A1;S/ELEV."
+  [RLA-CORTES] (1581,1485): "\A1;30"
+  [RLA-CORTES] (2000,1485): "\A1;45"
+  [0] (2067,2491): "\A1;e"
+  [RLA-CORTES] (1585,1461): "\A1;MIN."
+  [RLA-CORTES] (2004,1461): "\A1;MIN."
+  [0] (4314,2491): "\A1;e"
+
+======================================================================
+PLANO: 2017_67-002.dxf
+DESCRIPCIÓN: Detalles típicos - Refuerzo y conexiones
+Tamaño: 77974 KB | Capas: 21 | Entidades: 2318 | Dims: 67
+Distribución: LINE:1211, LWPOLYLINE:452, TEXT:316, INSERT:145, DIMENSION:67, ARC:57, HATCH:52, CIRCLE:9
+Capas más activas:
+  RLA-CORTES: 1124 entidades
+  CORTES: 550 entidades
+  DEFPOINTS: 165 entidades
+  TEXTOS1: 117 entidades
+  RLA-FE: 102 entidades
+  0: 73 entidades
+  RLA-TEXTOS1: 41 entidades
+  RLA-TEXTOS2: 40 entidades
+  CONTORNOS: 33 entidades
+  fe: 23 entidades
+  RLA-CONTORNOS: 13 entidades
+  RLA-SOLID: 13 entidades
+  RLA-FORMATO: 9 entidades
+  PROYECCIONES: 4 entidades
+  TEXTOS2: 4 entidades
+Bloques insertados (145 total):
+  PUNTO1: 32x
+  FLECHA: 18x
+  PUNTO: 16x
+  PUNTO2: 16x
+  *X49: 13x
+  TICK1: 10x
+  Alfa: 9x
+  A$C4A9C2AA3: 5x
+  TITULO_CORTE: 4x
+  *U58: 4x
+  *U57: 2x
+  nivel-el: 1x
+  viñeta-rl: 1x
+  *X28: 1x
+  *X29: 1x
+  corte8: 1x
+  corte9: 1x
+  t-corte: 1x
+  SEAN: 1x
+  t-detall: 1x
+Textos TEXT (222):
+  [RLA-FORMATO] (5084,73): "M. KUPFER C."
+  [RLA-FORMATO] (5290,102): "INDICADAS"
+  [RLA-TEXTOS1] (2782,988): "NOTA:  LAS COTAS ENTREPARENTESIS ( ) CORRESPONDEN"
+  [RLA-TEXTOS1] (2882,916): "NO A LA COTA ORTOGONAL INDICADA EN PLANTA."
+  [RLA-TEXTOS1] (2886,953): "A LA DIMENSION EN EL EJE DE LA ELEVACION ,Y"
+  [RLA-TEXTOS1] (3176,3042): "NOTA: EN DRENES Y PASADAS BAJO RADIER, COMO"
+  [RLA-TEXTOS1] (3236,3012): "DUCTO PRESURIZACION, ARMAR RADIER CON"
+  [RLA-TEXTOS2] (3227,2196): "DETALLE DRENES"
+  [RLA-TEXTOS2] (3379,2163): "ESCALA 1:20"
+  [RLA-TEXTOS2] (3207,2240): "POSICION A DEFINIR SEGUN OBRA"
+  [RLA-TEXTOS1] (3236,2982): "D.M. ACMA C-139 o D.M.%%c8a15."
+  [RLA-CORTES] (3748,2459): "PIEDRA BOLON"
+  [RLA-CORTES] (3748,2566): "GRAVILLA"
+  [RLA-CORTES] (3711,2695): "MATERIAL ESTABILIZADOR"
+  [RLA-CORTES] (3757,2673): "COMPACTADO"
+  [RLA-CORTES] (1803,3810): "RADIER ARMADO"
+  [RLA-CORTES] (2363,3683): "D.M. ACMA C-158"
+  [RLA-CORTES] (1874,3569): "RELLENO SEGUN"
+  [RLA-TEXTOS2] (1906,3342): "CON RADIER EN RELLENO"
+  [RLA-TEXTOS2] (2160,3307): "ESCALA 1:20"
+  [RLA-TEXTOS2] (1795,3399): "DETALLE ENCUENTRO LOSA RAMPA"
+  [RLA-CORTES] (1853,3544): "MECANICA DE SUELOS"
+  [RLA-CORTES] (1855,3787): "S/P"
+  [RLA-TEXTOS1] (2069,2303): "(TAMAÑO MAX. 40x40 cm.)"
+  [RLA-TEXTOS2] (1926,2255): "DETALLE TIP REFUERZO"
+  [RLA-CORTES] (2267,2831): "2%%C16"
+  [RLA-TEXTOS2] (2140,2161): "ESCALA 1:25"
+  [RLA-CORTES] (2140,2830): "2%%C16"
+  [RLA-CORTES] (2288,2882): "2%%C16"
+  [RLA-CORTES] (2288,2777): "2%%C16"
+  [RLA-CORTES] (1988,2831): "MALLA HORIZ."
+  [RLA-CORTES] (2196,2903): "MALLA VERT."
+  [RLA-TEXTOS2] (1993,2199): "CAJA DE TENSADO"
+  [RLA-TEXTOS1] (1965,2525): "NOTA 1= LAS MALLAS DEBEN CORTARSE,"
+  [RLA-TEXTOS1] (2053,2506): "DOBLARSE Y LUEGO COLOCAR 1+1%%C"
+  [RLA-TEXTOS1] (2053,2486): "IGUAL DIAMETRO QUE LA MALLA"
+  [RLA-TEXTOS1] (2051,2467): "VERTICAL Y HORIZONTAL LARGO SEGUN L1,"
+  [RLA-TEXTOS1] (2054,2447): "CUANDO SE TERMINE DE HORMIGONAR"
+  [RLA-CORTES] (2431,2703): "MURO"
+  [RLA-CORTES] (2276,2736): "VER NOTA 1"
+  [RLA-CORTES] (2176,2694): "CAJA"
+  [RLA-CORTES] (2164,2679): "TENSADO"
+  [RLA-TEXTOS1] (2054,2406): "L1=ANCHO DE LA CAJA DE TENSADO"
+  [RLA-TEXTOS1] (2054,2427): "MURO PERIMETRAL"
+  [RLA-TEXTOS1] (2088,2388): "TAMAÑO MAX. 40x40 cm."
+  [RLA-CORTES] (2431,2682): "PERIMETRAL"
+  [RLA-CORTES] (2649,3071): "DET. 4"
+  [RLA-CORTES] (2649,3971): "DET. 3"
+  [RLA-CORTES] (3849,3071): "DET. 6"
+  [RLA-TEXTOS2] (2931,3316): "DETALLE GANCHO DE ASCENSOR EN LOSA"
+  [RLA-TEXTOS2] (3384,3280): "ESCALA 1:5"
+  [RLA-CORTES] (3849,3971): "DET. 5"
+  [RLA-CORTES] (3711,3623): "S/ARMADURA DE LOSA"
+  [RLA-CORTES] (293,2639): "INDICADO EN PLANTA"
+  [RLA-CORTES] (341,2664): "NIVEL INF."
+  [RLA-CORTES] (636,2642): "S/ELEV."
+  [RLA-CORTES] (678,2991): "RADIER"
+  [RLA-CORTES] (328,3492): "Fe HORIZONTAL (MALLA)"
+  [RLA-CORTES] (640,3859): "S/ELEV."
+  [RLA-TEXTOS2] (779,2365): "ESCALA 1:20"
+MTEXT - Especificaciones (5):
+  [RLA-CORTES] (722,2038): "\A1;e"
+  [RLA-CORTES] (267,1932): "MAX. e/2"
+  [RLA-CORTES] (268,1356): "e/2 < d <e"
+  [RLA-CORTES] (722,1507): "\A1;e"
+  [RLA-CORTES] (147,931): "\A1;e"
+
+################################################################################
+# CATEGORÍA: VARIOS
+################################################################################
+
+======================================================================
+PLANO: 2017_67-400.dxf
+DESCRIPCIÓN: Plano 400
+Tamaño: 390234 KB | Capas: 137 | Entidades: 193 | Dims: 0
+Distribución: TEXT:97, LINE:58, INSERT:20, HATCH:18
+Capas más activas:
+  DEFPOINTS: 165 entidades
+  0: 19 entidades
+  RLA-FORMATO: 9 entidades
+Bloques insertados (20 total):
+  Alfa: 7x
+  viñeta-rl: 1x
+  VIGA 0101: 1x
+  VIGA100-101: 1x
+  VIGA0102: 1x
+  VIGA102-103: 1x
+  VIGA104-105: 1x
+  VIGA106: 1x
+  VIGA107: 1x
+  VIGA108-109: 1x
+  VIGA110: 1x
+  VIGA111: 1x
+  VIGA112-113: 1x
+  VIGA114: 1x
+Textos TEXT (3):
+  [RLA-FORMATO] (5290,104): "INDICADAS"
+  [RLA-FORMATO] (5247,73): "DICIEMBRE 2017"
+  [RLA-FORMATO] (5106,73): "M. KUPFER C."
+
+======================================================================
+PLANO: 2017_67-401.dxf
+DESCRIPCIÓN: Plano 401
+Tamaño: 315665 KB | Capas: 108 | Entidades: 190 | Dims: 0
+Distribución: TEXT:97, LINE:58, HATCH:18, INSERT:17
+Capas más activas:
+  DEFPOINTS: 165 entidades
+  0: 16 entidades
+  RLA-FORMATO: 9 entidades
+Bloques insertados (17 total):
+  Alfa: 7x
+  viñeta-rl: 1x
+  VIGA202-203-204: 1x
+  VIGA205-206: 1x
+  VIGA207: 1x
+  VIGA208-209: 1x
+  VIGA210-211: 1x
+  VIGA300-301: 1x
+  VIGA302-303: 1x
+  VIGA304-305: 1x
+  VIGA200-201: 1x
+Textos TEXT (3):
+  [RLA-FORMATO] (5290,104): "INDICADAS"
+  [RLA-FORMATO] (5247,73): "DICIEMBRE 2017"
+  [RLA-FORMATO] (5106,73): "M. KUPFER C."
+
+======================================================================
+PLANO: 2017_67-402.dxf
+DESCRIPCIÓN: Plano 402
+Tamaño: 389681 KB | Capas: 102 | Entidades: 189 | Dims: 0
+Distribución: TEXT:97, LINE:58, HATCH:18, INSERT:16
+Capas más activas:
+  DEFPOINTS: 165 entidades
+  0: 15 entidades
+  RLA-FORMATO: 9 entidades
+Bloques insertados (16 total):
+  Alfa: 7x
+  viñeta-rl: 1x
+  VIGA406: 1x
+  VIGA306-307: 1x
+  VIGA308: 1x
+  VIGA309: 1x
+  VIGA400-401: 1x
+  VIGA402-403: 1x
+  VIGA404-405: 1x
+  VIGAVF1-VF2-VF3: 1x
+Textos TEXT (3):
+  [RLA-FORMATO] (5290,104): "INDICADAS"
+  [RLA-FORMATO] (5247,73): "DICIEMBRE 2017"
+  [RLA-FORMATO] (5106,73): "M. KUPFER C."
+
+
+================================================================================
+RESUMEN ESTRUCTURAL DEL EDIFICIO (extraído de planos y bitácora)
+================================================================================
+
+UBICACIÓN: Edificio de Ingeniería (Universidad)
+PLANOS: Serie 2017_67-XXX (38 planos DWG/DXF)
+
+GEOMETRÍA GENERAL:
+- Retícula X (plano 101): E–I' = 0/10/20/30/40/45 m + J = 50 m (anexo metálico)
+- Retícula Y: 0 / 2.31 / 7.25 / 12.25 / 16.15 m
+- Panelaje X: [10, 10, 10, 10, 5] m | Panelaje Y: [2.31, 4.94, 5.00, 3.90] m
+- Área de planta: 726.75 m² (principal) + 80.75 m² (anexo I'→J)
+- 4 niveles + anexo metálico en 2 niveles superiores
+
+NIVELES:
+- Base (sello fundación): −4.21 m (empotramiento)
+- Radier piso 1°: −0.05 m (altura 4.16 m)
+- Cielo piso 2°: +3.91 m | Cielo piso 3°: +7.87 m | Techo: +11.83 m (3.96 m c/u)
+
+MATERIALES:
+- Hormigón G35: f'c=35 MPa, Ec=27,806 MPa, γc=25 kN/m³
+- Acero (anexo): E=200 GPa, G=77 GPa, γ=78.5 kN/m³
+- Losa M.H.A. e=15 cm
+
+ELEMENTOS:
+- Pilares P.70×70: 18 por piso (E…I' × A3,A2,A1)
+- Vigas V.60/80 (b=0.60 h=0.80)
+- Anexo metálico I'→J: Columnas P.M. 300×300×20 + Vigas V.M. 300×300×5
+- 5 muros: ME-32, MI-32, MI-12, M1c-E, M2a
+
+CARGAS:
+- q_G = 6.30 kN/m² | q_Q = 2.50 kN/m² | α = 0.10
+
+VOLADIZOS EN Y (detectados en cortes):
+- Lado A3 (trasera): P.M. 300×300×20 en ejes F,G,H,I' a −3.8/−4.9 m
+- Lado A1 (frente): P.M.I. y V.M. en ejes G,H,I' (verificar)
+
+================================================================================
+FIN DEL DOCUMENTO
+================================================================================

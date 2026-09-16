@@ -1,0 +1,38 @@
+# Entorno virtual
+.venv/
+
+# Cachés de Python y pytest
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Archivos del sistema
+Thumbs.db
+desktop.ini
+.vscode/
+
+# Unity — carpetas generadas (ambos proyectos)
+unity/EdificioSolidoUnity/[Ll]ibrary/
+unity/EdificioSolidoUnity/[Tt]emp/
+unity/EdificioSolidoUnity/[Oo]bj/
+unity/EdificioSolidoUnity/[Ll]ogs/
+unity/EdificioSolidoUnity/[Uu]ser[Ss]ettings/
+unity/EdificioSolidoUnity/[Mm]emoryCaptures/
+unity/EdificioSolidoUnity/[Rr]ecordings/
+unity/EdificioSolidoUnity/[Bb]uild/
+unity/EdificioSolidoUnity/[Bb]uilds/
+unity/EdificioSolidoUnity/*.csproj
+unity/EdificioSolidoUnity/*.sln
+unity/EdificioSolidoUnity/BuildLog_unity.txt
+
+unity/EdificioComplejoUnity/[Ll]ibrary/
+unity/EdificioComplejoUnity/[Tt]emp/
+unity/EdificioComplejoUnity/[Oo]bj/
+unity/EdificioComplejoUnity/[Ll]ogs/
+unity/EdificioComplejoUnity/[Uu]ser[Ss]ettings/
+unity/EdificioComplejoUnity/[Mm]emoryCaptures/
+unity/EdificioComplejoUnity/[Rr]ecordings/
+unity/EdificioComplejoUnity/[Bb]uild/
+unity/EdificioComplejoUnity/[Bb]uilds/
+unity/EdificioComplejoUnity/*.csproj
+unity/EdificioComplejoUnity/*.sln
