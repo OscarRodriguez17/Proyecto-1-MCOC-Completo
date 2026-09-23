@@ -36,3 +36,14 @@ unity/EdificioComplejoUnity/[Bb]uild/
 unity/EdificioComplejoUnity/[Bb]uilds/
 unity/EdificioComplejoUnity/*.csproj
 unity/EdificioComplejoUnity/*.sln
+
+# Scratch scripts sueltos de investigacion (raiz y scripts/)
+_tmp_*.py
+extract_rebar_*.py
+investigate*.py
+scripts/_probe_*.py
+scripts/_test_*.py
+reporte_armadura_muros_A.txt
+
+# Zip de entrega (redundante con la carpeta para_entrega/)
+para_entrega.zip

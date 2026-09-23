@@ -21,7 +21,8 @@ Esquema de salida (por edificio, dentro de `edificios[]`):
 - Edificio B está en esquema reducido: se convierte (nodos lista→dict, tipos
   pilar/muro/viga→column/wall/vigas_x/vigas_y, se sintetiza grilla + muros como
   paneles + nodos maestros para la deformada). Los `brazo` (brazos rígidos) se
-  omiten del dibujo.
+  exportan como tipo dibujable `brazo` para que el visor muestre la conexión
+  muro ↔ marco.
 
 NO modifica el contrato `results/edificio_completo.json` (esquema anidado) que
 usan los tests del complejo ni el visualizador de líneas.
@@ -121,12 +122,14 @@ def adaptar_b(data_b, offset=(60.0, 0.0)):
                              "z": niveles_z[k], "nivel": k,
                              "rol": "maestro_diafragma"}
 
-    # --- elementos: normaliza tipos; omite brazos rígidos ---
+    # --- elementos: normaliza tipos; conserva los brazos rígidos ---
     nd = {n["id"]: n for n in data_b["nodos"]}
     elems = []
     for el in data_b["elementos"]:
         t = el.get("tipo")
         if t == "brazo":
+            elems.append({"tag": el["id"], "tipo": "brazo",
+                          "ni": el["ni"], "nj": el["nj"]})
             continue
         if t == "viga":
             tipo = _orient(nd[el["ni"]], nd[el["nj"]])

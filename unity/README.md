@@ -1,8 +1,18 @@
 # Unity — Visualización estructural (Edificio A y COMPLEJO A+B)
 
-Visualizador estructural 3D del modelo OpenSeesPy (Edificio A, un solo edificio).
-Lee el contrato `results/modelo_resultados.json` y lo dibuja como un modelo
-estructural con cuerpo (columnas, vigas, muros, zapatas, áreas tributarias).
+> **PROYECTO OFICIAL / ESCENA QUE HAY QUE ABRIR:**
+> `unity/EdificioSolidoUnity/` → escena `Assets/Scenes/Main.unity`
+> (doble clic en `abrir_unity_solido.cmd`, luego Play). Ahí se ve el **visor
+> sólido 3D completo del Complejo A+B** (columnas/vigas/muros con cuerpo,
+> paneles, cargas, áreas tributarias y consulta de esfuerzos).
+>
+> El proyecto `unity/EdificioComplejoUnity/` es el **visor antiguo** (líneas
+> `UnityComplejo`/`UnityStickModel` sobre `modelo_resultados.json`) y **NO** es
+> el que se entrega.
+
+El visor oficial (`EdificioSolidoUnity`) lee `Assets/StreamingAssets/edificio_completo.json`
+y reconstruye la escena mínima `Main.unity` desde el JSON al abrir/cargar,
+así todos ven exactamente el mismo modelo en cualquier máquina.
 
 ## Scripts
 

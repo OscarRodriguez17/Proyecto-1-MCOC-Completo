@@ -60,6 +60,31 @@ def _exportar_y_sincronizar_solido(offset_b_x):
         print("[UNITY] StreamingAssets (solido) actualizado: edificio_completo.json")
 
 
+def _enriquecer_secciones_solido():
+    """Overlay ADITIVO (Semana 03): inyecta catalogo P-M, demandas y la
+    etiqueta `seccion` por elemento en el contrato del visor solido, si el
+    cache de secciones existe. Es opcional y NUNCA debe tumbar el pipeline."""
+    import shutil
+    results = os.path.abspath(os.path.join(AQUI, "..", "results"))
+    cache = os.path.join(results, "secciones_semana03.json")
+    if not os.path.isfile(cache):
+        print("[SECCIONES] sin cache (results/secciones_semana03.json); "
+              "se omite el overlay P-M")
+        return
+    try:
+        from secciones import exportar_unity as overlay
+        overlay.exportar(verbose=False)
+        sa = os.path.abspath(os.path.join(
+            AQUI, "..", "unity", "EdificioSolidoUnity",
+            "Assets", "StreamingAssets"))
+        if os.path.isdir(sa):
+            src = os.path.join(results, "edificio_solido.json")
+            shutil.copy2(src, os.path.join(sa, "edificio_completo.json"))
+        print("[SECCIONES] overlay P-M inyectado en edificio_solido.json")
+    except Exception as exc:  # aditivo: no afecta al resto del pipeline
+        print("[SECCIONES] overlay omitido:", exc)
+
+
 def main():
     ap = argparse.ArgumentParser(description="Complejo de Ingenieria A+B")
     ap.add_argument("--offset-b", type=float, default=60.0,
@@ -70,6 +95,7 @@ def main():
     fusionar.fusion(offset_b_x=args.offset_b)
     _sincronizar_unity()
     _exportar_y_sincronizar_solido(args.offset_b)
+    _enriquecer_secciones_solido()
     if not args.sin_visualizar:
         import visualizar_complejo
         import visualizar_complejo_html

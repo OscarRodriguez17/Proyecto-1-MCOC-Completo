@@ -15,6 +15,7 @@ namespace MCOC.Unity
         public bool mostrarVigasX = true;
         public bool mostrarVigasY = true;
         public bool mostrarMuros = true;
+        public bool mostrarBrazos = true;
         public bool mostrarApoyos = true;
         public bool mostrarSuelo = true;
         public bool mostrarNodos = false;
@@ -36,10 +37,56 @@ namespace MCOC.Unity
         private Dictionary<GameObject, VigaSeleccionable> vigasPorObjeto = new Dictionary<GameObject, VigaSeleccionable>();
         private VigaSeleccionable vigaSeleccionada;
         private static Material matVigaSeleccionada;
+
+        // --- Consulta P–M de pilares (motor de secciones, Edificio B) ---
+        private class ElementoConsulta
+        {
+            public BloqueVisual bloque;
+            public ElementoVisual3D ev;
+        }
+        private Dictionary<GameObject, ElementoConsulta> elementosPorObjeto = new Dictionary<GameObject, ElementoConsulta>();
+        private ElementoConsulta elementoSeleccionado;
+        private static Material matElementoSeleccionado;
+
+        // --- Consulta unificada Semana 04: CUALQUIER elemento estructural
+        //     (column/muro/viga/aspa) con esfuerzos_completos + metadatos.
+        //     `ev` es null para los muros (se dibujan por paneles), pero el
+        //     selector manual de tag los alcanza igual por `tag`. ---
+        private class ConsultaS4
+        {
+            public BloqueVisual bloque;
+            public ElementoVisual3D ev;
+            public string tag;
+        }
+        private Dictionary<GameObject, ConsultaS4> consultasPorObjeto = new Dictionary<GameObject, ConsultaS4>();
+        private Dictionary<GameObject, PanelVisual> panelesPorObjeto = new Dictionary<GameObject, PanelVisual>();
+        private ConsultaS4 consultaSeleccionada;
+        private static Material matConsultaSeleccionada;
+        private bool mostrarDiagramas = true;
+        private string claveDiagramas = "";
+        private Texture2D texPM;
+        private string texPMClave = "";
+        private const float anchoPM = 240f;
+        private const float altoPM = 170f;
         private static readonly string[] EtiquetasCaso = { "G", "Q", "GQ", "EX", "EY" };
         private int casoConsulta = 2;              // GQ por defecto
         private float posConsulta = 0.5f;          // fracción 0..1 de la viga
         private bool inspeccionHabilitada = true;
+
+        // --- Ventana de diagramas (Semana 04, UI extra) ---
+        private bool mostrarVentanaD = true;                 // visibilidad
+        private Rect rectVentanaD = new Rect(420, 120, 380, 340);
+        private const int idVentanaD = 51001;
+        private int tipoEsfuerzoD = 0;      // 0=Axial(N), 1=Corte(V), 2=Momento(M)
+        private int compEsfuerzoD = 0;      // corte: 0=Vz 1=Vy | momento: 0=My 1=Mz
+        private Texture2D texDiagramaD;
+        private const float anchoD = 340f, altoD = 170f;
+
+        // --- Ventana P-M (Semana 04): diagrama de interaccion en ventana
+        //     propia, arrastrable, para que no quede cortado por el panel. ---
+        private bool mostrarVentanaPM = true;
+        private Rect rectVentanaPM = new Rect(830, 120, 290, 330);
+        private const int idVentanaPM = 51002;
 
         private List<BloqueVisual> bloques = new List<BloqueVisual>();
         private string mensaje = "Sin cargar";
@@ -133,6 +180,8 @@ namespace MCOC.Unity
             public Vector2 offset;
             public Dictionary<int, NivelMaestro> maestros = new Dictionary<int, NivelMaestro>();
             public Dictionary<string, List<ElementoVisual3D>> porTipo = new Dictionary<string, List<ElementoVisual3D>>();
+            public Dictionary<string, ConsultaS4> consultaPorTag = new Dictionary<string, ConsultaS4>();
+            public List<string> tagsEstructurales = new List<string>();
             public Dictionary<string, GameObject> contenedor = new Dictionary<string, GameObject>();
             public GameObject nodosObj;
             public GameObject apoyosObj;
@@ -149,15 +198,18 @@ namespace MCOC.Unity
             public GameObject tributariaObj;
             public List<NivelTributarioVisual> zonas = new List<NivelTributarioVisual>();
             public CasoDeformacion casoDeformacionPrevia = CasoDeformacion.Ninguno;
+            public GameObject diagramasObj;
         }
 
         private static Mesh meshCaja;
         private static Mesh meshVigaT;
         private static Mesh meshVigaL;
         private static Mesh coneCargaMesh;
+        private static Mesh meshCilindroFino;
         private static Material matColumna;
         private static Material matViga;
         private static Material matMuro;
+        private static Material matBrazo;
         private static Material matZapata;
 
         private static void Destruir(Object o)
@@ -281,6 +333,14 @@ namespace MCOC.Unity
             bloques.Clear();
             vigasPorObjeto.Clear();
             vigaSeleccionada = null;
+            elementosPorObjeto.Clear();
+            elementoSeleccionado = null;
+            consultasPorObjeto.Clear();
+            panelesPorObjeto.Clear();
+            consultaSeleccionada = null;
+            claveDiagramas = "";
+            texPM = null;
+            texPMClave = "";
 
             for (int i = 0; i < modelo.edificios.Count; i++)
             {
@@ -295,7 +355,7 @@ namespace MCOC.Unity
                 GameObject root = new GameObject(ed.bloque);
                 root.transform.SetParent(transform, false);
 
-                foreach (string tipo in new[] { "column", "wall", "vigas_x", "vigas_y" })
+                foreach (string tipo in new[] { "column", "wall", "vigas_x", "vigas_y", "brazo" })
                 {
                     GameObject cont = new GameObject(tipo);
                     cont.transform.SetParent(root.transform, false);
@@ -312,6 +372,8 @@ namespace MCOC.Unity
                 bv.cargasObj.transform.SetParent(root.transform, false);
                 bv.tributariaObj = new GameObject("tributaria");
                 bv.tributariaObj.transform.SetParent(root.transform, false);
+                bv.diagramasObj = new GameObject("diagramas3d");
+                bv.diagramasObj.transform.SetParent(root.transform, false);
 
                 foreach (KeyValuePair<string, NodoModelo> kv in ed.nodos)
                 {
@@ -388,6 +450,10 @@ namespace MCOC.Unity
                     {
                         elemObj = CrearColumna3D(bv.contenedor[el.tipo], ni, nj, bv);
                     }
+                    else if (el.tipo == "brazo")
+                    {
+                        elemObj = CrearBrazo3D(bv.contenedor[el.tipo], ni, nj, bv);
+                    }
                     else
                     {
                         bool esVigaX = el.tipo == "vigas_x";
@@ -402,7 +468,39 @@ namespace MCOC.Unity
                     {
                         vigasPorObjeto[elemObj] = new VigaSeleccionable { bloque = bv, ev = ev };
                     }
+                    else if (el.tipo == "column")
+                    {
+                        elementosPorObjeto[elemObj] = new ElementoConsulta { bloque = bv, ev = ev };
+                    }
                 }
+
+                // --- Semana 04: diccionario unificado por tag de TODOS los
+                //     elementos estructurales (los muros sin `objeto`, ya que
+                //     se dibujan por paneles). Sirve de lista y de acceso
+                //     rapido para la consulta unificada. ---
+                bv.tagsEstructurales.Clear();
+                bv.consultaPorTag.Clear();
+                foreach (ElementoModelo el in ed.elementos)
+                {
+                    if (el.tipo != "column" && el.tipo != "wall"
+                        && el.tipo != "vigas_x" && el.tipo != "vigas_y") continue;
+                    string tk = el.tag.ToString();
+                    ElementoVisual3D ev = null;
+                    GameObject obj = null;
+                    if (el.tipo != "wall")
+                    {
+                        List<ElementoVisual3D> lista;
+                        if (bv.porTipo.TryGetValue(el.tipo, out lista))
+                            foreach (ElementoVisual3D e in lista)
+                                if (e.datos.tag == el.tag) { ev = e; obj = e.objeto; break; }
+                    }
+                    ConsultaS4 cs4 = new ConsultaS4 { bloque = bv, ev = ev, tag = tk };
+                    bv.consultaPorTag[tk] = cs4;
+                    if (obj != null) consultasPorObjeto[obj] = cs4;
+                }
+                foreach (KeyValuePair<string, ConsultaS4> kv in bv.consultaPorTag)
+                    bv.tagsEstructurales.Add(kv.Key);
+                bv.tagsEstructurales.Sort((a, b) => int.Parse(a).CompareTo(int.Parse(b)));
 
                 foreach (KeyValuePair<string, NodoModelo> kv2 in ed.nodos)
                 {
@@ -604,7 +702,8 @@ namespace MCOC.Unity
         private GameObject CrearColumna3D(GameObject padre, NodoModelo ni, NodoModelo nj, BloqueVisual bv)
         {
             GameObject go = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            Destruir(go.GetComponent<Collider>());
+            // Se CONSERVA el collider para poder consultar el pilar por raycast
+            // (la barra de vigas ya tiene su propio collider).
             go.name = "columna";
             go.transform.SetParent(padre.transform, false);
             go.transform.localScale = new Vector3(0.7f, 1f, 0.7f);
@@ -622,6 +721,41 @@ namespace MCOC.Unity
             go.transform.SetParent(padre.transform, false);
             go.transform.localScale = new Vector3(0.6f, 1f, 0.8f);
             go.GetComponent<Renderer>().sharedMaterial = MaterialViga();
+            return go;
+        }
+
+        private static Material MaterialBrazo()
+        {
+            if (matBrazo == null)
+            {
+                matBrazo = new Material(Shader.Find("Standard"));
+                if (matBrazo == null) matBrazo = new Material(Shader.Find("Unlit/Color"));
+                matBrazo.color = new Color(0.75f, 0.78f, 0.82f, 0.45f);
+                matBrazo.SetFloat("_Glossiness", 0.1f);
+                if (matBrazo.HasProperty("_Mode"))
+                {
+                    matBrazo.SetFloat("_Mode", 3f);
+                    matBrazo.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+                    matBrazo.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+                    matBrazo.SetInt("_ZWrite", 0);
+                    matBrazo.DisableKeyword("_ALPHATEST_ON");
+                    matBrazo.EnableKeyword("_ALPHABLEND_ON");
+                    matBrazo.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+                    matBrazo.renderQueue = 3000;
+                }
+            }
+            return matBrazo;
+        }
+
+        // Brazos rígidos: cilindro fino que une el muro con el marco, con material
+        // tenue, para que la conexión quede visible.
+        private GameObject CrearBrazo3D(GameObject padre, NodoModelo ni, NodoModelo nj, BloqueVisual bv)
+        {
+            GameObject go = new GameObject("brazo_rigido");
+            go.transform.SetParent(padre.transform, false);
+            go.AddComponent<MeshFilter>().sharedMesh = CilindroFinoMesh();
+            go.AddComponent<MeshRenderer>().sharedMaterial = MaterialBrazo();
+            go.transform.localScale = new Vector3(0.20f, 1f, 0.20f);
             return go;
         }
 
@@ -732,6 +866,22 @@ namespace MCOC.Unity
                 zs = zs, bloque = bv
             };
             bv.paneles.Add(p);
+
+            // --- Semana 04: collider de seleccion por clic. BoxCollider fijo
+            //     al muro SIN deformar (la deformada solo reconstruye el mesh);
+            //     el transform del GO/contenedor es identidad, asi que las
+            //     coords del collider coinciden con el mesh (que ya embebe
+            //     bv.offset). Tambien se registra el GO -> panel en el
+            //     diccionario de raycast. ---
+            float bx = (float)bv.offset.x, by = (float)bv.offset.y;
+            BoxCollider bc = go.AddComponent<BoxCollider>();
+            float zc0 = (float)zs[0], zc1 = (float)zs[zs.Count - 1];
+            bc.center = new Vector3((float)xc + bx, (zc0 + zc1) / 2f, (float)yc + by);
+            bc.size = resisteY
+                ? new Vector3((float)t, zc1 - zc0, (float)L)
+                : new Vector3((float)L, zc1 - zc0, (float)t);
+            panelesPorObjeto[go] = p;
+
             ReconstruirPanel(p, bv.offset);
         }
 
@@ -817,6 +967,64 @@ namespace MCOC.Unity
             p.go.GetComponent<MeshFilter>().sharedMesh = mesh;
         }
 
+        // --- Semana 04: clic sobre un panel de muro -> elemento del muro en el
+        //     NIVEL clickeado. El panel abarca todas las alturas del muro;
+        //     hit.point.y es la cota z (misma referencia que `niveles_z`), que
+        //     resuelve el nivel y el elemento de muro de esa linea en ese nivel
+        //     (match por posicion de planta contra nodos y por z del nodo base).
+        //     Si no se halla, cae al elemento base como respaldo y el ◀/▶ recorre
+        //     los demas niveles. ---
+        private void SeleccionarElementoDeMuro(PanelVisual p, float yWorld)
+        {
+            if (p == null || p.bloque == null || p.bloque.datos == null
+                || p.zs == null || p.zs.Count < 2) return;
+            ModeloEdificio ed = p.bloque.datos;
+
+            int st = 0;
+            for (int i = 0; i < p.zs.Count - 1; i++)
+                if (yWorld + 1e-3f >= p.zs[i]) st = i;
+            if (yWorld > p.zs[p.zs.Count - 1] + 1e-3f) st = p.zs.Count - 2;
+
+            string tag = null;
+            string tagBase = null;
+            int nivelBase = int.MaxValue;
+            double tolEje = p.t / 2.0 + 1e-3;
+            foreach (ElementoModelo el in ed.elementos)
+            {
+                if (el.tipo != "wall") continue;
+                NodoModelo ni = ObtenerNodo(ed, el.ni);
+                if (ni == null) continue;
+
+                bool plan;
+                if (p.resisteY)
+                    plan = System.Math.Abs(ni.x - p.xc) <= tolEje
+                        && ni.y >= p.yc - p.L / 2.0 - 1e-3
+                        && ni.y <= p.yc + p.L / 2.0 + 1e-3;
+                else
+                    plan = System.Math.Abs(ni.y - p.yc) <= tolEje
+                        && ni.x >= p.xc - p.L / 2.0 - 1e-3
+                        && ni.x <= p.xc + p.L / 2.0 + 1e-3;
+                if (!plan) continue;
+
+                if (tagBase == null || ni.nivel < nivelBase)
+                {
+                    nivelBase = ni.nivel;
+                    tagBase = el.tag.ToString();
+                }
+                if (System.Math.Abs(ni.z - p.zs[st]) <= 1e-3)
+                {
+                    tag = el.tag.ToString();
+                    break;
+                }
+            }
+            if (tag == null) tag = tagBase;
+            if (tag == null) return;
+
+            ConsultaS4 cs4;
+            if (p.bloque.consultaPorTag.TryGetValue(tag, out cs4))
+                SeleccionarConsulta(cs4);
+        }
+
         private static readonly Color ColorCargaG = new Color(0.22f, 0.22f, 0.24f);
         private static readonly Color ColorCargaQ = new Color(0.95f, 0.55f, 0.10f);
         private static readonly Color ColorCargaSismo = new Color(0.85f, 0.18f, 0.14f);
@@ -854,6 +1062,40 @@ namespace MCOC.Unity
             coneCargaMesh.RecalculateNormals();
             coneCargaMesh.RecalculateBounds();
             return coneCargaMesh;
+        }
+
+        // Cilindro fino de ALTURA 1 (eje Y) para los brazos rígidos:
+        // PosicionarElemento3D escala el eje Y con la longitud real del tramo.
+        private static Mesh CilindroFinoMesh()
+        {
+            if (meshCilindroFino != null) return meshCilindroFino;
+            int seg = 12;
+            const float radio = 0.5f, altura = 1f;
+            Vector3[] verts = new Vector3[seg * 2 + 2];
+            int[] tris = new int[seg * 12];
+            for (int i = 0; i < seg; i++)
+            {
+                float a = (float)i / seg * Mathf.PI * 2f;
+                verts[i] = new Vector3(Mathf.Cos(a) * radio, altura * 0.5f, Mathf.Sin(a) * radio);
+                verts[seg + i] = new Vector3(Mathf.Cos(a) * radio, -altura * 0.5f, Mathf.Sin(a) * radio);
+            }
+            verts[seg * 2] = new Vector3(0f, altura * 0.5f, 0f);
+            verts[seg * 2 + 1] = new Vector3(0f, -altura * 0.5f, 0f);
+            int t = 0;
+            for (int i = 0; i < seg; i++)
+            {
+                int i2 = (i + 1) % seg;
+                tris[t++] = i; tris[t++] = i2; tris[t++] = i + seg;
+                tris[t++] = i2; tris[t++] = i2 + seg; tris[t++] = i + seg;
+                tris[t++] = seg * 2; tris[t++] = i2; tris[t++] = i;
+                tris[t++] = seg * 2 + 1; tris[t++] = i + seg; tris[t++] = i2 + seg;
+            }
+            meshCilindroFino = new Mesh();
+            meshCilindroFino.vertices = verts;
+            meshCilindroFino.triangles = tris;
+            meshCilindroFino.RecalculateNormals();
+            meshCilindroFino.RecalculateBounds();
+            return meshCilindroFino;
         }
 
         private static TextMesh CrearEtiqueta()
@@ -1495,6 +1737,7 @@ namespace MCOC.Unity
                         case "wall": activo = mostrarMuros; break;
                         case "vigas_x": activo = mostrarVigasX; break;
                         case "vigas_y": activo = mostrarVigasY; break;
+                        case "brazo": activo = mostrarBrazos; break;
                         case "cargas": activo = mostrarCargasG || mostrarCargasQ || mostrarCargasSismo; break;
                     }
                     kv.Value.SetActive(activo);
@@ -1629,20 +1872,114 @@ namespace MCOC.Unity
             if (Physics.Raycast(ray, out hit, 1e9f))
             {
                 GameObject go = hit.collider.gameObject;
+                ConsultaS4 cs4;
+                if (consultasPorObjeto.TryGetValue(go, out cs4))
+                {
+                    SeleccionarConsulta(cs4);
+                    return;
+                }
+                PanelVisual pv;
+                if (panelesPorObjeto.TryGetValue(go, out pv))
+                {
+                    SeleccionarElementoDeMuro(pv, hit.point.y);
+                    return;
+                }
                 VigaSeleccionable vs;
                 if (vigasPorObjeto.TryGetValue(go, out vs))
                 {
                     SeleccionarViga(vs);
                     return;
                 }
+                ElementoConsulta elc;
+                if (elementosPorObjeto.TryGetValue(go, out elc))
+                {
+                    SeleccionarElemento(elc);
+                    return;
+                }
             }
             DeseleccionarViga();
+            DeseleccionarElemento();
+            DeseleccionarConsulta();
+        }
+
+        private void SeleccionarElemento(ElementoConsulta elc)
+        {
+            if (elementoSeleccionado == elc) return;
+            DeseleccionarViga();
+            DeseleccionarElemento();
+            elementoSeleccionado = elc;
+            Renderer r = elc.ev != null && elc.ev.objeto != null
+                ? elc.ev.objeto.GetComponent<Renderer>() : null;
+            if (r != null) r.sharedMaterial = MaterialElementoSeleccionado();
+        }
+
+        private void SeleccionarConsulta(ConsultaS4 cs4)
+        {
+            if (consultaSeleccionada == cs4) return;
+            DeseleccionarViga();
+            DeseleccionarElemento();
+            DeseleccionarConsulta();
+            consultaSeleccionada = cs4;
+            if (cs4 != null)
+            {
+                Renderer r = cs4.ev != null && cs4.ev.objeto != null
+                    ? cs4.ev.objeto.GetComponent<Renderer>() : null;
+                if (r != null) r.sharedMaterial = MaterialConsultaSeleccionada();
+            }
+        }
+
+        private void DeseleccionarConsulta()
+        {
+            if (consultaSeleccionada == null) return;
+            Renderer r = consultaSeleccionada.ev != null && consultaSeleccionada.ev.objeto != null
+                ? consultaSeleccionada.ev.objeto.GetComponent<Renderer>() : null;
+            if (r != null)
+            {
+                bool col = consultaSeleccionada.ev.datos != null
+                    && consultaSeleccionada.ev.datos.tipo == "column";
+                r.sharedMaterial = col ? MaterialColumna() : MaterialViga();
+            }
+            consultaSeleccionada = null;
+        }
+
+        private static Material MaterialConsultaSeleccionada()
+        {
+            if (matConsultaSeleccionada == null)
+            {
+                matConsultaSeleccionada = new Material(Shader.Find("Standard"));
+                if (matConsultaSeleccionada == null)
+                    matConsultaSeleccionada = new Material(Shader.Find("Unlit/Color"));
+                matConsultaSeleccionada.color = new Color(1f, 0.9f, 0.15f);
+            }
+            return matConsultaSeleccionada;
+        }
+
+        private void DeseleccionarElemento()
+        {
+            if (elementoSeleccionado == null) return;
+            Renderer r = elementoSeleccionado.ev != null && elementoSeleccionado.ev.objeto != null
+                ? elementoSeleccionado.ev.objeto.GetComponent<Renderer>() : null;
+            if (r != null) r.sharedMaterial = MaterialColumna();
+            elementoSeleccionado = null;
+        }
+
+        private static Material MaterialElementoSeleccionado()
+        {
+            if (matElementoSeleccionado == null)
+            {
+                matElementoSeleccionado = new Material(Shader.Find("Standard"));
+                if (matElementoSeleccionado == null)
+                    matElementoSeleccionado = new Material(Shader.Find("Unlit/Color"));
+                matElementoSeleccionado.color = new Color(0.95f, 0.65f, 0.10f);
+            }
+            return matElementoSeleccionado;
         }
 
         private void SeleccionarViga(VigaSeleccionable vs)
         {
             if (vigaSeleccionada == vs) return;
             DeseleccionarViga();
+            DeseleccionarElemento();
             vigaSeleccionada = vs;
             Renderer r = vs.ev != null && vs.ev.objeto != null
                 ? vs.ev.objeto.GetComponent<Renderer>() : null;
@@ -1659,18 +1996,38 @@ namespace MCOC.Unity
             vigaSeleccionada = null;
         }
 
+        /// <summary>
+        /// Coeficientes de esfuerzos del elemento `tag` para el caso activo:
+        ///  1) `esfuerzos_completos` (Semana 04, TODOS los elementos), con
+        ///     fallback a `esfuerzos` (Semana 03, solo vigas del Edificio B).
+        /// Devuelve null si el edificio no tiene datos para ese tag/caso.
+        /// </summary>
+        private EsfuerzosVigaModelo ObtenerEsfuerzosS4(ModeloEdificio ed, string tag)
+        {
+            if (ed == null) return null;
+            string caso = EtiquetasCaso[casoConsulta];
+            Dictionary<string, EsfuerzosVigaModelo> porTag;
+            if (ed.esfuerzosCompletos != null
+                && ed.esfuerzosCompletos.Count > 0
+                && ed.esfuerzosCompletos.TryGetValue(caso, out porTag))
+            {
+                EsfuerzosVigaModelo esf;
+                if (porTag.TryGetValue(tag, out esf)) return esf;
+            }
+            if (ed.esfuerzos != null && ed.esfuerzos.Count > 0
+                && ed.esfuerzos.TryGetValue(caso, out porTag))
+            {
+                EsfuerzosVigaModelo esf;
+                if (porTag.TryGetValue(tag, out esf)) return esf;
+            }
+            return null;
+        }
+
         private EsfuerzosVigaModelo ObtenerEsfuerzosConsulta(int tag)
         {
             if (vigaSeleccionada == null || vigaSeleccionada.bloque == null
                 || vigaSeleccionada.bloque.datos == null) return null;
-            ModeloEdificio ed = vigaSeleccionada.bloque.datos;
-            if (ed.esfuerzos == null || ed.esfuerzos.Count == 0) return null;
-            string caso = EtiquetasCaso[casoConsulta];
-            Dictionary<string, EsfuerzosVigaModelo> porTag;
-            if (!ed.esfuerzos.TryGetValue(caso, out porTag)) return null;
-            EsfuerzosVigaModelo esf;
-            if (!porTag.TryGetValue(tag.ToString(), out esf)) return null;
-            return esf;
+            return ObtenerEsfuerzosS4(vigaSeleccionada.bloque.datos, tag.ToString());
         }
 
         private void ReconstruirPanelesDeformados()
@@ -1726,6 +2083,161 @@ namespace MCOC.Unity
             return go;
         }
 
+        // ------------------------------------------------------------------
+        // Panel P–M (motor de secciones): catalogo + demandas + punto activo.
+        // En Semana 04 se consulta POR TAG dentro de la consulta unificada.
+        // ------------------------------------------------------------------
+        private string ClavePMTag(BloqueVisual bv, string tag)
+        {
+            return bv != null ? bv.indice + ":" + tag + ":" + casoConsulta : "";
+        }
+
+        private ElementoInteraccion SeccionDesdeTag(ModeloEdificio ed, string tag, out SeccionInteraccion sec)
+        {
+            sec = null;
+            if (ed == null || ed.secciones == null || ed.secciones.elementos == null) return null;
+            ElementoInteraccion el;
+            if (string.IsNullOrEmpty(tag) || !ed.secciones.elementos.TryGetValue(tag, out el)) return null;
+            // El catalogo semana03 trae la curva P-M de cada seccion real
+            // (col_A_0.70x0.70, muro0.20x11.59, ...). El overlay agrega la clave
+            // real del pilar como alias de la representativa ('col0.70x0.70' ->
+            // 'col' en el Edificio B). Lookup ROBUSTO: match exacto -> clave
+            // representativa por tipo -> cualquier clave del tipo (prefijo).
+            string clave = el.seccion;
+            if (string.IsNullOrEmpty(clave)
+                || !ed.secciones.catalogo.ContainsKey(clave))
+            {
+                string rep = el.tipo == "muro" ? "muro" : "col";
+                if (ed.secciones.catalogo.ContainsKey(rep)) clave = rep;
+                else
+                {
+                    clave = null;
+                    foreach (string k in ed.secciones.catalogo.Keys)
+                        if (k.StartsWith(rep)) { clave = k; break; }
+                }
+            }
+            if (!string.IsNullOrEmpty(clave))
+                ed.secciones.catalogo.TryGetValue(clave, out sec);
+            return el;
+        }
+
+        private static double? CapacidadM(EnvolventePM env, double P)
+        {
+            if (env == null || env.P == null || env.P.Count < 2) return null;
+            int n = Mathf.Min(env.P.Count, env.M.Count);
+            if (P <= env.P[0]) return env.M[0];
+            if (P >= env.P[n - 1]) return env.M[n - 1];
+            for (int i = 1; i < n; i++)
+            {
+                if (P <= env.P[i])
+                {
+                    double t = (P - env.P[i - 1]) / (env.P[i] - env.P[i - 1]);
+                    return env.M[i - 1] + t * (env.M[i] - env.M[i - 1]);
+                }
+            }
+            return env.M[n - 1];
+        }
+
+        private static void Linea(Color32[] px, int w, int h,
+                                  float x0, float y0, float x1, float y1, Color32 c)
+        {
+            int ix0 = Mathf.RoundToInt(x0), iy0 = Mathf.RoundToInt(y0);
+            int ix1 = Mathf.RoundToInt(x1), iy1 = Mathf.RoundToInt(y1);
+            int dx = Mathf.Abs(ix1 - ix0), dy = Mathf.Abs(iy1 - iy0);
+            int sx = ix0 < ix1 ? 1 : -1, sy = iy0 < iy1 ? 1 : -1;
+            int err = dx - dy;
+            int guarda = 0;
+            while (guarda++ < 10000)
+            {
+                if (ix0 >= 0 && ix0 < w && iy0 >= 0 && iy0 < h) px[iy0 * w + ix0] = c;
+                if (ix0 == ix1 && iy0 == iy1) break;
+                int e2 = 2 * err;
+                if (e2 > -dy) { err -= dy; ix0 += sx; }
+                if (e2 < dx) { err += dx; iy0 += sy; }
+            }
+        }
+
+        private static void Punto(Color32[] px, int w, int h, int cx, int cy, Color32 c, int rad)
+        {
+            for (int yy = -rad; yy <= rad; yy++)
+                for (int xx = -rad; xx <= rad; xx++)
+                {
+                    int x = cx + xx, y = cy + yy;
+                    if (x >= 0 && x < w && y >= 0 && y < h) px[y * w + x] = c;
+                }
+        }
+
+        private Texture2D GenerarTexPM(ElementoInteraccion el, SeccionInteraccion sec)
+        {
+            int w = Mathf.RoundToInt(anchoPM), h = Mathf.RoundToInt(altoPM);
+            Texture2D tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
+            tex.filterMode = FilterMode.Point;
+            Color32[] px = new Color32[w * h];
+            Color32 fondo = new Color32(18, 22, 28, 255);
+            for (int i = 0; i < px.Length; i++) px[i] = fondo;
+
+            EnvolventePM env = sec != null ? sec.envelope : null;
+            double mMax = 1.0, pMin = 0.0, pMax = 1.0;
+            if (env != null && env.P != null && env.P.Count > 0)
+            {
+                pMin = env.P[0]; pMax = env.P[env.P.Count - 1];
+                for (int i = 0; i < env.M.Count; i++) if (env.M[i] > mMax) mMax = env.M[i];
+            }
+            if (el != null && el.demanda != null)
+                foreach (KeyValuePair<string, PuntoPM> kv in el.demanda)
+                {
+                    if (kv.Value == null) continue;
+                    if (kv.Value.M > mMax) mMax = kv.Value.M;
+                    if (kv.Value.P < pMin) pMin = kv.Value.P;
+                    if (kv.Value.P > pMax) pMax = kv.Value.P;
+                }
+            if (sec != null && sec.balanceado != null)
+            {
+                if (sec.balanceado.M > mMax) mMax = sec.balanceado.M;
+            }
+            if (pMax - pMin < 1e-6) pMax = pMin + 1.0;
+            mMax *= 1.10;
+
+            float L = 10f, Rr = w - 6f, B = 6f, T = h - 6f;
+            System.Func<double, float> fx = m => L + (float)(m / mMax) * (Rr - L);
+            System.Func<double, float> fy = p => T - (float)((p - pMin) / (pMax - pMin)) * (T - B);
+
+            Color32 eje = new Color32(90, 100, 115, 255);
+            Linea(px, w, h, L, B, L, T, eje);          // eje M = 0
+            Linea(px, w, h, L, B, Rr, B, eje);         // eje P = pMin
+            if (pMin < 0 && pMax > 0)
+                Linea(px, w, h, L, fy(0), Rr, fy(0), new Color32(60, 70, 85, 255));
+
+            if (env != null && env.P != null && env.P.Count > 1)
+            {
+                Color32 ce = new Color32(90, 190, 255, 255);
+                for (int i = 1; i < env.P.Count && i < env.M.Count; i++)
+                    Linea(px, w, h, fx(env.M[i - 1]), fy(env.P[i - 1]),
+                          fx(env.M[i]), fy(env.P[i]), ce);
+            }
+            if (sec != null && sec.balanceado != null)
+                Punto(px, w, h, Mathf.RoundToInt(fx(sec.balanceado.M)),
+                      Mathf.RoundToInt(fy(sec.balanceado.P)),
+                      new Color32(60, 210, 100, 255), 2);
+
+            if (el != null && el.demanda != null)
+            {
+                for (int c = 0; c < EtiquetasCaso.Length; c++)
+                {
+                    PuntoPM d;
+                    if (!el.demanda.TryGetValue(EtiquetasCaso[c], out d) || d == null) continue;
+                    bool activo = (c == casoConsulta);
+                    Color32 ccd = activo ? new Color32(240, 70, 60, 255)
+                                         : new Color32(160, 170, 185, 255);
+                    Punto(px, w, h, Mathf.RoundToInt(fx(d.M)), Mathf.RoundToInt(fy(d.P)),
+                          ccd, activo ? 4 : 2);
+                }
+            }
+            tex.SetPixels32(px);
+            tex.Apply();
+            return tex;
+        }
+
         private void OnGUI()
         {
             GUILayout.BeginArea(new Rect(16, 16, 380, 700), GUI.skin.box);
@@ -1742,7 +2254,7 @@ namespace MCOC.Unity
             valorStyle.fontStyle = FontStyle.Bold;
             valorStyle.fontSize = 13;
 
-            bool col = false, vx = false, vy = false, murs = false, apos = false;
+            bool col = false, vx = false, vy = false, murs = false, brz = false, apos = false;
             bool suel = false, nds = false, cg = false, cq = false, csm = false, ctr = false;
 
             GUILayout.BeginHorizontal();
@@ -1750,6 +2262,7 @@ namespace MCOC.Unity
             col = GUILayout.Toggle(mostrarColumnas, "Columnas", togleStyle);
             vx = GUILayout.Toggle(mostrarVigasX, "Vigas X", togleStyle);
             murs = GUILayout.Toggle(mostrarMuros, "Muros", togleStyle);
+            brz = GUILayout.Toggle(mostrarBrazos, "Brazos rígidos", togleStyle);
             apos = GUILayout.Toggle(mostrarApoyos, "Apoyos", togleStyle);
             GUILayout.EndVertical();
             GUILayout.BeginVertical();
@@ -1770,6 +2283,7 @@ namespace MCOC.Unity
             if (vx != mostrarVigasX) { mostrarVigasX = vx; cambio = true; }
             if (vy != mostrarVigasY) { mostrarVigasY = vy; cambio = true; }
             if (murs != mostrarMuros) { mostrarMuros = murs; cambio = true; }
+            if (brz != mostrarBrazos) { mostrarBrazos = brz; cambio = true; }
             if (apos != mostrarApoyos) { mostrarApoyos = apos; cambio = true; }
             if (suel != mostrarSuelo) { mostrarSuelo = suel; cambio = true; }
             if (nds != mostrarNodos) { mostrarNodos = nds; cambio = true; }
@@ -1817,66 +2331,506 @@ namespace MCOC.Unity
             GUILayout.Label(mensaje);
 
             GUILayout.Space(4);
-            bool insp = GUILayout.Toggle(inspeccionHabilitada, "Consulta de viga (click izquierdo)");
+            bool insp = GUILayout.Toggle(inspeccionHabilitada, "Consulta de elemento (click izquierdo)");
             if (insp != inspeccionHabilitada) inspeccionHabilitada = insp;
 
-            if (inspeccionHabilitada && vigaSeleccionada != null)
-            {
-                ElementoVisual3D ev = vigaSeleccionada.ev;
-                ModeloEdificio ed = vigaSeleccionada.bloque.datos;
-                NodoModelo ni = null;
-                if (ed != null && ev != null && ev.datos != null)
-                    ni = ObtenerNodo(ed, ev.datos.ni);
+            // --- Panel unificado Semana 04: diagramas + P-M de CUALQUIER
+            //     elemento estructural (columna / muro / viga / aspa) ---
+            if (inspeccionHabilitada && consultaSeleccionada != null)
+                DibujarPanelConsulta(consultaSeleccionada, tituloStyle, valorStyle);
 
-                GUILayout.Space(6);
-                GUILayout.Box("Consulta de viga", tituloStyle);
-                GUILayout.BeginHorizontal();
-                GUILayout.Label("Bloque: " + (ed != null ? ed.bloque : "-"));
-                GUILayout.Label("Tag: " + (ev != null && ev.datos != null ? ev.datos.tag.ToString() : "-"));
-                GUILayout.Label("Nivel: " + (ni != null ? ni.nivel.ToString() : "-"));
-                GUILayout.EndHorizontal();
+            if (inspeccionHabilitada && consultaSeleccionada != null)
+                mostrarVentanaD = GUILayout.Toggle(mostrarVentanaD,
+                    "Ventana de diagramas (arrastrable)");
 
-                GUILayout.BeginHorizontal();
-                GUILayout.Label("Caso:", GUILayout.Width(38));
-                for (int c = 0; c < EtiquetasCaso.Length; c++)
-                {
-                    if (GUILayout.Toggle(casoConsulta == c, EtiquetasCaso[c])) casoConsulta = c;
-                }
-                GUILayout.EndHorizontal();
+            if (inspeccionHabilitada && consultaSeleccionada != null)
+                mostrarVentanaPM = GUILayout.Toggle(mostrarVentanaPM,
+                    "Ventana P-M (arrastrable)");
 
-                EsfuerzosVigaModelo esf = null;
-                if (ev != null && ev.datos != null) esf = ObtenerEsfuerzosConsulta(ev.datos.tag);
-                if (esf == null || esf.L <= 0.0)
-                {
-                    GUILayout.Label("Sin datos de esfuerzos");
-                }
-                else
-                {
-                    float L = (float)esf.L;
-                    GUILayout.BeginHorizontal();
-                    GUILayout.Label("L = " + L.ToString("F2") + " m", GUILayout.Width(80));
-                    GUILayout.Label("x = " + (posConsulta * 100f).ToString("F0") + "%", GUILayout.Width(60));
-                    posConsulta = GUILayout.HorizontalSlider(posConsulta, 0f, 1f);
-                    GUILayout.EndHorizontal();
-                    float x = posConsulta * L;
-                    double Nx = -esf.N;
-                    double Vzx = esf.Vz + esf.Wz * x;
-                    double Myx = esf.My + esf.Vz * x + 0.5 * esf.Wz * x * x;
-                    double Vyx = esf.Vy + esf.Wy * x;
-                    double Mzx = esf.Mz + esf.Vy * x + 0.5 * esf.Wy * x * x;
-
-                    GUILayout.Space(3);
-                    GUILayout.Label("N(x)  = " + Nx.ToString("F1") + " kN", valorStyle);
-                    GUILayout.Label("Vz(x) = " + Vzx.ToString("F1") + " kN", valorStyle);
-                    GUILayout.Label("Vy(x) = " + Vyx.ToString("F1") + " kN", valorStyle);
-                    GUILayout.Label("My(x) = " + Myx.ToString("F1") + " kN\u00b7m", valorStyle);
-                    GUILayout.Label("Mz(x) = " + Mzx.ToString("F1") + " kN\u00b7m", valorStyle);
-                    GUILayout.Label("T(x)  = " + esf.T.ToString("F1") + " kN\u00b7m", valorStyle);
-                }
-            }
             GUILayout.EndArea();
 
+            if (inspeccionHabilitada && consultaSeleccionada != null && mostrarVentanaD)
+                rectVentanaD = GUI.Window(idVentanaD, rectVentanaD,
+                    DibujarVentanaDiagramas, "Diagrama de esfuerzos — Semana 04");
+
+            if (inspeccionHabilitada && consultaSeleccionada != null && mostrarVentanaPM)
+                rectVentanaPM = GUI.Window(idVentanaPM, rectVentanaPM,
+                    DibujarVentanaPM, "Diagrama P-M — Semana 04");
+
             if (cambio) sucio = true;
+        }
+
+        // ------------------------------------------------------------------
+        // Semana 04 — panel unificado de consulta por elementTag + diagramas 3D
+        // ------------------------------------------------------------------
+        private void DibujarPanelConsulta(ConsultaS4 cs4, GUIStyle tituloStyle, GUIStyle valorStyle)
+        {
+            BloqueVisual bv = cs4 != null ? cs4.bloque : null;
+            ModeloEdificio ed = bv != null ? bv.datos : null;
+            if (bv == null || ed == null) return;
+
+            int idx = bv.tagsEstructurales.IndexOf(cs4.tag);
+            string tag = cs4.tag;
+            if (idx < 0 && bv.tagsEstructurales.Count > 0)
+            {
+                idx = 0;
+                tag = bv.tagsEstructurales[0];
+                SeleccionarConsulta(bv.consultaPorTag[tag]);
+                cs4 = consultaSeleccionada;
+            }
+
+            ElementoModelo el = null;
+            foreach (ElementoModelo e in ed.elementos)
+                if (e.tag.ToString() == tag) { el = e; break; }
+            NodoModelo ni = el != null ? ObtenerNodo(ed, el.ni) : null;
+            NodoModelo nj = el != null ? ObtenerNodo(ed, el.nj) : null;
+
+            MetadatoElemento md = null;
+            if (ed.metadatos != null) ed.metadatos.TryGetValue(tag, out md);
+
+            GUILayout.Space(6);
+            GUILayout.Box("Consulta de elemento — Semana 04", tituloStyle);
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("Bloque: " + ed.bloque);
+            GUILayout.Label("Tag: " + tag);
+            GUILayout.EndHorizontal();
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("Tipo: " + (md != null ? md.tipo : (el != null ? el.tipo : "-")));
+            GUILayout.Label("Material: " + (md != null ? md.material : "-"));
+            GUILayout.EndHorizontal();
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("Nivel: " + (ni != null ? ni.nivel.ToString() : "-"));
+            GUILayout.Label("Restriccion " + (md != null && md.nodos != null
+                ? md.nodos.i + " \u2192 " + md.nodos.j : "-"));
+            GUILayout.EndHorizontal();
+
+            // ---- selector manual de tag (los muros solo se eligen aqui) ----
+            if (bv.tagsEstructurales.Count > 1)
+            {
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("\u25C0", GUILayout.Width(30)))
+                {
+                    int ant = (idx - 1 + bv.tagsEstructurales.Count) % bv.tagsEstructurales.Count;
+                    SeleccionarConsulta(bv.consultaPorTag[bv.tagsEstructurales[ant]]);
+                }
+                GUILayout.Label(tag + "  (" + (idx + 1) + "/" + bv.tagsEstructurales.Count + ")");
+                if (GUILayout.Button("\u25B6", GUILayout.Width(30)))
+                {
+                    int sig = (idx + 1) % bv.tagsEstructurales.Count;
+                    SeleccionarConsulta(bv.consultaPorTag[bv.tagsEstructurales[sig]]);
+                }
+                GUILayout.EndHorizontal();
+            }
+
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("Caso:", GUILayout.Width(38));
+            for (int c = 0; c < EtiquetasCaso.Length; c++)
+            {
+                if (GUILayout.Toggle(casoConsulta == c, EtiquetasCaso[c])) casoConsulta = c;
+            }
+            GUILayout.EndHorizontal();
+
+            EsfuerzosVigaModelo esf = ObtenerEsfuerzosS4(ed, tag);
+            float L = (md != null) ? (float)md.L : (esf != null ? (float)esf.L : 0f);
+            if (L <= 0f && ni != null && nj != null)
+            {
+                double dx = ni.x - nj.x, dy = ni.y - nj.y, dz = ni.z - nj.z;
+                L = Mathf.Sqrt((float)(dx * dx + dy * dy + dz * dz));
+            }
+
+            if (esf == null || L <= 0f)
+            {
+                GUILayout.Label("Sin esfuerzos completos (corre semana04).");
+            }
+            else
+            {
+                GUILayout.BeginHorizontal();
+                GUILayout.Label("L = " + L.ToString("F2") + " m", GUILayout.Width(80));
+                GUILayout.Label("x = " + (posConsulta * 100f).ToString("F0") + "%", GUILayout.Width(60));
+                posConsulta = GUILayout.HorizontalSlider(posConsulta, 0f, 1f);
+                GUILayout.EndHorizontal();
+
+                float x = posConsulta * L;
+                double Nx = -esf.N;
+                double Vzx = esf.Vz + esf.Wz * x;
+                double Myx = esf.My + esf.Vz * x + 0.5 * esf.Wz * x * x;
+                double Vyx = esf.Vy + esf.Wy * x;
+                double Mzx = esf.Mz + esf.Vy * x + 0.5 * esf.Wy * x * x;
+
+                GUILayout.Space(3);
+                GUILayout.Label("N(x)  = " + Nx.ToString("F1") + " kN", valorStyle);
+                GUILayout.Label("Vz(x) = " + Vzx.ToString("F1") + " kN", valorStyle);
+                GUILayout.Label("Vy(x) = " + Vyx.ToString("F1") + " kN", valorStyle);
+                GUILayout.Label("My(x) = " + Myx.ToString("F1") + " kN\u00b7m", valorStyle);
+                GUILayout.Label("Mz(x) = " + Mzx.ToString("F1") + " kN\u00b7m", valorStyle);
+                GUILayout.Label("T(x)  = " + esf.T.ToString("F1") + " kN\u00b7m", valorStyle);
+
+                bool diag = GUILayout.Toggle(mostrarDiagramas,
+                    "Diagramas 3D (N verde, My azul, Mz rojo)");
+                if (diag != mostrarDiagramas) { mostrarDiagramas = diag; claveDiagramas = ""; }
+                ReconstruirDiagramas3D(cs4, ed, el, md, esf);
+            }
+
+            // ---- P-M (motor de secciones): vive en su PROPIA ventana
+            //      (DibujarVentanaPM) para no quedar cortado por el panel ----
+            ElementoInteraccion eli = SeccionDesdeTag(ed, tag, out SeccionInteraccion sec);
+            GUILayout.Space(4);
+            GUILayout.Label(eli != null
+                ? "P-M de " + eli.seccion + " en la ventana amarilla (arrastrable)."
+                : "Sin seccion P-M para este tag.", valorStyle);
+        }
+
+        // ------------------------------------------------------------------
+        // Ventana de diagramas (Semana 04): GUI.Window ARRASTRABLE que grafica
+        // UN esfuerzo elegido (Axial / Corte / Momento) a lo largo del
+        // elemento con los coeficientes de `esfuerzos_completos`:
+        //   N(x) = -N ;  V(x) = V + W*x ;  M(x) = M + V*x + W*x^2/2
+        // (W = 0 en columnas/muros -> lineal; vigas con carga -> parabolico).
+        // ------------------------------------------------------------------
+        private double ValorDiagramaD(EsfuerzosVigaModelo esf, double x)
+        {
+            if (tipoEsfuerzoD == 0) return -esf.N;
+            if (tipoEsfuerzoD == 1)
+                return compEsfuerzoD == 0 ? esf.Vz + esf.Wz * x : esf.Vy + esf.Wy * x;
+            return compEsfuerzoD == 0
+                ? esf.My + esf.Vz * x + 0.5 * esf.Wz * x * x
+                : esf.Mz + esf.Vy * x + 0.5 * esf.Wy * x * x;
+        }
+
+        private void NombreYUnidadEsfuerzoD(out string nombre, out string unidad)
+        {
+            if (tipoEsfuerzoD == 0) { nombre = "N"; unidad = "kN"; }
+            else if (tipoEsfuerzoD == 1)
+            {
+                nombre = compEsfuerzoD == 0 ? "Vz" : "Vy";
+                unidad = "kN";
+            }
+            else
+            {
+                nombre = compEsfuerzoD == 0 ? "My" : "Mz";
+                unidad = "kN\u00b7m";
+            }
+        }
+
+        private void GenerarTexDiagrama(EsfuerzosVigaModelo esf, double L)
+        {
+            int w = Mathf.RoundToInt(anchoD), h = Mathf.RoundToInt(altoD);
+            if (texDiagramaD == null || texDiagramaD.width != w || texDiagramaD.height != h)
+            {
+                if (texDiagramaD != null) Destruir(texDiagramaD);
+                texDiagramaD = new Texture2D(w, h, TextureFormat.RGBA32, false);
+                texDiagramaD.filterMode = FilterMode.Point;
+            }
+            Color32[] px = new Color32[w * h];
+            Color32 fondo = new Color32(18, 22, 28, 255);
+            for (int i = 0; i < px.Length; i++) px[i] = fondo;
+
+            int N = 48;
+            double[] vals = new double[N + 1];
+            double vmin = double.MaxValue, vmax = double.MinValue;
+            for (int k = 0; k <= N; k++)
+            {
+                vals[k] = ValorDiagramaD(esf, (double)k / N * L);
+                if (vals[k] < vmin) vmin = vals[k];
+                if (vals[k] > vmax) vmax = vals[k];
+            }
+            if (vmax - vmin < 1e-9) { vmin -= 1.0; vmax += 1.0; }
+            double vr = vmax - vmin;
+            if (vr < 1e-9) vr = 1.0;
+            float Lm = 8f, Rm = w - 8f, Bm = 8f, Tm = h - 8f;
+            System.Func<double, float> fx = x => Lm + (float)(x / L) * (Rm - Lm);
+            System.Func<double, float> fy = v => Tm - (float)((v - vmin) / vr) * (Tm - Bm);
+
+            Color32 eje = new Color32(90, 100, 115, 255);
+            Color32 cero = new Color32(122, 132, 148, 255);
+            if (vmin < 0.0 && vmax > 0.0)
+                Linea(px, w, h, Lm, fy(0.0), Rm, fy(0.0), cero);
+            for (int k = 0; k < N; k++)
+                Linea(px, w, h, fx((double)k / N * L), fy(vals[k]),
+                              fx((double)(k + 1) / N * L), fy(vals[k + 1]),
+                              new Color32(120, 220, 255, 255));
+            // extremos i / j (blanco) y posicion del slider (amarillo)
+            Punto(px, w, h, Mathf.RoundToInt(fx(0.0)), Mathf.RoundToInt(fy(vals[0])),
+                  new Color32(255, 255, 255, 255), 2);
+            Punto(px, w, h, Mathf.RoundToInt(fx(L)), Mathf.RoundToInt(fy(vals[N])),
+                  new Color32(255, 255, 255, 255), 2);
+            Punto(px, w, h, Mathf.RoundToInt(fx(posConsulta * L)),
+                  Mathf.RoundToInt(fy(ValorDiagramaD(esf, posConsulta * L))),
+                  new Color32(255, 210, 60, 255), 3);
+            texDiagramaD.SetPixels32(px);
+            texDiagramaD.Apply();
+        }
+
+        private void DibujarVentanaDiagramas(int id)
+        {
+            ConsultaS4 cs4 = consultaSeleccionada;
+            BloqueVisual bv = cs4 != null ? cs4.bloque : null;
+            ModeloEdificio ed = bv != null ? bv.datos : null;
+            if (bv == null || ed == null) return;
+
+            GUIStyle ttl = new GUIStyle(GUI.skin.label);
+            ttl.fontStyle = FontStyle.Bold;
+            GUIStyle val = new GUIStyle(GUI.skin.label);
+            val.fontStyle = FontStyle.Bold;
+            val.fontSize = 13;
+
+            string tag = cs4.tag;
+            MetadatoElemento md = null;
+            if (ed.metadatos != null) ed.metadatos.TryGetValue(tag, out md);
+            EsfuerzosVigaModelo esf = ObtenerEsfuerzosS4(ed, tag);
+            float L = (md != null) ? (float)md.L : (esf != null ? (float)esf.L : 0f);
+
+            GUILayout.Label("Elemento tag " + tag + "  |  " + (md != null ? md.tipo : "-")
+                + "  |  caso " + EtiquetasCaso[casoConsulta], ttl);
+
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Toggle(tipoEsfuerzoD == 0, "Axial (N)")) tipoEsfuerzoD = 0;
+            if (GUILayout.Toggle(tipoEsfuerzoD == 1, "Corte (V)")) tipoEsfuerzoD = 1;
+            if (GUILayout.Toggle(tipoEsfuerzoD == 2, "Momento (M)")) tipoEsfuerzoD = 2;
+            GUILayout.EndHorizontal();
+
+            if (tipoEsfuerzoD == 1)
+            {
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Toggle(compEsfuerzoD == 0, "Vz")) compEsfuerzoD = 0;
+                if (GUILayout.Toggle(compEsfuerzoD == 1, "Vy")) compEsfuerzoD = 1;
+                GUILayout.EndHorizontal();
+            }
+            else if (tipoEsfuerzoD == 2)
+            {
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Toggle(compEsfuerzoD == 0, "My")) compEsfuerzoD = 0;
+                if (GUILayout.Toggle(compEsfuerzoD == 1, "Mz")) compEsfuerzoD = 1;
+                GUILayout.EndHorizontal();
+            }
+
+            if (esf == null || esf.L <= 0f || L <= 0f)
+            {
+                GUILayout.Label("Sin esfuerzos completos para este tag (corre semana04).");
+                GUI.DragWindow(new Rect(0f, 0f, Screen.width, 24f));
+                return;
+            }
+
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("x = " + (posConsulta * 100f).ToString("F0") + " %", GUILayout.Width(64));
+            posConsulta = GUILayout.HorizontalSlider(posConsulta, 0f, 1f);
+            GUILayout.EndHorizontal();
+
+            GenerarTexDiagrama(esf, L);
+            GUILayout.Box(texDiagramaD, GUIStyle.none,
+                          GUILayout.Width(anchoD), GUILayout.Height(altoD));
+
+            string nom, uni;
+            NombreYUnidadEsfuerzoD(out nom, out uni);
+            double vi = ValorDiagramaD(esf, 0.0);
+            double vj = ValorDiagramaD(esf, L);
+            double vx = ValorDiagramaD(esf, posConsulta * L);
+            double vAbs = 0.0, vMax = 0.0, vPos = 0.0;
+            for (int k = 0; k <= 64; k++)
+            {
+                double x = (double)k / 64.0 * L;
+                double v = ValorDiagramaD(esf, x);
+                if (System.Math.Abs(v) > vAbs) { vAbs = System.Math.Abs(v); vMax = v; vPos = x; }
+            }
+            GUILayout.Label("i: " + vi.ToString("F1") + " " + uni
+                + "   |   j: " + vj.ToString("F1") + " " + uni, val);
+            GUILayout.Label("Max |" + nom + "| = " + vMax.ToString("F1") + " " + uni
+                + "  en x = " + (vPos / L * 100.0).ToString("F0") + " %", val);
+            GUILayout.Label("Valor(x) = " + vx.ToString("F1") + " " + uni
+                + "   (cian: curva; \u25CF i/j; \u25CF slider)", val);
+
+            GUI.DragWindow(new Rect(0f, 0f, Screen.width, 24f));
+        }
+
+        // ------------------------------------------------------------------
+        // Ventana P-M (Semana 04): diagrama de interaccion del elemento activo
+        // en su PROPIA GUI.Window arrastrable. Sigue al elemento/caso elegido
+        // y evita que el diagrama quede cortado por el panel de metadatos.
+        // ------------------------------------------------------------------
+        private void DibujarVentanaPM(int id)
+        {
+            ConsultaS4 cs4 = consultaSeleccionada;
+            BloqueVisual bv = cs4 != null ? cs4.bloque : null;
+            ModeloEdificio ed = bv != null ? bv.datos : null;
+            if (bv == null || ed == null) return;
+
+            GUIStyle ttl = new GUIStyle(GUI.skin.label);
+            ttl.fontStyle = FontStyle.Bold;
+            GUIStyle val = new GUIStyle(GUI.skin.label);
+            val.fontStyle = FontStyle.Bold;
+            val.fontSize = 13;
+
+            string tag = cs4.tag;
+            MetadatoElemento md = null;
+            if (ed.metadatos != null) ed.metadatos.TryGetValue(tag, out md);
+
+            SeccionInteraccion sec;
+            ElementoInteraccion eli = SeccionDesdeTag(ed, tag, out sec);
+            if (eli == null)
+            {
+                GUILayout.Label("Sin seccion P-M para el tag " + tag
+                    + " (solo columnas/muros del motor de secciones).");
+                GUI.DragWindow(new Rect(0f, 0f, Screen.width, 24f));
+                return;
+            }
+
+            GUILayout.Label("Elemento tag " + tag + "  |  " + (md != null ? md.tipo : "-")
+                + "  |  caso " + EtiquetasCaso[casoConsulta], ttl);
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("Seccion: " + eli.seccion);
+            GUILayout.Label("Tipo: " + eli.tipo);
+            GUILayout.EndHorizontal();
+
+            if (texPM == null || texPMClave != ClavePMTag(bv, tag))
+            {
+                texPM = GenerarTexPM(eli, sec);
+                texPMClave = ClavePMTag(bv, tag);
+            }
+            if (texPM != null)
+            {
+                GUILayout.Box(texPM, GUIStyle.none,
+                              GUILayout.Width(anchoPM), GUILayout.Height(altoPM));
+            }
+
+            PuntoPM d;
+            if (eli.demanda != null
+                && eli.demanda.TryGetValue(EtiquetasCaso[casoConsulta], out d) && d != null)
+            {
+                double? mcap = CapacidadM(sec != null ? sec.envelope : null, d.P);
+                double dc = (mcap.HasValue && mcap.Value > 0.0) ? d.M / mcap.Value : 0.0;
+                GUILayout.Label("P_d = " + d.P.ToString("F0") + " kN", val);
+                GUILayout.Label("M_d = " + d.M.ToString("F0") + " kN\u00b7m", val);
+                GUILayout.Label("M_cap(P_d) = "
+                    + (mcap.HasValue ? mcap.Value.ToString("F0") : "-") + " kN\u00b7m");
+                GUILayout.Label("D/C = " + dc.ToString("F2")
+                    + (dc > 1.0 ? "  (excede)" : ""), val);
+            }
+            else
+            {
+                GUILayout.Label("Sin demanda para el caso activo.");
+            }
+
+            if (sec != null)
+            {
+                GUILayout.Label("P0 (ACI) = " + sec.P0.ToString("F0")
+                    + " kN   |   P0 fibras = " + sec.P0_fibra.ToString("F0") + " kN");
+                if (sec.balanceado != null)
+                {
+                    GUILayout.Label("Balanceado: P = " + sec.balanceado.P.ToString("F0")
+                        + " kN, M = " + sec.balanceado.M.ToString("F0") + " kN\u00b7m");
+                }
+            }
+            if (ed.secciones != null && ed.secciones.superposicion != null)
+            {
+                GUILayout.Label("Superposicion |dP| = "
+                    + ed.secciones.superposicion.max_dP.ToString("E1") + " kN");
+            }
+            GUILayout.Label("Azul: envolvente. Verde: balanceado. Rojo: demanda activa.");
+
+            GUI.DragWindow(new Rect(0f, 0f, Screen.width, 24f));
+        }
+
+        // ------------------------------------------------------------------
+        // Diagramas 3D de la consulta unificada: N (verde), My (azul) y
+        // Mz (rojo) dibujados a lo largo del elemento con las formulas de la
+        // semana 03/04. Normaliza cada curva a su propio maximo (auto-escala).
+        // ------------------------------------------------------------------
+        private void ReconstruirDiagramas3D(ConsultaS4 cs4, ModeloEdificio ed,
+                                            ElementoModelo el, MetadatoElemento md,
+                                            EsfuerzosVigaModelo esf)
+        {
+            BloqueVisual bv = cs4.bloque;
+            string clave = bv.indice + ":" + cs4.tag + ":" + casoConsulta
+                + ":" + posConsulta.ToString("F3") + ":" + (mostrarDiagramas ? 1 : 0)
+                + ":" + (int)casoActivo;
+            if (claveDiagramas == clave) return;
+            claveDiagramas = clave;
+
+            if (bv.diagramasObj != null)
+                foreach (Transform hijo in bv.diagramasObj.transform) Destruir(hijo.gameObject);
+            if (!mostrarDiagramas || esf == null || esf.L <= 0f || el == null
+                || bv.diagramasObj == null) return;
+
+            NodoModelo ni = ObtenerNodo(ed, el.ni);
+            NodoModelo nj = ObtenerNodo(ed, el.nj);
+            if (ni == null || nj == null) return;
+
+            Vector3 p0 = Posicion(ni, bv);
+            Vector3 p1 = Posicion(nj, bv);
+
+            // Ejes locales (SI) -> Unity: (x, y, z)SI = (x, z, y)Unity.
+            Vector3 ex, ey, ez;
+            if (md != null && md.ejes_locales != null
+                && md.ejes_locales.z != null && md.ejes_locales.z.Length == 3
+                && md.ejes_locales.y != null && md.ejes_locales.y.Length == 3)
+            {
+                ez = new Vector3((float)md.ejes_locales.z[0], (float)md.ejes_locales.z[2],
+                                 (float)md.ejes_locales.z[1]).normalized;
+                ey = new Vector3((float)md.ejes_locales.y[0], (float)md.ejes_locales.y[2],
+                                 (float)md.ejes_locales.y[1]).normalized;
+                ex = Vector3.Cross(ey, ez).normalized;
+            }
+            else
+            {
+                ex = (p1 - p0).normalized;
+                ez = Vector3.up;
+                ey = Vector3.Cross(ez, ex).normalized;
+            }
+            if (Vector3.Dot(ex, Vector3.up) < 0f) ex = -ex;
+
+            int puntos = 14;
+            Vector3[] ptsN = new Vector3[puntos + 1];
+            Vector3[] ptsMy = new Vector3[puntos + 1];
+            Vector3[] ptsMz = new Vector3[puntos + 1];
+            double maxN = 1e-6, maxMy = 1e-6, maxMz = 1e-6;
+
+            // Pase 1: valores reales (sin escala).
+            for (int k = 0; k <= puntos; k++)
+            {
+                float t = k / (float)puntos;
+                double x = t * esf.L;
+                double Nx = -esf.N;
+                double Myx = esf.My + esf.Vz * x + 0.5 * esf.Wz * x * x;
+                double Mzx = esf.Mz + esf.Vy * x + 0.5 * esf.Wy * x * x;
+                Vector3 baseP = Vector3.Lerp(p0, p1, t);
+                ptsN[k] = baseP + ex * (float)Nx;
+                ptsMy[k] = baseP + ez * (float)Myx;
+                ptsMz[k] = baseP + ey * (float)Mzx;
+                if (System.Math.Abs(Nx) > maxN) maxN = System.Math.Abs(Nx);
+                if (System.Math.Abs(Myx) > maxMy) maxMy = System.Math.Abs(Myx);
+                if (System.Math.Abs(Mzx) > maxMz) maxMz = System.Math.Abs(Mzx);
+            }
+
+            // Pase 2: auto-escala — amplitud visual ~15% de L por curva.
+            double amp = esf.L * 0.15;
+            double sN = amp / maxN, sMy = amp / maxMy, sMz = amp / maxMz;
+            for (int k = 0; k <= puntos; k++)
+            {
+                Vector3 baseP = Vector3.Lerp(p0, p1, k / (float)puntos);
+                ptsN[k] = baseP + (ptsN[k] - baseP) * (float)sN;
+                ptsMy[k] = baseP + (ptsMy[k] - baseP) * (float)sMy;
+                ptsMz[k] = baseP + (ptsMz[k] - baseP) * (float)sMz;
+            }
+
+            CrearLinea3D("N", bv.diagramasObj.transform, ptsN, new Color(0.20f, 0.90f, 0.30f));
+            CrearLinea3D("My", bv.diagramasObj.transform, ptsMy, new Color(0.30f, 0.60f, 1.00f));
+            CrearLinea3D("Mz", bv.diagramasObj.transform, ptsMz, new Color(1.00f, 0.30f, 0.30f));
+        }
+
+        private static GameObject CrearLinea3D(string nombre, Transform padre, Vector3[] pts, Color c)
+        {
+            GameObject go = new GameObject(nombre);
+            go.transform.SetParent(padre, false);
+            LineRenderer lr = go.AddComponent<LineRenderer>();
+            lr.useWorldSpace = true;
+            lr.positionCount = pts.Length;
+            lr.SetPositions(pts);
+            lr.startWidth = 0.08f;
+            lr.endWidth = 0.08f;
+            lr.numCapVertices = 4;
+            lr.numCornerVertices = 4;
+            lr.sharedMaterial = MaterialColor(c);
+            return go;
         }
     }
 }

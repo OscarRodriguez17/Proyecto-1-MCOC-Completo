@@ -22,6 +22,15 @@ namespace MCOC.EditorTools
             if (!File.Exists(ScenePath))
             {
                 PrepararEscena();
+                return;
+            }
+
+            // Solo abrir Main.unity automáticamente la primera vez que el editor
+            // carga en esta sesión (evita secuestrar otra escena en recargas).
+            if (!SessionState.GetBool("MCOC_scene_preparada", false))
+            {
+                SessionState.SetBool("MCOC_scene_preparada", true);
+                OpenMainScene();
             }
         }
 

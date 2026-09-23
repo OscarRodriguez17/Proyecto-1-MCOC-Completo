@@ -9,8 +9,11 @@ Método (idéntico al del Edificio A):
     los W_i reproduce exactamente el peso propio total (`cargas.peso_propio`).
   - Corte basal:   V = ALPHA_EQ · Σ W_i
   - Distribución:  F_i = V · W_i·z_i / Σ(W_j·z_j)   con z ABSOLUTO (como A).
-  - Las fuerzas F_i se reparten en partes iguales entre los nodos ESCLAVOS de
-    cada nivel (nunca sobre el nodo maestro del diafragma rígido).
+  - Las fuerzas F_i se reparten entre los nodos ESCLAVOS de cada nivel (nunca
+    sobre el nodo maestro del diafragma rígido) PROPORCIONAL a la área
+    tributaria de cada nodo (Σ area/2 de las vigas conectadas, tomada de
+    tributario.tributaria_por_viga). Así la resultante de cada nivel cae en el
+    centro de masa de la planta y no se induce torsión espuria.
 
 Este módulo es ADITIVO: no modifica geometría, IDs ni el peso propio/sobrecarga
 ya calibrados. Solo agrega el patrón lateral y su distribución.
@@ -21,6 +24,7 @@ import openseespy.opensees as ops
 
 from . import datos_edificio as D
 from . import cargas
+from . import tributario
 
 
 # --------------------------------------------------------- nivel <-> z absoluto
@@ -85,21 +89,44 @@ def v_base_y_fuerzas(pesos, alpha=None):
 
 
 # ------------------------------------------------------------ patrón sísmico
+def _area_por_nodo(M):
+    """Área tributaria [m²] por nodo: Σ area/2 de cada viga conectada.
+
+    Toma el reparto de tributario.tributaria_por_viga (que solo considera
+    niveles sobre la base) y reparte cada área por mitades a sus dos nodos.
+    """
+    area = {}
+    for v in tributario.tributaria_por_viga(M):
+        a = v["area"] / 2.0
+        area[v["ni"]] = area.get(v["ni"], 0.0) + a
+        area[v["nj"]] = area.get(v["nj"], 0.0) + a
+    return area
+
+
 def patron_sismico(dirn, M, pesos, ts_tag=2, pat_tag=2, alpha=None):
     """Aplica el patrón sísmico en X o Y. Devuelve (V_base, {k: F_k}).
 
     Reparte F_k entre los nodos esclavos del nivel k (M.by_level[k], que NO
-    incluye al maestro del diafragma).
+    incluye al maestro del diafragma) PROPORCIONAL a su área tributaria
+    (Σ area/2 de las vigas conectadas al nodo, agrupada por nivel). La
+    resultante de cada planta cae así en el centro de masa de la losa. Los
+    nodos sin área tributaria no reciben carga. Si un nivel no tuviera área
+    (no ocurre en B) se hace un reparto en partes iguales como respaldo.
     """
     ops.timeSeries('Constant', ts_tag)
     ops.pattern('Plain', pat_tag, ts_tag)
     v_base, fuerzas = v_base_y_fuerzas(pesos, alpha=alpha)
+    area = _area_por_nodo(M)
     for k in sorted(pesos):
         esclavos = sorted(M.by_level.get(k, []))
         if not esclavos:
             continue
-        frac = fuerzas[k] / len(esclavos)
+        at = sum(area.get(n, 0.0) for n in esclavos)
         for nt in esclavos:
+            if at > 0.0:
+                frac = fuerzas[k] * area.get(nt, 0.0) / at
+            else:
+                frac = fuerzas[k] / len(esclavos)
             if dirn == "X":
                 ops.load(nt, frac, 0.0, 0.0, 0.0, 0.0, 0.0)
             else:

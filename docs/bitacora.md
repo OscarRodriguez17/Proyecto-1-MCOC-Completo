@@ -33,6 +33,71 @@ mostrándolos **lado a lado**.
   (bloque esfuerzos en `modelo_resultados.json` y `edificio_solido.json`,
   228 vigas × 5 casos). Las vigas del Edificio A se consultan en el visor
   sólido con el mismo panel que las de B.
+- **Visor Unity (Sesión 8, después):** el proyecto oficial es
+  `unity/EdificioSolidoUnity/` (visor sólido A+B). Se reemplazó el
+  `Assets/Scenes/Main.unity` de 64 MB (geometría horneada, causa del "modelo
+  deforme" que veían los compañeros) por una **escena mínima de 10 KB** que se
+  reconstruye sola desde `StreamingAssets/edificio_completo.json`; se registró
+  la escena en `EditorBuildSettings` y el setup la **abre automáticamente** al
+  arrancar. El proyecto `unity/EdificioComplejoUnity/` queda como **visor viejo**
+  (NO usar).
+- **Semana 03 completada (Sesión 10, continuación):** catálogo P–M con la
+  **columna y los 11 muros distintos** del Edificio B (13 curvas en caché),
+  overlay por etiqueta de sección por elemento + fallback `seccion→muro/col` en
+  el C#, superposición **G+EX y G+Q+EX** verificadas con corrida directa en **A y
+  B** (~1e-11 kN/1e-16 m) además de la G+Q, y `reports/semana03.md` con las 9
+  secciones requeridas (casos base, tributaria, sismo pseudoestático con el
+  hallazgo de **rz EX del B ≈ 70× el del A**, catálogo, superposición).
+  **Tests: 116 passed.**
+- **Catálogo P–M del Edificio A (Sesión 11):** se extendió el MISMO motor
+  aditivo al Edificio A. Con 6 secciones propias con **f'c = 30 MPa (G35)** en
+  el motor de fibras (el modelo elástico sigue con Ec(35)): columna 70×70
+  (8φ28 según plano 101, capa RLE-PILAR) y los **5 muros** de
+  `datos_edificio.WALLS` (ME-32, MI-32, MI-12, M1c-E, M2a). La armadura de los
+  muros **no está en los planos** (confirmado) → se adoptó la disposición de B
+  como **supuesto documentado** (`reports/supuesto_armado_edificio_A.md`):
+  recubrimiento 3 cm, alma φ10 @ 0.20 m doble malla (ρ_v ≈ 0.003), borde
+  6φ16 por extremo sobre `max(2t, 0.15L)`. Se añadieron `curvas_A`,
+  `demandas_A`, `per_elemento_A` y `superposicion_A` al caché y el overlay
+  (`exportar_unity.py`) ahora enriquece **ambos** edificios en
+  `edificio_solido.json` (111 elementos de A etiquetados: 79 columnas + 32
+  muros). Runner: `scripts/semana03_edificio_A_run.py`. **Tests: 126 passed
+  (116 + 10 nuevos de A).**
+- **Semana 04 — PARTE A (Sesión 12):** Unity queda como **postprocesador
+  estructural total**: `esfuerzos_completos` / `esfuerzos_completos_A` (los 9
+  coeficientes de diagrama {L,N,Vy,Vz,T,My,Mz,Wy,Wz} por elementTag y caso
+  G/Q/GQ/EX/EY de **TODOS** los elementos: columnas, muros, vigas y aspas) +
+  `metadatos` (tipo de visor, sección de catálogo, material H30/G35, L,
+  restricción por extremo `empotrado/master/esclavo/libre` y ejes locales). La
+  convención N(x)=-N (N>0 compresión) y la repartición cuadrática del momento
+  son las ya verificadas de semana 03. Cobertura **exacta** del visor sólido:
+  B 315 por caso (40 col + 60 muros + 215 vigas), A 343 (79 + 32 + 228 vigas +
+  4 aspas). Overlay aditivo/idempotente en `edificio_solido.json` + copia a
+  StreamingAssets; runner `scripts/semana04_esfuerzos_completos_run.py`; cache
+  `results/secciones_semana04.json`. **Tests: 133 passed.**
+- **Semana 04 — PARTE B (Sesión 13):** el visor sólido C# (`EdificioSolidoUnity`)
+  consulta estos esfuerzos completos + metadatos con un **diccionario unificado
+  por bloques visuales** (columnas, muros, vigas_x, vigas_y; los muros no tienen
+  objeto 3D y se eligen con el selector manual de tag) y un **panel único** con
+  metadatos, selector de tag/caso/x, valores N/Vz/Vy/My/Mz/T, **diagramas 3D**
+  (N verde, My azul, Mz roja sobre la pieza real, auto-escala) y la sección P–M
+  del motor de semana 03. Mapeo `Posicion()` SI→Unity confirmado. Compila sin
+  errores en Unity 2022.3.62f3. Pendiente validación visual en Play y **PARTE C**
+  (`reports/semana04.md`).
+- **Semana 04 — PARTE B2 (Sesión 14):** BUG de columnas resuelto — el overlay
+  agrega la clave real del pilar `col0.70x0.70` como **alias** de la
+  representativa `col` (igual que A con `col_A_0.70x0.70`) y el lookup C# quedó
+  robusto (match exacto → representativa por tipo → prefijo del tipo), así toda
+  columna/muro de A o B vuelve a mostrar su **P–M con demanda y caso activo**.
+  Se añadió además una **ventana de diagramas arrastrable** (`GUI.Window`) que
+  grafica UN esfuerzo a elección (Axial/Corte Vz·Vy/Momento My·Mz) con las
+  fórmulas `N(x)=-N`, `V=V+W·x`, `M=M+V·x+W·x²/2`, muestra extremos i/j,
+  máximo y el valor en el slider, y sigue al elemento/caso activo. **Tests: 134
+  passed.**
+- **Repositorio GitHub (Sesión 8, después):** subido a
+  `https://github.com/OscarRodriguez17/Proyecto-1-MCOC-Completo` (público,
+  branch `master`, commit `9413022`). Instrucciones exactas para entregar en
+  Canvas en la sección de entrega abajo.
 
 ### Resultados de cierre (Sesión 1 del complejo)
 
@@ -686,7 +751,595 @@ quedaron idénticos).
 
 ### Pendientes (abren Sesión 9)
 
+- [ ] Commit + push del fix de visor (escena mínima, EditorBuildSettings, README).
+- [ ] (Opcional) Tag `` entrega-v1 `` para Canvas.
 - [ ] En Play del visor sólido: clic sobre una viga del Edificio A → panel con
       N/Vz/My/T (G/Q/GQ/EX/EY) igual que B.
 - [ ] (Opcional) Marcar sobre la viga el punto consultado (esfera/gizmo).
-- [ ] Oscar: SAP2000.  |  Commit/push.
+- [ ] Oscar: SAP2000.
+
+---
+
+## Ajuste de visor sólido (Sesión 8, después)
+
+**Síntoma:** los compañeros clonando el repo veían "un modelo muy feo, como
+deforme" al abrir Unity, distinto al que Oscar ve localmente.
+
+### Diagnóstico (causa raíz)
+
+- En el repo había **dos proyectos Unity** con visores distintos:
+  - `unity/EdificioSolidoUnity/` — **visor oficial** (sólido 3D, consulta de
+    vigas A+B). Lee `StreamingAssets/edificio_completo.json`.
+  - `unity/EdificioComplejoUnity/` — **visor viejo** (líneas `UnityComplejo`/
+    `UnityStickModel` anclado a `modelo_resultados.json`). No es el de entrega.
+- `EdificioSolidoUnity/Assets/Scenes/Main.unity` pesaba **64 MB** porque traía
+  **toda la geometría horneada** en la escena (9 595 GameObjects / 4 312
+  MeshFilters, nombres tipo `etiqueta`, `punta`, `flecha_carga`, `tributaria`,
+  `apoyo_empotrado`, `viga_L`, `Cylinder`), con valores serializados
+  `amplificacion: 400` y `separarBloquesY: 60` — esa es la vista "deforme" que
+  se podía mostrar sin reconstruir desde el JSON.
+- `EditorBuildSettings.asset` estaba vacío (`m_Scenes: []`) en ambos proyectos
+  → Unity **no abría `Main.unity` automáticamente** y, con la caché `Library/`
+  en `.gitignore`, cada máquina arrancaba en una escena distinta/al azar.
+- `MCOCSceneSetup.AutoPreparar` solo creaba la escena si NO existía; si existía,
+  nunca la abría por sí solo.
+
+### Cambios aplicados
+
+1. **`EdificioSolidoUnity/Assets/Scenes/Main.unity` (REEMPLAZADA):** de 64 MB a
+   **10 KB**. Escena mínima (Occlusion/Render/Lightmap/NavMesh + Main Camera con
+   `OrbitCamera` + luz `Sol` + GameObject `StickModel` con `UnityStickModel` y
+   `jsonFileName: edificio_completo.json`, `separarBloquesY: 0`). El modelo se
+   reconstruye solo desde el JSON en `OnEnable`/`Start` → **todos ven lo mismo**.
+   (La `.meta` con su guid se conserva intacta.)
+2. **`EditorBuildSettings.asset`:** `m_Scenes` ahora incluye
+   `Assets/Scenes/Main.unity` (guid `c3e4403ad283f6547896806ec87539d8`).
+3. **`MCOCSceneSetup.cs`:** `AutoPreparar` ahora, si la escena ya existe, **abre
+   `Main.unity` la primera vez que el editor arranca en la sesión**
+   (`SessionState.GetBool/SetBool`), evitando secuestrar otra escena en recargas
+   de dominio.
+4. **`unity/README.md`:** cabecera con instrucción clara de qué proyecto abrir
+   (`abrir_unity_solido.cmd` → escena `Main.unity` → Play) y qué NO abrir
+   (`EdificioComplejoUnity`, visor viejo).
+
+### Verificación / impacto
+
+- El repo deja de arrastrar el `Main.unity` de 64 MB (repo más liviano y sin
+  warning de GitHub por archivo >50 MB).
+- Cualquier compañero que clone, abra `EdificioSolidoUnity` y pulse Play ve **el
+  mismo visor sólido** de Oscar construido desde el JSON (no geometría horneada).
+- Pendiente de probar en máquina limpia: abrir `abrir_unity_solido.cmd`, ver que
+  `Main.unity` se abre sola y Play muestra A+B con el panel de vigas.
+
+---
+
+## 📅 Sesión 9 — Miércoles 16 de septiembre 2026
+
+**Participantes:** Oscar Rodriguez + agente OpenCode.
+
+### ORDEN 1 — Patrón sísmico de B repartido por ÁREA TRIBUTARIA (no igual por nodo)
+
+`src/edificio_b/sismo.py` (ADITIVO: no toca geometría, IDs ni pesos):
+
+- El reparto de `F_k` entre los nodos esclavos de cada nivel pasó de **partes
+  iguales** a **proporcional al área tributaria** del nodo (Σ `area`/2 de las
+  vigas conectadas, tomado de `tributario.tributaria_por_viga(M)`). La
+  resultante de cada planta cae ahora en el **centro de masa** de la losa
+  (26,74; 21,98) m y no se induce torsión espuria por el reparto.
+- Nodos sin área tributaria no reciben carga; respaldo igualitario si un nivel
+  careciera de área.
+- V = α·G **intacto** (4.817,1 kN = 0,10·48.171); equilibrio por caso y
+  superposición OK; cierre de diagramas OK en los 5 casos (pasada re-corrida).
+
+**Resultados regenerados:** `results/modelo_resultados_b.json` (EX/EY cambian
+levemente), `results/edificio_solido.json`, `results/edificio_completo.json`
+(vía `fusionar --sin-correr`) y copias de StreamingAssets.
+
+| Magnitud | antes | después |
+|---|---|---|
+| rz techo EX | 0,778 mrad | **0,694 mrad** |
+| ux techo EX | 17,06 mm | **16,00 mm** |
+| rz techo EY | −0,710 mrad | **−0,621 mrad** |
+| uy techo EY | 20,80 mm | **19,77 mm** |
+| V EX / EY | 4.817,1 kN | **4.817,1 kN** (sin cambios) |
+| Centro de masa (tributario) | — | **(26,74; 21,98) m** |
+
+### ORDEN 2 — Brazos rígidos muro↔marco visibles en el visor sólido
+
+Hoy los 35 brazos rígidos (tipo `brazo`) del Edificio B se descartaban en
+`exportar_unity_solido.py` y los muros parecían flotando. Cambios (solo visual):
+
+- **`src/benchmark_3d/exportar_unity_solido.py`** — los `brazo` ya no se omiten:
+  se exportan como tipo dibujable `brazo` con su `ni`/`nj` (35 elementos de B).
+- **`unity/EdificioSolidoUnity/Assets/Scripts/UnityStickModel.cs`** — contenedor,
+  rama y material propios para `brazo`: cilindro fino (mesh propia de altura 1
+  para que la longitud coincida con el tramo en `PosicionarElemento3D`) con
+  material tenue translúcido (gris azulado, alpha 0,45). Toggle **"Brazos
+  rígidos"** en el panel (default ON).
+- El análisis no cambia por este orden (puramente visual).
+
+### Verificación
+
+- Suite: **94 passed** (`python -m pytest tests\ -q`).
+- `edificio_solido.json`: B → 350 elem (40 column + 60 wall + 95 vigas_y +
+  120 vigas_x + **35 brazo**), ni/nj íntegros.
+
+### Pendientes (abren Sesión 10)
+
+- [ ] Confirmar en Unity el toggle "Brazos rígidos" y que la conexión
+      muro↔marco se vea en Play.
+- [ ] Commit + push del avance.
+- [ ] Oscar: SAP2000.  |  (Opcional) marcar punto consultado sobre la viga.
+
+---
+
+## Sesión 10 — Miércoles 16 de septiembre 2026
+
+**Participantes:** Oscar Rodriguez + agente OpenCode.
+
+**Tema: Semana 03 — motor de secciones ADITIVO (`src/secciones/`).**
+
+Capa nueva 100% aditiva: no toca los modelos lineales A/B, sus IDs, geometría,
+casos G/Q/GQ/EX/EY, sismo, tributario ni esfuerzos. Materiales del enunciado:
+hormigón 25 MPa (`Concrete01`, εc0=−0,002, εcu=−0,004) y acero 420 MPa
+(`Steel01`, b=0,01). Unidades SI (m, kN, kN/m²).
+
+### Motor
+
+- `materiales.py`, `seccion.py` (`columna_70x70`, `muro_b1`), `curva.py`
+  (M–φ por fibras con `zeroLengthSection`), `analitica.py` (integrador de fibras
+  puro en Python), `pm.py` (envolvente P–M + balanceado), `demandas.py`
+  (demandas por caso reutilizando `esfuerzos._correr_caso`) y `exportar_unity.py`
+  (overlay al contrato fused).
+- **Receta M–φ validada:** `fix(2,0,1,0)`, axial con sub-incrementos (1/2/4/8),
+  momento unitario con `DisplacementControl`; `M = getTime()`, `φ = nodeDisp(2,3)`.
+  Fibras **explícitas** (`patch('rect')` no es fiable en este build).
+- **Criterios de fin de curva:** `crushing`, `su_steel` (εsu=0,09), `softening`
+  (M < 0,85·M_max), `no_convergencia`/`nincr`.
+- **Convención reportada:** P > 0 = compresión; M = √(My²+Mz²). El signo de
+  `localForce[0]` en este modelo es compresión positiva (verificado contra la
+  reacción de base). La envolvente se barre en la convención del motor y se
+  niega al reportar.
+
+### Validación
+
+| Verificación | Valor |
+|---|---|
+| P0 columna ACI / fibras | 12 377 / 14 097 kN |
+| P0 muro ACI (As=0,003870 m²) | 38 646 kN |
+| EI₀ columna 6/12/20 | 144 124 / 145 879 / 146 399 kN·m² |
+| EI₀ analítico agrietado | 146 991 (coincide −0,8 %) |
+| Balanceado columna | (4 370 kN, 1 158 kN·m) |
+| Pico envolvente columna | **(4 379 kN, 1 530 kN·m)** (objetivo 4500,1395 ±10 %) |
+
+### Resultados y hallazgos
+
+- Muro 2,91×0,60: pico (19 065 kN, 15 167 kN·m), EI₀(0,5·P0) ≈ 2,59·10⁷, M_max
+  15 197 (`softening`).
+- Demandas de los 100 pilares/muros en 5 casos; **superposición G+Q ≡ GQ**
+  verificada por componente (máx ΔP = 4,7·10⁻¹¹ kN, ΔM = 7,8·10⁻¹⁰ kN·m).
+- D/C de las 40 columnas contra la envolvente: **solo 2 > 1,0** bajo GQ
+  (`tag 5` = 1,13 y `tag 2` = 1,04). El modelo lineal con diafragma rígido
+  induce flexión de pórtico gravitatoria apreciable: punto de diseño a revisar.
+- Se **corrigió** un falso hallazgo previo: `M_max(P=0) ≈ 220 kN·m` era un
+  artefacto del tope de pasos; el valor real es ~750–870 kN·m.
+
+### Entregables
+
+- `src/secciones/*` (+ `exportar_unity.py`), `scripts/semana03_run.py`,
+  `tests/test_secciones.py` (15 tests).
+- `results/secciones_semana03.json`; `results/edificio_solido.json` →
+  `unity/EdificioSolidoUnity/Assets/StreamingAssets/edificio_completo.json`
+  (enriquecido con bloque `secciones` en el Edificio B y campo `seccion` por
+  elemento; **conserva** config/totales/edificios). Ojo: el visor sólido lee
+  `edificio_solido.json` (esquema plano), NO el contrato fusionado
+  `results/edificio_completo.json`.
+- `src/complejo.py`: hook aditivo `_enriquecer_secciones_solido()` (se ejecuta
+  tras generar el sólido; omite el overlay si falta el caché, sin romper nada).
+- **Corregido** en `demandas.per_elemento`: los 20 muros del bloque superior
+  (espesor 0,20, en `MUROS_BLOQUE_SUP_V/H`) caían por defecto en `col0.70x0.70`;
+  ahora los 60 muros tienen su etiqueta `muro{e}x{L}` propia.
+- Parte D Unity: `ModeloComplejo.cs` parsea el bloque `secciones`; en
+  `UnityStickModel.cs` se conserva el collider de las columnas, se registran para
+  raycast y hay panel P–M (envolvente + balanceado + demanda del caso activo con
+  D/C). **Sin compilar aquí** (no hay Unity en el entorno).
+- `reports/semana03.md` + `reports/fig/semana03_*.png`.
+- **Suite: 109 passed** (`python -m pytest -q`).
+
+### Verificación
+
+```powershell
+python scripts\semana03_run.py
+python src\secciones\exportar_unity.py
+python -m pytest -q
+```
+
+### Pendientes (abren Sesión 11)
+
+- [x] **Catálogo P–M de las demás longitudes de muro** — HECHO (Sesión 10 cont.):
+      `seccion.muro()` + `catalogo_muros.py` → 11 envolventes + overlay por
+      elemento (`per_elemento` mantiene las 60 etiquetas de muro).
+- [x] **Probar la Parte D en Unity** — el C# de selección/P-M quedó afinado
+      (`InteraccionDe` usa `el.seccion` con fallback); falta solo compilar/Play
+      en el editor (sin Unity en este entorno).
+- [x] **Superposición §4 en A y B** — HECHO (Sesión 10 cont.): `superposicion.py`
+      verifica G+EX y G+Q+EX (suma vs directa) con desvíos ≤ 6e-11 kN y
+      ≤ 1,8e-16 m; `max_dR/max_dD` en caché + tests.
+- [ ] Chequeo biaxial My–Mz (hoy conservador con el resultante).
+- [ ] Commit + push del avance (Semana 03 completa).
+
+---
+
+## Sesión 10 (continuación) — Miércoles 16 de septiembre 2026
+
+**Participantes:** Oscar Rodriguez + agente OpenCode.
+
+**Tema: Semana 03 completada — catálogo P–M completo del Edificio B +
+superposición §4 en A y B + reporte con las 9 secciones.**
+
+### Catálogo P–M completo (11 muros + columna)
+
+1. `seccion.py` — `muro_generico(tb, L, nombre, d_borde=0.016, d_alma=0.012,
+   recub=0.05, sb=0.20)` y fábrica `muro()` con las 11 secciones distintas
+   **etiquetadas idéntico a `per_elemento`**. `muro_b1` se refactorizó a
+   `muro_generico(0.60, 2.91)` sin cambiar ni As (0,003870) ni P0_ACI (38 645,8).
+2. `src/secciones/catalogo_muros.py` (nuevo) — envolvente P–M por sección
+   (`curva_PM`, 17 pts, 12×12, dk=1e-4, nincr=2000); `completar_cache()` es
+   **idempotente**; `muro0.60x2.91` reutiliza `curvas["muro"]`. Caché: 13 claves.
+3. Warnings "failed to converge" del solver en post-pico/tracción pura: normales
+   (capturados por `curva_PM` → M = 0).
+4. Overlay asociativo: cada muro del contrato sólido lleva su sección; el C# de
+   `UnityStickModel.InteraccionDe` ahora busca **`el.seccion`** en el catálogo
+   con fallback `"col"/"muro"` (antes siempre la curva representativa).
+
+### Superposición §4 (A y B) — suma vs corrida directa
+
+`src/secciones/superposicion.py` (nuevo): corre el modelo combinado (G+EX y
+G+Q+EX) directo en OpenSees y compara contra la suma de los casos individuales
+en reacciones totales y `desplazamientos_maestro`, para A y B. Resultados:
+
+| Edif. | G + EX | G + Q + EX |
+|---|---|---|
+| A | máx ΔR 4,8e-11 kN / ΔD 8,7e-18 m | 2,6e-11 kN / 1,4e-17 m |
+| B | máx ΔR 5,5e-11 kN / ΔD 1,8e-16 m | 6,0e-11 kN / 1,7e-16 m |
+
+(G + Q ya verificada por componente: ΔP 4,7e-11 kN, ΔM 7,8e-10 kN·m.) Se
+persiste `superposicion.combinaciones` en el caché.
+
+### Reporte `reports/semana03.md` — 9 secciones
+
+Casos base G/Q/EX/EY (reacciones + techo), carga viva tributaria (A exacta,
+B 99,6 % = sello bbox vs polígono), sismo pseudoestático W_i/F_i/V/ux/uy/rz,
+catálogo P–M (tabla de 12 secciones con As/P0_ACI/P0_fibra/balanceado/pico),
+superposición (3 combinaciones) y entregables. Figuras nuevas:
+`semana03_muros_pm.png` y `semana03_mosaico.png`.
+
+**Hallazgo torsión:** `rz` del Edificio B ≈ **70,1× el de A en el techo bajo EX**
+(n1→n4: 38,8/43,7/48,2/52,3×) y 14,3× bajo EY: masa/muros excéntricos del B
+(bloque superior con pilares, núcleo sur). Punto de diseño a revisar (no es
+defecto del motor).
+
+### Verificación
+
+- Suite completa: **116 passed** (109 previos + 7 nuevos: muro_generico≡muro_b1,
+  11 secciones, P0f/P0a ∈ (1,05;1,30), curvas por muro, muro representativo
+  idem, superposición combinaciones, overlay curva propia por muro).
+- Pipeline `scripts/semana03_run.py` corre de punta a punta (idempotente,
+  reusa caché): curvas → demandas → §4 → figuras → overlay ("100 elementos
+  etiquetados de 350"), sin `--recalcular`.
+
+### Cómo correr
+
+```powershell
+python scripts\semana03_run.py            # (--recalcular fuerza recálculo)
+python -m pytest -q                       # 116 passed
+```
+
+---
+
+## 📅 Sesión 12 — Viernes 18 de septiembre 2026
+
+**Tema: Semana 04 PARTE A — Unity como postprocesador estructural: fuerzas
+completas por elementTag de TODOS los elementos + metadatos (restricciones,
+material, ejes locales) en el visor sólido.**
+
+### Qué se hizo
+
+- `src/secciones/diagramas.py` (nuevo): por elemento estructural y caso
+  G/Q/GQ/EX/EY exporta los 9 coeficientes {L,N,Vy,Vz,T,My,Mz,Wy,Wz} con la
+  misma convención verificada en semana 03: `N(x) = -N` (N>0 = compresión),
+  momentos con repartición cuadrática, PP nodal (`Wy=0`) y gravedad `Wz = -w`
+  solo en vigas. Reutiliza las pasadas `_correr_caso` (no toca el análisis).
+- `esfuerzos_completos` (B) y `esfuerzos_completos_A` (A) indexados por
+  elementTag, con `metadatos` por tag: tipo de visor (`column`/`wall`/
+  `vigas_x`/`vigas_y`), sección de catálogo (fallback `viga0.60x0.80`),
+  material (H30/G35), longitud, restricción de cada extremo
+  (`empotrado`/`maestro_diafragma`/`esclavo_diafragma`/`libre`) y ejes locales
+  {x̂=(nj−ni)/L, ẑ=proyección vertical ⊥ x̂, ŷ=ẑ×x̂} — idéntico a los vecxz de
+  OpenSees reproduciendo transformaciones (1,0,0)-(0,0,1).
+- Cobertura igual al contrato del visor sólido: **B 315** por caso (40
+  columnas + 60 muros + 215 vigas), **A 343** (79 + 32 + 228 vigas + 4 aspas).
+- Verificación `verif_semana04`: equilibrio global ΣR + Σaplicada ≈ 0 y cierre
+  de elementos verticales dN = dVz = dMy ≈ 0 (máx 1,1e-13 kN) por caso y
+  edificio.
+- Overlay aditivo en `exportar_unity.py`: escribe `esfuerzos_completos` y
+  `metadatos` (idempotente, con/sin sufijo `_A`) en `results/edificio_solido.json`
+  y copia a `StreamingAssets`.
+- Runner `scripts/semana04_esfuerzos_completos_run.py`: reutiliza el caché
+  (`--recalcular` repite las 10 corridas), cache en
+  `results/secciones_semana04.json`.
+- Tests nuevos en `tests/test_secciones.py` (sector "semana 04"): esquema de
+  coeficientes por caso, metadatos/cobertura/ejes unitarios/restricciones,
+  evaluador (paridad N(x) = -N y M cuadrático con la semana 03),
+  compresión de columnas bajo G/GQ, |M| de muros ex sísmicos, equilibrio +
+  cierre vertical, y overlay end-to-end sobre `edificio_solido.json`.
+
+### Valores verificados
+
+| Magnitud | Edificio B | Edificio A |
+|---|---|---|
+| Columnas G — N (compresión) | 462,5 – 7.837 kN | 3,7 – 3.586 kN |
+| Muro de mayor |M| bajo EX | tag 91 = 24.195,6 kN·m | tag 100 = 20.951,6 kN·m |
+| Cubrimiento por caso | 315/315 | 343/343 |
+
+Los valores de columna y muro coinciden **exactamente** con las demandas de
+semana 03 (mismo motor, misma pasada) — solo se añade la segmentación
+completa y los metadatos.
+
+### Verificación
+
+- Suite completa: **133 passed** (126 + 7 nuevos de semana 04).
+- Sobre la marcha se corrigió un desliz en `diagramas.evaluar`: `My(x)` usaba
+  `Wy` en lugar de `Wz` (no afecta el caché, que se genera desde `localForce`).
+
+### Cómo correr
+
+```powershell
+python scripts\semana04_esfuerzos_completos_run.py   # (--recalcular repite)
+python -m pytest -q                                  # 133 passed
+```
+
+### Pendientes (abren Sesión 13)
+
+- PARTE C: `reports/semana04.md` con la cadena de trazabilidad.
+
+
+
+## 📅 Sesión 13 — Viernes 18 de septiembre 2026
+
+**Tema: Semana 04 PARTE B — panel unificado y diagramas 3D en el visor sólido
+C# (`EdificioSolidoUnity`).**
+
+### Qué se hizo
+
+- **Mapeo `Posicion()` confirmado**: coordenadas SI `(x, y, z)` → Unity
+  `(x + offset.x, z, y + offset.y)` (SI z → Unity Y; plano SI xy → Unity XZ).
+  Los ejes locales de los metadatos se pasan a Unity con `(vx, vy, vz) → (vx,
+  vz, vy)`, base para los diagramas.
+- `ModeloComplejo.cs`: campos JSON nuevos en `ModeloEdificio`:
+  `esfuerzos_completos` y `metadatos` (Json.NET, sin tocar el resto) + clases
+  `MetadatoElemento` (tipo, seccion, material, L, nodos, ejes_locales),
+  `NodosMetadato` (ni, nj, i, j) y `EjesLocalesModal`.
+- `UnityStickModel.cs`: clase `ConsultaS4` (bloque + ev + tag) y diccionarios
+  `consultasPorObjeto` / `consultaPorTag` por bloque — TIPOS visor column,
+  wall, vigas_x, vigas_y (los muros no tienen objeto 3D: solo seleccionables
+  por el selector manual de tag con flechas ◀▶). La selección reemplaza los
+  paneles "Consulta de viga" + "Consulta P–M" por UN panel unificado
+  `DibujarPanelConsulta` (metadatos, selector de tag/caso/x, valores
+  N/Vz/Vy/My/Mz/T, toggle "Diagramas 3D", y la sección P–M del motor de
+  semana 03 reutilizando `SeccionDesdeTag` sobre el catálogo `secciones` — sin
+  duplicar curvas). El caso actúa sobre las claves de los esfuerzos.
+- **Diagramas 3D**: `ReconstruirDiagramas3D` + `CrearLinea3D` dibujan en el
+  mundo (LineRenderer hijos de `diagramas3d`) las curvas **N (verde), My
+  (azul), Mz (roja)** con la convención verificada (`N(x)=-N`, M cuadráticos),
+  superpuestas a la pieza real como en días hábiles de semana 03. Auto-escala
+  por curva a ~15 % de la luz (cada uno a su máximo para que el modo sea
+  visible), casi planos (offsets solo fuera de ex/ey/ez); regeneración
+  dirigida por una clave `Objeto|tag|caso|x` y colores originales recuperados
+  al deseleccionar.
+- Corrección de tipos: `seccion` de metadatos pasa a emitir el **nombre de
+  sección (string)** (p. ej. `col_A_0.70x0.70`), no el dict de `per_elemento`
+  (Json.NET espera string). Se corrigió `diagramas._metadatos` y se saneó el
+  caché existente (211 columnas/muros) regenerando el overlay.
+- Compilación verificada en **Unity 2022.3.62f3** (batchmode):
+  `Assembly-CSharp.dll` compiló sin errores (5,97 s).
+
+### Verificación
+
+- Suite completa: **133 passed**.
+- Overlay regenerado: `semana04 esfuerzos_completos B=True A=True`, cobertura
+  B 315 / A 343, spot values intactos (col G N 462,5–7.837 kN; muro EX tag 91
+  = 24.195,6 kN·m; A tag 100 = 20.951,6).
+
+### Cómo correr
+
+```powershell
+python scripts\semana04_esfuerzos_completos_run.py   # overlay desde caché
+python -m pytest -q                                  # 133 passed
+```
+
+- Validación visual pendiente en el editor Unity (panel + diagramas), sobre
+  todo el selector manual de tag para muros.
+
+### Pendientes
+
+- Probar en Unity el panel unificado y diagramas 3D (Play) y revisar la curva
+  de muro bajo EX en planta vs la pieza.
+- PARTE C: `reports/semana04.md` con la cadena de trazabilidad (casos →
+  fuerzas completas → metadatos → overlay → verificación → valores).
+
+
+
+## 📅 Sesión 14 — Viernes 18 de septiembre 2026
+
+**Tema: Semana 04 PARTE B2 — BUG del P‑M de columnas + ventana de diagramas
+con selector de esfuerzo.**
+
+### Diagnóstico del BUG (data intacta)
+
+- En el Edificio B, `per_elemento` referencia la columna por su nombre real
+  (`col0.70x0.70`) pero el catálogo P‑M de semana 03 solo trae la clave
+  representativa `col` → sin match exacto. En el Edificio A sí calza
+  (`col_A_0.70x0.70`). El panel unificado ya llamaba el parseo, pero en B
+  resolvía a la curva genérica "col" o no usaba la sección real.
+
+### Qué se hizo
+
+- **Overlay (`exportar_unity.py`)**: al construir el bloque `secciones`, cada
+  sección real referenciada en `per_elemento` que no esté en el catálogo se
+  agrega como **alias de la representativa de su tipo** (`col0.70x0.70` →
+  `col`; aditivo, no borra la original). El B ahora hace **match exacto** igual
+  que A (`col_A_0.70x0.70`).
+- **Lookup C# robusto (`SeccionDesdeTag`)**: match exacto → clave
+  representativa por tipo (`pilar→col`, `muro→muro`) → primera clave del
+  catálogo con ese prefijo. Toda columna/muro de A o B resuelve su curva P‑M,
+  y el panel redibuja la texPM con el caso/combinación activo al cambiar tag.
+- **Ventana de diagramas (`DibujarVentanaDiagramas`)**: GUI.Window arrastrable
+  dibujada tras el panel de metadatos cuando hay consulta activa (toggle
+  "Ventana de diagramas (arrastrable)"). Deja elegir **Axial (N) / Corte
+  (Vz·Vy) / Momento (My·Mz)** con toggles; grafica el esfuerzo a lo largo del
+  elemento (`N(x)=-N`, `V(x)=V+W·x`, `M(x)=M+V·x+W·x²/2` — lineal en
+  columnas/muros, parabólico en vigas) en una textura generada por software
+  (cian) con extremos i/j (blancos) y marcador del slider (amarillo); muestra
+  **i/j, máximo con su posición y valor en x**; comparte `posConsulta` y
+  `casoConsulta` con el panel, así que sigue al elemento y caso seleccionado.
+
+### Verificación
+
+- Suite completa: **134 passed** (133 + `test_semana04_pm_columnas_todas_resuelven_catalogo`,
+  que replica el resolver exacto/representativa/prefijo para TODAS las
+  columnas y muros de A y B sobre el JSON del visor y valida el envelope).
+- Overlay regenerado: el catálogo de B ahora lista `... 'col0.70x0.70'` al
+  final (alias añadida); `semana04 esfuerzos_completos B=True A=True`,
+  cobertura B 315 / A 343, spot values intactos.
+
+### Cómo correr
+
+```powershell
+python scripts\semana04_esfuerzos_completos_run.py   # overlay + alias
+python -m pytest -q                                  # 134 passed
+```
+
+### Segunda pasada — BUG de layout: P‑M fuera de pantalla
+
+- El panel de consulta usa `GUILayout.BeginArea(new Rect(16,16,380,700))` sin
+  scroll, y el bloque "Consulta P‑M" + la textura `texPM` (240×170) se dibujaban
+  al final, más allá de los 700 px → quedaba recortado (el dato y
+  `GenerarTexPM` eran correctos: 17 puntos por envolvente). Se eligió la
+  **opción B** (mejor UX): el bloque P‑M vive ahora en su **propia
+  GUI.Window arrastrable** (`DibujarVentanaPM`, id 51002, rect que sigue al
+  elemento/caso activo) con toggle en el panel de metadatos; el panel solo
+  muestra un aviso "P-M de <seccion> en la ventana (arrastrable)". Así se ve
+  completo y no compite por espacio con la metadata o la ventana de diagramas.
+- Batchmode re-verificado con el editor cerrado: **compila sin errores**
+  (2,2 s, sin `error CS`). Suite: **134 passed** (sin cambios en Python esta
+  pasada).
+
+### Tercera pasada — Muros seleccionables por clic
+
+- Los muros NO eran seleccionables con el mouse: sus paneles
+  (`CrearPanelMuro`/`ReconstruirPanel`) no tenían collider ni registro en el
+  raycast; solo el cicleador ◀/▶ alcanzaba sus tags (impráctico con cientos).
+- Ahora `CrearPanelMuro` agrega un **BoxCollider fijo al muro sin deformar**
+  (el transform del GO/contenedor es identidad, así las coords locales del
+  collider coinciden con el mesh que ya embebe `bv.offset`; la deformada solo
+  reconstruye el mesh y el collider basta para seleccionar). Tamaño: `t
+  x(z_top-z_bot) x L` orientado según `resisteY`.
+- Registro `panelesPorObjeto[go] = p` + rama en `ProcesarSeleccionViga`:
+  `SeleccionarElementoDeMuro(p, hit.point.y)`. Como un panel abarca todos los
+  niveles y hay un elemento por nivel, `hit.point.y` (cota `niveles_z`) →
+  nivel `st` → match por posición de planta (nodo x/y contra `xc,yc,L,t`) y el
+  nodo base cuyo `z == niveles_z[st]` → **tag del elemento de muro** → abre la
+  misma `ConsultaS4` (ID, nodos, sección, material, ejes, restricciones,
+  N/Vy/Vz/T/My/Mz, diagramas 3D y ventana P‑M con su demanda), igual que
+  columnas/vigas. Respaldo: si no hay match de nivel, cae al elemento base del
+  muro y el ◀/▶ recorre los niveles.
+- Aceptación verificada en datos: nodos de muro (ej. tag 76) tienen
+  `ni.z == niveles_z[st]` y `ni.nivel == st` (A: [-4.21,…,11.83]); `resisteY`
+  y bandas cx/cy separan las líneas de muro. Batchmode **compila sin errores**
+  (5,9 s). Suite: **134 passed** (sin cambios Python).
+
+### Pendientes / nota
+
+- Validar en Play del editor: seleccionar columna/muro de A y B → la ventana
+  P‑M muestra la envolvente + balanceado + demanda del caso activo completo
+  (sin cortes), y arrastrar las dos ventanas (diagramas y P‑M).
+- PARTE C: `reports/semana04.md`.
+
+
+## 📅 Sesión 15 — Martes 22 de septiembre 2026
+
+**Tema: Semana 04 PARTE C (solo documento, sin tocar código).**
+
+### Qué se hizo
+
+- `reports/semana04.md` (nuevo): Unity como postprocesador conectado a
+  resultados OpenSees verificados. Contiene: objetivo; selección de elementos
+  con panel unificado (tabla de ejemplo por tipo — viga B tag 106, columna B
+  tag 1, muro B tag 41 — con valores reales del JSON, caso GQ); visualización
+  por capas (deformada por caso, diagramas 3D N/My/Mz, ventana 2D, tributaria
+  45, cargas G/Q/sismo, apoyos) con marcadores `[CAPTURA: …]` para Nicolás;
+  demanda–capacidad P–M de columna y muro (tag 1 GQ D/C 0,51; tag 2 GQ 1,05;
+  tag 41 GQ 0,74 y EY 1,78); **cadena de trazabilidad** de punta a punta con el
+  ejemplo real del muro tag 41 (`esfuerzos_completos.GQ."41"`: N = 2 175,21 kN,
+  Mz = 3 909,15 kN·m → `metadatos."41"`/`secciones.elementos."41"` →
+  `muro0.60x2.91` → P‑M (2 175,2; 3 912,3) → M_cap 5 270,9 → D/C 0,74); mapeo
+  a la rúbrica (5 items) y reproducción.
+- Nota de convención documentada: el panel evalúa `N(x) = −N` (tracción
+  positiva) mientras la ventana P‑M usa compresión positiva (mismo dato).
+
+### Verificación
+
+- Suite completa: **134 passed** (sin cambios de código esta sesión).
+
+
+## Sesión 16 — Martes 22 de septiembre 2026
+
+**Tema: Semana 05 PROMPT 2 — modificaciones reales del modelo con
+actualización automática en Unity, superposición interactiva y build Android.**
+
+### Qué se hizo
+
+- **CICLO 0 (baseline)**: `python -m edificio_b.analizar` → B G = 48 171,1 kN
+  (marco 21 445,6 + losa 26 725,5), Q = 11 029,6 kN, EX u_techo = 15,996 mm,
+  EY = 19,771 mm, M_volc = 76 424 kN·m, `equilibrio=OK superposición=OK`.
+- **CICLO A — MOD1 (SC_PISO 3,0 → 4,0 kN/m²)**: Q pasa a **14 423,3 kN**
+  (exacto al esperado 17·848,4); tag 41 GQ: P_d 2 175,21 → 2 277,64 kN,
+  M_d 3 912,35 → 4 232,41 kN·m; esfuerzo GQ N/Mz → 2 277,64 / 4 228,96;
+  equilibrios OK. Restaurado SC = 3,0.
+- **CICLO B — MOD2 (muro MUROS_V[0] t 0,60 → 0,70 m)**: G 48 171,1 → 48 315,2;
+  EX u_techo 15,996 → 15,744 mm; P0_aci 38 645,8 → **44 829,6 kN**;
+  P0_fibra 45 101,4 → 52 376,4; D/C GQ tag 41 0,74 → 0,79 (M_cap 5 270,9 →
+  5 573,4); `--force-curvas` añadió `muro0.70x2.91`. Restaurado t = 0,60.
+- **CICLO C (canónico)**: restaurados los dos archivos, regenerada la cadena
+  completa y suite `python -m pytest tests` → **134 passed**. La ruta completa
+  `pytest` sin argumentos choca con `para_entrega/test_secciones.py` (basename
+  duplicado, preexistente); la suite entregable es `tests/`.
+- **Script nuevo** `scripts/semana05_refrescar_caches.py`: refresca demandas /
+  per_elemento / §3 G+Q vs GQ / §4 superposición directa / curvas de muro
+  nuevas (`--force-curvas`), con **una sola escritura** final (se corrigió un
+  bug de doble escritura que pisaba demandas nuevas con el cache viejo).
+- **`reports/semana05.md`** (6 secciones + capturas): funciones; MOD1/MOD2 con
+  tablas antes→después; superposición interactiva (G+Q≡GQ, G+EX, G+Q+EX con
+  max_dP 4,68e-11 y max_dR ≤ 6e-11); sidequest carga móvil documentada como
+  **no implementada en v1**; UX estructural (6 preguntas con números reales);
+  preparación móvil.
+- **`Assets/Editor/MCOCBuildAndroid.cs`** (aditivo): menú
+  `Tools/MCOC/Build Android` → escena `Assets/Scenes/Main.unity`, package
+  `com.mcoc.edificiocomplejo`, min SDK 22, landscape (LandscapeLeft), IL2CPP,
+  `bundleVersion 1.0`, salida `build/EdificioComplejo_MCOC.apk`. Verificado que
+  `ProjectSettings.asset` ya traía `AndroidMinSdkVersion: 22` y orientación 4;
+  sin compilar en batchmode en esta sesión.
+
+### Verificación
+
+- Canónico idéntico al baseline (tag 41 GQ P = 2 175,21 / M = 3 912,35;
+  max_dR GQ B = 2,9e-11). Suite **134 passed**.
+- Números de MOD1/MOD2 reproducibles con la cadena de §2 del reporte.
+
+### Pendientes / nota
+
+- Probar el build Android manualmente (menú Tools/MCOC/Build Android) con el
+  SDK instalado y validar en teléfono (paisaje, JSON embebido en StreamingAssets).
+- Sidequest "carga móvil": solo documentada (NO implementada en v1), alcance
+  v2 en §4 de reports/semana05.md.
