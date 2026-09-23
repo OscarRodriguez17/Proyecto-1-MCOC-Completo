@@ -1343,3 +1343,50 @@ actualización automática en Unity, superposición interactiva y build Android.
   SDK instalado y validar en teléfono (paisaje, JSON embebido en StreamingAssets).
 - Sidequest "carga móvil": solo documentada (NO implementada en v1), alcance
   v2 en §4 de reports/semana05.md.
+
+
+## Sesión 17 — Martes 22 de septiembre 2026 (FINAL — preparación de la entrega)
+
+**Tema: Semanas 4–5 completas + entrega lista para Canvas.**
+
+### Qué se hizo
+
+- **Verificación final limpia**: `python -m pytest tests/ -q` → **134 passed**
+  (7,9 s) y `python src\complejo.py --sin-visualizar` regenera análisis, fusión
+  y sincroniza `StreamingAssets` (edificio_completo.json, modelo_resultados.json,
+  edificio_solido.json + overlay P–M). Resultados = canónico (G 93 407,6 kN /
+  Q 18 700,8 kN; B G 48 171,1 / SC 11 029,6).
+- **Índice de entrega**: `reports/README.md` con enlaces a `semana03.md`,
+  `semana04.md`, `semana05.md` y `supuesto_armado_edificio_A.md` (una línea por
+  semana), cómo correr el pipeline (`python src\complejo.py --sin-visualizar`),
+  cómo abrir el visor (`abrir_unity_solido.cmd` / escena Main) y cómo generar el
+  APK (`Tools/MCOC/Build Android`).
+- **Higiene del repo**: `.gitignore` ampliado con `build/` (APK Android) y los
+  scratch de investigación; `.meta` quedan commiteados (no ignorados, los
+  requiere Unity); sin Library/Temp/__pycache__/UserSettings/Build commiteados;
+  binario mayor = 2,1 MB (`results/edificio_solido.json`, legítimo).
+- **Commit + tag**: `git commit` + `git tag entrega-semana05` + `git push origin
+  master --tags`.
+
+### Verificación
+
+- Suite **134 passed**; canónico idéntico al baseline; working tree limpio.
+
+### Pendientes (hechos A MANO en Unity, fuera de opencode)
+
+- **APK**: menú `Tools/MCOC/Build Android` con el módulo Android instalado
+  (salida `build/EdificioComplejo_MCOC.apk`, ya git-ignorada).
+- **Capturas**: llenar los `[CAPTURA: …]` de `reports/semana04.md` y
+  `reports/semana05.md` tomando Play en el editor (selección de tag 41, ventana
+  P–M con envolvente 0,60x2,91 y 0,70x2,91, superposición G+Q+EX).
+
+### CIERRE — Estado de Semanas 4–5
+
+- [x] Dashboard de esfuerzos completos + panel de consulta + ventana P–M (S4).
+- [x] Trazabilidad tag Web 41 → JSON → panel → P–M con números (S4).
+- [x] MOD1/MOD2 reales con "antes → después" y actualización por "Recargar JSON" (S5).
+- [x] Superposición interactiva G+Q≡GQ / G+EX / G+Q+EX con |Δ| ≈ e-11 (S5).
+- [x] `reports/semana04.md` y `reports/semana05.md` (6 secciones) + índice.
+- [x] Suite ≥ 134, repo limpio, commit + tag `entrega-semana05`.
+- [ ] APK Android compilado a mano (pendiente).
+- [ ] Capturas en los `[CAPTURA: …]` (pendiente).

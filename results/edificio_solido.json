@@ -4,7 +4,7 @@
  "nota": "Visualizador solido: columnas/vigas/muros 3D, cargas y deformada.",
  "edificios": [
   {
-   "proyecto": "Edificio de Ingenieria 2017_67 - Edificio A - esfuerzos (test)",
+   "proyecto": "Edificio de Ingenieria 2017_67 - Edificio A - 50 m E-J (anexo metalico I'-J)",
    "bloque": "Edificio A - Ingenieria (2017_67)",
    "offset": {
     "x": 0.0,

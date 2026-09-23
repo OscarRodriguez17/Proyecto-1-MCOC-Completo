@@ -47,3 +47,6 @@ reporte_armadura_muros_A.txt
 
 # Zip de entrega (redundante con la carpeta para_entrega/)
 para_entrega.zip
+
+# Build Android (APK) en la raiz del proyecto
+build/
