@@ -52,6 +52,11 @@ def _cargar(name):
         return json.load(f)
 
 
+def _cargar_abs(ruta):
+    with open(ruta, encoding="utf-8") as f:
+        return json.load(f)
+
+
 def _orient(ni, nj):
     """'vigas_x' si el elemento corre más en X que en Y, si no 'vigas_y'."""
     dx = abs(nj["x"] - ni["x"])
@@ -267,8 +272,16 @@ def _tot_caso(ed_a, ed_b, caso, comp):
     }
 
 
-def exportar(offset_b_x=60.0):
-    data_a = _cargar(DAT_A)
+def exportar(offset_b_x=60.0, out_dir=None, dat_a=None):
+    """Escribe `edificio_solido.json` en `out_dir` (por defecto `results/`).
+
+    - `dat_a`: ruta alternativa del JSON del Edificio A (por defecto
+      `results/modelo_resultados.json`); el de B siempre se lee de `results/`.
+
+    Los tests pasan un directorio temporal (y su propio JSON de A) para no
+    pisar el contrato canonico que consume el visor Unity.
+    """
+    data_a = _cargar(DAT_A) if dat_a is None else _cargar_abs(dat_a)
     data_b = _cargar(DAT_B)
     ed_a = adaptar_a(data_a, offset=(0.0, 0.0))
     ed_b = adaptar_b(data_b, offset=(offset_b_x, 0.0))
@@ -284,8 +297,9 @@ def exportar(offset_b_x=60.0):
             "EY": _tot_caso(ed_a, ed_b, "EY", None),
         },
     }
-    os.makedirs(RESULTS, exist_ok=True)
-    out = os.path.join(RESULTS, FUERA)
+    destino = out_dir or RESULTS
+    os.makedirs(destino, exist_ok=True)
+    out = os.path.join(destino, FUERA)
     with open(out, "w", encoding="utf-8") as f:
         json.dump(complejo, f, ensure_ascii=False, indent=1)
 

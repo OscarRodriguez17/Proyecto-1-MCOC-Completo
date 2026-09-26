@@ -72,7 +72,7 @@ namespace MCOC.EditorTools
             var grupo = BuildTargetGroup.Android;
             PlayerSettings.SetApplicationIdentifier(grupo, PackageId);
             PlayerSettings.SetScriptingBackend(grupo, ScriptingImplementation.IL2CPP);
-            PlayerSettings.Android.minSdkVersion = AndroidSdkVersion.AndroidApiLevel22;
+            PlayerSettings.Android.minSdkVersion = AndroidSdkVersions.AndroidApiLevel22;
             PlayerSettings.bundleVersion = BundleVersion;
 
             // Orientación: se fija en PlayerSettings (LandscapeLeft); Unity la

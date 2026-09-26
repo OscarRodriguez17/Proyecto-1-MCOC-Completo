@@ -1390,3 +1390,94 @@ actualización automática en Unity, superposición interactiva y build Android.
 - [x] Suite ≥ 134, repo limpio, commit + tag `entrega-semana05`.
 - [ ] APK Android compilado a mano (pendiente).
 - [ ] Capturas en los `[CAPTURA: …]` (pendiente).
+
+---
+
+## Sesión 18 — Viernes 25 de septiembre 2026 (datos actualizables sin recompilar el APK)
+
+**Tema: decidir, antes de compilar, qué se puede cambiar en el teléfono y
+implementarlo.** La pregunta fue: "si más adelante quiero mejorar el diseño, ¿se
+puede subir al APK ya instalado o hay que recompilar?" La respuesta es
+**dividida**, y esa división quedó implementada:
+
+- **Diseño / UI / escena → hay que recompilar** (van dentro del APK como C# IL2CPP
+  y escena serializada; no hay *hot update*).
+- **Datos → NO hay que recompilar**: el visor ahora busca primero
+  `Application.persistentDataPath`, que en Android es escribible por `adb`.
+
+### Qué se hizo
+
+- **`UnityStickModel.cs` — carga del JSON por prioridad** (único archivo del visor
+  modificado; el motor de análisis y los resultados canónicos no se tocaron):
+  1. `Application.persistentDataPath/edificio_completo.json` → **actualizable**;
+  2. `StreamingAssets` con `UnityWebRequest` (en Android la carpeta va
+     **comprimida dentro del APK** y `File.ReadAllText` falla — este era el
+     riesgo #1 que el reporte declaraba abierto);
+  3. `StreamingAssets` con `File` (Editor / escritorio).
+
+  `Cargar()` quedó como *dispatcher*: `StartCoroutine(CargarCoroutine())` en Play
+  y `CargarSincrono()` en Edit Mode (`[ExecuteInEditMode]`, donde las
+  corrutinas no corren). El parseo y `ConstruirEscena()` se comparten en
+  `AplicarTexto()`.
+- **Trazabilidad en pantalla**: etiqueta `Fuente: …` con la **fecha** del archivo
+  leído, y en móvil la ruta `Actualizable: …`, para saber siempre qué datos se
+  están viendo. Nuevo botón **`Usar JSON del APK`** que borra la copia local y
+  vuelve al embebido.
+- **`scripts/subir_json_telefono.ps1`** (nuevo): valida `adb`, exige **un**
+  dispositivo, `mkdir -p`, `adb push` del JSON a
+  `/sdcard/Android/data/com.mcoc.edificiocomplejo/files/` y **verifica con
+  `ls -l` en el teléfono** lo que quedó. Tiene `-Borrar` para volver al del APK.
+- **`reports/semana05.md`**: §6 reescrito (6.2 = canal de datos actualizables,
+  6.3 = los 2 riesgos que **sí** exigen recompilar: táctil y layout), §1 con la
+  tabla de estado y las líneas reales de cada control (recontadas sobre el
+  archivo final), §9/§10 y §8 al día. Corregido además el defecto de caso de la
+  consulta (`casoConsulta = 2` → GQ, `:73`) y la línea de la etiqueta de
+  superposición.
+- **Higiene**: el parche se aplicó **preservando bytes** (`latin-1`, porque
+  `UnityStickModel.cs` tiene mezcla de UTF-8 y CP1252 con CRLF): los 47 bytes no
+  ASCII originales siguen intactos y el archivo pasó de 2 837 a **2 978 líneas**.
+- **`pytest` ya no pisa los resultados canónicos** (hallazgo de esta sesión): los
+  tests llamaban a los exportadores con sus rutas de producción, así que
+  `pytest` reescribía `results/modelo_resultados.json` (con la etiqueta
+  `"... - esfuerzos (test)"`), `results/edificio_solido.json` y la copia de
+  `Assets/StreamingAssets/`. Los números no cambiaban, pero **un `pytest` podía
+  dejar un "(test)" en un JSON de la entrega**. Arreglo: los tres exportadores
+  aceptan ahora rutas alternativas (`out_dir` en `analizar.run_analisis` /
+  `exportar_json` / `exportar_unity_solido.exportar`; `destino` + `streaming` en
+  `secciones.exportar_unity.exportar`), **con el comportamiento por defecto
+  intacto** para el pipeline, y los tests trabajan sobre `tmp_path`
+  (`streaming=False`). Tras el arreglo, `git status` sale limpio de `results/` y
+  `StreamingAssets` al correr la suite.
+
+### Verificación
+
+- `python -m pytest tests -q` → **134 passed** (6,1 s antes del arreglo de
+  temporales; 4,8 s después, porque ya no reescribe dos JSON de 2 MB).
+- **Los JSON canónicos no se modifican**: tras `pytest`, `git status` no muestra
+  `results/` ni `Assets/StreamingAssets/`, y no hay ninguna aparición de `(test)`.
+- **Unity 2022.3.62f3 abierto y verificado** (el Editor **sí** está instalado en
+  esta máquina; lo que falta es el módulo Android, ver abajo):
+  - el proyecto carga **sin errores de compilación** → el bloque nuevo compila;
+  - se probó la **precedencia de la fuente** de verdad: con el proyecto tal
+    cual, el visor reporta `JSON cargado (StreamingAssets (archivo))`; al
+    copiar el JSON a `Application.persistentDataPath`
+    (`AppData\LocalLow/DefaultCompany/EdificioIngUnity/` — la carpeta que en
+    Android escribe `adb`) reporta `JSON cargado (telefono (actualizable))`, y al
+    borrar la copia vuelve a `StreamingAssets (archivo)`. El `SHA256` del script
+    se comprobó antes y después de la prueba: idéntico.
+  - como `UnityStickModel` es `[ExecuteInEditMode]`, esto cubre la rama
+    **síncrona**; la corrutina de Play Mode (`UnityWebRequest`) solo se puede
+    probar en el dispositivo o en el Editor con Play.
+- `scripts\subir_json_telefono.ps1` ejecutado: corre y falla con el mensaje
+  esperado ("adb no está en el PATH") — no hay platform-tools en esta máquina.
+- **No verificado**: el APK en un teléfono real, porque **el módulo Android
+  Build Support no está instalado** (`Editor/Data/PlaybackEngines/` solo tiene
+  `windowsstandalonesupport`; falta SDK/NDK/JDK).
+
+### Pendientes
+
+- Compilar el APK y probar el flujo completo en un teléfono: "Usar JSON del APK"
+  → `scripts\subir_json_telefono.ps1` → "Recargar JSON" → `Fuente: telefono`.
+- Gesto táctil y layout adaptativo (§6.3 del reporte): **requieren recompilar**;
+  la lectura del dato ya no.
+

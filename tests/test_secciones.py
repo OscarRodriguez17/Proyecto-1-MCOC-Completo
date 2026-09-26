@@ -123,6 +123,23 @@ def _cache():
         return json.load(f)
 
 
+@pytest.fixture(scope="module")
+def overlay(tmp_path_factory):
+    """Overlay P-M aplicado sobre un TEMPORAL y devuelto como dict.
+
+    El overlay real escribe `results/edificio_solido.json` y lo copia a
+    `Assets/StreamingAssets/`: ambos son artefactos de la entrega, asi que la
+    suite los deja intactos y trabaja sobre una copia (`streaming=False`).
+    """
+    import secciones.exportar_unity as ex
+    if not os.path.exists(ex.ENTRADA) or not os.path.exists(ex.CACHE):
+        pytest.skip("Falta results/edificio_solido.json o el cache de secciones")
+    destino = tmp_path_factory.mktemp("overlay") / "edificio_solido.json"
+    ruta = ex.exportar(verbose=False, destino=str(destino), streaming=False)
+    with open(ruta, encoding="utf-8") as f:
+        return json.load(f)
+
+
 def test_demandas_convencion_y_cobertura():
     c = _cache()
     per = c.get("per_elemento", {})
@@ -169,15 +186,11 @@ def test_per_elemento_muros_con_seccion_propia():
         v["seccion"] for v in muros}
 
 
-def test_overlay_solido_edificio_b():
+def test_overlay_solido_edificio_b(overlay):
     """El overlay enriquece el contrato del VISOR SOLIDO (esquema plano) y es
     idempotente: se ejecuta y se comprueba el resultado sobre el fichero."""
     import secciones.exportar_unity as ex
-    if not os.path.exists(ex.ENTRADA) or not os.path.exists(ex.CACHE):
-        pytest.skip("Falta results/edificio_solido.json o el cache de secciones")
-    ex.exportar(verbose=False)
-    with open(ex.ENTRADA, encoding="utf-8") as f:
-        doc = json.load(f)
+    doc = overlay
     edb = ex._edificio_b(doc)
     assert edb is not None
     assert "secciones" in edb
@@ -255,15 +268,11 @@ def test_superposicion_combinaciones_seccion4():
             assert b.get("max_dD", 1.0) < 1e-6, (ed, nombre)
 
 
-def test_overlay_curva_propia_por_muro():
+def test_overlay_curva_propia_por_muro(overlay):
     """El visor solido asocia a CADA muro su propia curva P-M (no la del
     muro representativo)."""
     import secciones.exportar_unity as ex
-    if not os.path.exists(ex.ENTRADA) or not os.path.exists(ex.CACHE):
-        pytest.skip("Falta results/edificio_solido.json o el cache de secciones")
-    ex.exportar(verbose=False)
-    with open(ex.ENTRADA, encoding="utf-8") as f:
-        doc = json.load(f)
+    doc = overlay
     edb = ex._edificio_b(doc)
     cat = edb["secciones"]["secciones"]
     walls = [el for el in edb["elementos"]
@@ -378,17 +387,13 @@ def test_demandas_A_convencion():
                for d in g.values())
 
 
-def test_overlay_solido_edificio_a():
+def test_overlay_solido_edificio_a(overlay):
     """El overlay enriquece también el bloque del Edificio A en el visor
     sólido (su propio catálogo P-M y demandas por elemento)."""
     import secciones.exportar_unity as ex
-    if not os.path.exists(ex.ENTRADA) or not os.path.exists(ex.CACHE):
-        pytest.skip("Falta results/edificio_solido.json o el cache de secciones")
     if "curvas_A" not in _cache():
         pytest.skip("Falta el catálogo de A (corre semana03_edificio_A_run)")
-    ex.exportar(verbose=False)
-    with open(ex.ENTRADA, encoding="utf-8") as f:
-        doc = json.load(f)
+    doc = overlay
     eda = ex._edificio_a(doc)
     assert eda is not None
     assert "secciones" in eda
@@ -528,15 +533,13 @@ def test_semana04_equilibrio_y_cierre_verticales():
             assert cv["max_dN"] < 1e-6 and cv["max_dMy"] < 1e-6
 
 
-def test_semana04_overlay_solido_y_streaming():
+def test_semana04_overlay_solido_y_streaming(overlay):
     """El JSON del visor sólido queda enriquecido a nivel de CADA elementTag,
     incluso en el elemento sismorresistente de mayor momento."""
     import secciones.exportar_unity as ex
-    if not os.path.exists(CACHE4) or not os.path.exists(ex.ENTRADA):
-        pytest.skip("Falta cache semana04 o results/edificio_solido.json")
-    ex.exportar(verbose=False)
-    with open(ex.ENTRADA, encoding="utf-8") as f:
-        doc = json.load(f)
+    if not os.path.exists(CACHE4):
+        pytest.skip("Falta cache semana04")
+    doc = overlay
     c = _cache4()
     for pre, edf in (("", "B"), ("_A", "A")):
         ed = ex._edificio_a(doc) if edf == "A" else ex._edificio_b(doc)
@@ -553,7 +556,7 @@ def test_semana04_overlay_solido_y_streaming():
             c["esfuerzos_completos" + pre]["EX"][key]
 
 
-def test_semana04_pm_columnas_todas_resuelven_catalogo():
+def test_semana04_pm_columnas_todas_resuelven_catalogo(overlay):
     """BUG 1 (P-M de columnas): TODA columna/muro de A y B debe resolver su
     seccion del catalogo P-M — en A por clave EXACTA ('col_A_0.70x0.70') y en
     B por la clave real 'col0.70x0.70' que el overlay agrega como alias de la
@@ -561,11 +564,9 @@ def test_semana04_pm_columnas_todas_resuelven_catalogo():
     match exacto -> representativa por tipo ('col'/'muro') -> prefijo por tipo.
     """
     import secciones.exportar_unity as ex
-    if not os.path.exists(CACHE4) or not os.path.exists(ex.ENTRADA):
-        pytest.skip("Falta cache semana04 o results/edificio_solido.json")
-    ex.exportar(verbose=False)
-    with open(ex.ENTRADA, encoding="utf-8") as f:
-        doc = json.load(f)
+    if not os.path.exists(CACHE4):
+        pytest.skip("Falta cache semana04")
+    doc = overlay
 
     def resolver(catalogo, nombre, tipo):
         if nombre in catalogo:

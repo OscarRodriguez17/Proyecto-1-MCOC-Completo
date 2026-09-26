@@ -74,15 +74,17 @@ def test_json_b_lleva_esfuerzos():
     assert set(data["esfuerzos"]["G"]) == tags_viga
 
 
-def test_json_solido_trae_coeficientes():
-    """El JSON del visor sólido trae el bloque esfuerzos de B (por viga/caso)."""
+def test_json_solido_trae_coeficientes(tmp_path):
+    """El JSON del visor sólido trae el bloque esfuerzos de B (por viga/caso).
+
+    Se exporta a un TEMPORAL: la suite no debe reescribir
+    results/edificio_solido.json, que es un artefacto de la entrega."""
     src = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "src"))
     sys.path.insert(0, os.path.join(src, "benchmark_3d"))
     import exportar_unity_solido
-    exportar_unity_solido.exportar(offset_b_x=60.0)
-    ruta = os.path.join(os.path.dirname(__file__), "..", "..", "results",
-                        "edificio_solido.json")
-    with open(ruta, encoding="utf-8") as f:
+    salida = tmp_path / "solido"
+    exportar_unity_solido.exportar(offset_b_x=60.0, out_dir=str(salida))
+    with open(str(salida / "edificio_solido.json"), encoding="utf-8") as f:
         solido = json.load(f)
     ed_b = solido["edificios"][1]
     assert ed_b["bloque"].startswith("Edificio B")

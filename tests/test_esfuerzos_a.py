@@ -32,11 +32,18 @@ def diagramas():
 
 
 @pytest.fixture(scope="module")
-def data_a():
-    """Regenera results/modelo_resultados.json con el bloque esfuerzos de A."""
+def tmp_a(tmp_path_factory):
+    """Directorio temporal de la suite de A: la suite NO debe pisar
+    results/modelo_resultados.json, que es un artefacto de la entrega."""
+    return tmp_path_factory.mktemp("edificio_a")
+
+
+@pytest.fixture(scope="module")
+def data_a(tmp_a):
+    """Regenera el JSON de A (con el bloque esfuerzos) en el temporal."""
     return analizar.run_analisis(d, "modelo_resultados.json",
                                  "Edificio A - esfuerzos (test)",
-                                 (0.0, 0.0))
+                                 (0.0, 0.0), out_dir=str(tmp_a))
 
 
 def test_cierre_diagrama_por_viga_y_caso(diagramas):
@@ -107,15 +114,16 @@ def test_json_a_lleva_esfuerzos(data_a):
     assert set(data["esfuerzos"]["G"]) == tags_viga
 
 
-def test_json_solido_trae_coeficientes(data_a):
+def test_json_solido_trae_coeficientes(data_a, tmp_a, tmp_path):
     """El JSON del visor sólido trae el bloque esfuerzos de A (por viga/caso)."""
     src = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src"))
     sys.path.insert(0, os.path.join(src, "benchmark_3d"))
     import exportar_unity_solido
-    exportar_unity_solido.exportar(offset_b_x=60.0)
-    ruta = os.path.join(os.path.dirname(__file__), "..", "results",
-                        "edificio_solido.json")
-    with open(ruta, encoding="utf-8") as f:
+    salida = tmp_path / "solido"
+    exportar_unity_solido.exportar(
+        offset_b_x=60.0, out_dir=str(salida),
+        dat_a=str(tmp_a / "modelo_resultados.json"))
+    with open(str(salida / "edificio_solido.json"), encoding="utf-8") as f:
         solido = json.load(f)
     ed_a = solido["edificios"][0]
     assert ed_a["bloque"].startswith("Edificio A")

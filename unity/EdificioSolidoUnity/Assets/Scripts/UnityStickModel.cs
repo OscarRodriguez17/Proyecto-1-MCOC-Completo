@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.IO;
 using Newtonsoft.Json;
 using UnityEngine;
+using UnityEngine.Networking;
 
 namespace MCOC.Unity
 {
@@ -288,25 +289,139 @@ namespace MCOC.Unity
             return bloques[idx];
         }
 
+        // ==================================================================
+        // CARGA DEL JSON (Semana 05 - movil)
+        //
+        // Orden de busqueda:
+        //   1) Application.persistentDataPath -> DATO ACTUALIZABLE: se sube el
+        //      JSON nuevo con "adb push" y el visor lo toma SIN recompilar el
+        //      APK (el APK lleva dentro el C# compilado y la escena, que no se
+        //      pueden cambiar en caliente).
+        //   2) StreamingAssets con UnityWebRequest -> en Android la carpeta va
+        //      COMPRIMIDA dentro del APK y File.ReadAllText da error.
+        //   3) StreamingAssets con File -> Editor / escritorio.
+        //
+        // En Edit Mode (fuera de Play) las corrutinas no se ejecutan, asi que
+        // ahi se usa la via sincrona (1 y 3).
+        // ==================================================================
+        private string origenJson = "(sin cargar)";
+        private string fechaJson = "";
+
         private void Cargar()
         {
-            string path = Path.Combine(Application.streamingAssetsPath, jsonFileName);
-            LogArchivo("[Cargar] path=" + path + " existe=" + File.Exists(path));
-            if (!File.Exists(path))
+            if (Application.isPlaying) StartCoroutine(CargarCoroutine());
+            else CargarSincrono();
+        }
+
+        private string RutaTelefono()
+        {
+            return Path.Combine(Application.persistentDataPath, jsonFileName);
+        }
+
+        private static string LeerLocal(string ruta)
+        {
+            try { return File.ReadAllText(ruta); }
+            catch (System.Exception ex)
             {
-                mensaje = "No existe StreamingAssets/" + jsonFileName;
-                LogArchivo("[Cargar] FALTA ARCHIVO");
+                LogArchivo("[Cargar] no se pudo leer " + ruta + ": " + ex.Message);
+                return null;
+            }
+        }
+
+        private System.Collections.IEnumerator CargarCoroutine()
+        {
+            string txt = null;
+            string origen = null;
+            string rutaTel = RutaTelefono();
+
+            if (File.Exists(rutaTel))
+            {
+                LogArchivo("[Cargar] persistentDataPath=" + rutaTel);
+                txt = LeerLocal(rutaTel);
+                if (txt != null) origen = "telefono (actualizable)";
+            }
+
+            if (txt == null)
+            {
+                string url = Application.streamingAssetsPath + "/" + jsonFileName;
+                if (!url.StartsWith("file://") && !url.StartsWith("http")) url = "file://" + url;
+                LogArchivo("[Cargar] UWR " + url);
+                UnityWebRequest req = UnityWebRequest.Get(url);
+                yield return req.SendWebRequest();
+                if (req.result == UnityWebRequest.Result.Success)
+                {
+                    txt = req.downloadHandler.text;
+                    origen = "APK (StreamingAssets)";
+                }
+                else LogArchivo("[Cargar] UWR error: " + req.error);
+                if (req != null) req.Dispose();
+            }
+
+            if (txt == null)
+            {
+                string ruta = Path.Combine(Application.streamingAssetsPath, jsonFileName);
+                if (File.Exists(ruta))
+                {
+                    txt = LeerLocal(ruta);
+                    if (txt != null) origen = "StreamingAssets (archivo)";
+                }
+            }
+
+            if (txt == null)
+            {
+                mensaje = "No se encontro " + jsonFileName + "\nNi en "
+                    + Application.persistentDataPath + " ni en StreamingAssets.";
+                LogArchivo("[Cargar] SIN ARCHIVO");
+                yield break;
+            }
+            AplicarTexto(txt, origen, txt != null && origen.StartsWith("telefono") ? rutaTel : null);
+        }
+
+        private void CargarSincrono()
+        {
+            string txt = null;
+            string origen = null;
+            string rutaTel = RutaTelefono();
+            if (File.Exists(rutaTel))
+            {
+                txt = LeerLocal(rutaTel);
+                if (txt != null) origen = "telefono (actualizable)";
+            }
+            if (txt == null)
+            {
+                string ruta = Path.Combine(Application.streamingAssetsPath, jsonFileName);
+                if (File.Exists(ruta))
+                {
+                    txt = LeerLocal(ruta);
+                    if (txt != null) origen = "StreamingAssets (archivo)";
+                }
+            }
+            if (txt == null)
+            {
+                mensaje = "No se encontro " + jsonFileName + " en " + Application.streamingAssetsPath;
+                LogArchivo("[Cargar] SIN ARCHIVO (sincrono)");
                 return;
             }
+            AplicarTexto(txt, origen, origen.StartsWith("telefono") ? rutaTel : null);
+        }
+
+        private void AplicarTexto(string txt, string origen, string ruta)
+        {
             try
             {
-                string txt = File.ReadAllText(path);
                 ModeloComplejo modelo = JsonConvert.DeserializeObject<ModeloComplejo>(txt);
                 LogArchivo("[Cargar] parse OK: " + modelo.proyecto + " edificios=" + (modelo.edificios != null ? modelo.edificios.Count : 0));
                 ConstruirEscena(modelo);
-                mensaje = "Cargado: " + modelo.proyecto;
+                origenJson = origen;
+                fechaJson = "";
+                if (!string.IsNullOrEmpty(ruta) && File.Exists(ruta))
+                {
+                    try { fechaJson = File.GetLastWriteTime(ruta).ToString("yyyy-MM-dd HH:mm"); }
+                    catch (System.Exception) { fechaJson = ""; }
+                }
+                mensaje = "Cargado [" + origen + "]: " + modelo.proyecto;
                 LogArchivo("[Cargar] ConstruirEscena OK bloques=" + bloques.Count);
-                Debug.Log("[UnityStickModel] JSON cargado: " + modelo.proyecto
+                Debug.Log("[UnityStickModel] JSON cargado (" + origen + "): " + modelo.proyecto
                     + " | edificios=" + (modelo.edificios != null ? modelo.edificios.Count : 0));
                 if (modelo.totales != null && modelo.totales.G != null && modelo.totales.EX != null && modelo.totales.EY != null)
                 {
@@ -322,6 +437,26 @@ namespace MCOC.Unity
                 Debug.LogException(ex);
             }
             sucio = true;
+        }
+
+        // Borra la copia sobrescrita del telefono y vuelve al JSON del APK.
+        private void UsarJsonDelApk()
+        {
+            string rutaTel = RutaTelefono();
+            if (File.Exists(rutaTel))
+            {
+                try
+                {
+                    File.Delete(rutaTel);
+                    LogArchivo("[Cargar] borrada copia del telefono: " + rutaTel);
+                }
+                catch (System.Exception ex)
+                {
+                    mensaje = "No se pudo borrar la copia del telefono: " + ex.Message;
+                    return;
+                }
+            }
+            Cargar();
         }
 
         private void ConstruirEscena(ModeloComplejo modelo)
@@ -2325,7 +2460,14 @@ namespace MCOC.Unity
             if (Mathf.Abs(nuevaSep - separarBloquesY) > 0.001f) { separarBloquesY = nuevaSep; cambio = true; }
 
             GUILayout.Space(4);
+            GUILayout.BeginHorizontal();
             if (GUILayout.Button("Recargar JSON")) Cargar();
+            if (GUILayout.Button("Usar JSON del APK")) UsarJsonDelApk();
+            GUILayout.EndHorizontal();
+            GUILayout.Label("Fuente: " + origenJson
+                + (string.IsNullOrEmpty(fechaJson) ? "" : "   (" + fechaJson + ")"));
+            if (Application.isMobilePlatform)
+                GUILayout.Label("Actualizable: " + Application.persistentDataPath);
 
             GUILayout.Space(4);
             GUILayout.Label(mensaje);

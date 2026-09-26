@@ -175,7 +175,7 @@ def _exportar_cargas(dat, modelo, resultados):
 
 
 def exportar_json(dat, modelo, resultados, out_name, nombre_proyecto,
-                  offset=(0.0, 0.0), esfuerzos=None):
+                  offset=(0.0, 0.0), esfuerzos=None, out_dir=None):
     ox, oy = offset
     data = {
         "proyecto": f"Edificio de Ingenieria 2017_67 - {nombre_proyecto}",
@@ -258,12 +258,18 @@ def exportar_json(dat, modelo, resultados, out_name, nombre_proyecto,
         }
     if esfuerzos:
         data["esfuerzos"] = esfuerzos
-    with open(os.path.join(OUT_DIR, out_name), "w", encoding="utf-8") as fh:
+    destino = os.path.join(out_dir or OUT_DIR, out_name)
+    os.makedirs(os.path.dirname(destino), exist_ok=True)
+    with open(destino, "w", encoding="utf-8") as fh:
         json.dump(data, fh, indent=1)
     return data
 
 
-def run_analisis(dat, out_name, nombre_proyecto, offset=(0.0, 0.0)):
+def run_analisis(dat, out_name, nombre_proyecto, offset=(0.0, 0.0),
+                 out_dir=None):
+    """Analiza el Edificio A y escribe `out_name` en `out_dir` (por defecto
+    `results/`). Los tests pasan un directorio temporal para no pisar los
+    resultados canonicos de la entrega."""
     os.makedirs(OUT_DIR, exist_ok=True)
     print("=" * 70)
     print(f"MODELO 3D - {nombre_proyecto} (planos 2017_67, M. Kupfer C.)")
@@ -355,7 +361,7 @@ def run_analisis(dat, out_name, nombre_proyecto, offset=(0.0, 0.0)):
     esfuerzos_bloque = esf_a.correr_esfuerzos(verbose=True, dat=dat, offset=offset)
 
     data = exportar_json(dat, modelo, resultados, out_name, nombre_proyecto,
-                         offset, esfuerzos=esfuerzos_bloque)
+                         offset, esfuerzos=esfuerzos_bloque, out_dir=out_dir)
     ops.wipe()
     print("\nListo. Resultados en:", os.path.abspath(OUT_DIR))
     return data

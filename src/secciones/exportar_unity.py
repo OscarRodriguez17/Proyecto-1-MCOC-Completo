@@ -172,7 +172,17 @@ def _etiquetar(elementos, por_tag):
     return n_etq
 
 
-def exportar(verbose=True):
+def exportar(verbose=True, destino=None, streaming=None):
+    """Aplica el overlay P-M al contrato del visor solido.
+
+    - `destino`: donde se escribe el contrato enriquecido (por defecto
+      `results/edificio_solido.json`).
+    - `streaming`: ruta donde copiar el resultado para el visor Unity (por
+      defecto `StreamingAssets/edificio_completo.json`); `False` omite la copia.
+
+    Los tests pasan un temporal y `streaming=False` para que la suite nunca
+    reescriba los artefactos de la entrega.
+    """
     if not os.path.exists(ENTRADA):
         raise SystemExit(f"[OVERLAY] Falta {ENTRADA} "
                          f"(corre benchmark_3d.exportar_unity_solido)")
@@ -210,12 +220,16 @@ def exportar(verbose=True):
         eda["secciones"] = bloque_a
         s04_a = _esfuerzos_completos(eda, cache4, "_A")
 
-    with open(ENTRADA, "w", encoding="utf-8") as f:
+    salida = destino or ENTRADA
+    if os.path.dirname(salida):
+        os.makedirs(os.path.dirname(salida), exist_ok=True)
+    with open(salida, "w", encoding="utf-8") as f:
         json.dump(doc, f, ensure_ascii=False, indent=1)
 
+    destino_streaming = STREAMING if streaming is None else streaming
     copiado = False
-    if os.path.isdir(os.path.dirname(STREAMING)):
-        shutil.copy2(ENTRADA, STREAMING)
+    if destino_streaming and os.path.isdir(os.path.dirname(destino_streaming)):
+        shutil.copy2(salida, destino_streaming)
         copiado = True
 
     if verbose:
@@ -228,9 +242,9 @@ def exportar(verbose=True):
                   f"catalogo: {list(bloque_a['secciones'])} | "
                   f"superposicion: {bloque_a['superposicion']}")
         print(f"[OVERLAY] semana04 esfuerzos_completos: B={s04_b} A={s04_a}")
-        print(f"[OVERLAY] contrato enriquecido: {ENTRADA}")
+        print(f"[OVERLAY] contrato enriquecido: {salida}")
         print(f"[OVERLAY] copiado a StreamingAssets: {copiado}")
-    return ENTRADA
+    return salida
 
 
 if __name__ == "__main__":
