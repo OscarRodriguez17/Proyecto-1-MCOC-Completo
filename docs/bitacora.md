@@ -1989,12 +1989,30 @@ Sin cambios respecto a la Sesión 22: falta el toolchain (OpenJDK + SDK + NDK) e
 
 ---
 
-## Sesión 24 - Corrección 5, Parte 1: texto al derecho, tamaños y mensaje de estado
+## Sesión 24 - Corrección 5: legibilidad (parte 1) y marcado en terreno (partes 2a, 2b y 2c)
 
-Tres cosas vistas en el teléfono con la app de la Sesión 23: el texto 3D salía
-**en espejo**, los rótulos y las marcas no se veían a 3-5 m, y el mensaje de
-estado pisaba lo que la app quería decir. Nada de esto toca la escala 1:1 del
-elemento ni el contrato `ar_elementos.json`.
+La sesión ataca la Corrección 5 en cuatro entregas sucesivas, cada una commiteada
+por separado. Ninguna toca la escala 1:1 del elemento ni el contrato
+`ar_elementos.json`.
+
+**Parte 1 — lo que se veía mal en el teléfono.** El texto 3D salía **en
+espejo**, los rótulos y las marcas no se veían a 3-5 m, y el mensaje de estado
+pisaba lo que la app quería decir. Se detalla abajo, tal cual se dejó.
+
+**Partes 2a, 2b y 2c — el problema de fondo.** En terreno el diagrama «se
+alejaba» del elemento: el ancla acababa bajo el usuario («Colocar aquí») o donde
+apuntaba el centro de la pantalla, **no en la base del elemento real**. Con
+perspectiva, eso hace que dos vigas paralelas del mismo piso parezcan estar en
+lugares distintos. La solución es que el usuario **marque el elemento en el piso**
+con un anillo de retícula: dos toques para una viga (bajo el extremo i y bajo el
+j) y uno para una columna (la cara visible). Las tres partes van de lo más interno
+a lo más externo:
+
+| Parte | Qué hace | Commit |
+|---|---|---|
+| 2a | Funciones **puras** de colocación por dos puntos, sin UI | `a86a113` |
+| 2b | Modo de marcado en la app: retícula, raycast al piso, flujo i–j | `3468cbe` |
+| 2c | Botones de marcado y su conexión con la interfaz | (este commit) |
 
 ### 1) Texto en espejo (`ARBillboard`)
 
@@ -2065,24 +2083,174 @@ así que **tapaba** el `mensaje` que la app va cambiando según lo que pase
 `ui.estado.text = mensaje;` y la misma información se **añade al principio de
 `diagText`**, así que sigue estando en el panel Diag y no se pierde.
 
+### 4) Parte 2a: las funciones puras de colocación (`ARColocacion`)
+
+Todo el cálculo del marcado vive primero en `ARColocacion`, **sin UI y sin
+escenas**, para poder verificarlo con tests sin montar nada. Se añade al final de
+la clase, después de `PuntoEnAncla`:
+
+- `PorDosPuntos(Pi, Pj, g)` → devuelve la colocación de la geometría `g` con la
+  viga **`(Pi, Pj)` como línea de base**: la sitúa en el punto medio, a la altura
+  del punto **más bajo**, y la gira para que `puntoJ − puntoI` caiga sobre la
+  recta `Pi→Pj`. Devuelve la rotación en la colocación, **no** en la raíz.
+- `DistanciaHorizontal(a, b)` → distancia en el plano, **ignorando la altura**.
+- `PorDosPuntos` usa `Yaw(ejeX, dir)`, el mismo giro que ya usaba la colocación
+  por un punto.
+- Utilidades: `ToleranciaLuz`, `DistanciaMinimaPuntos`, `FueraDeTolerancia(x, L)`
+  (10 % de desviación), `DiferenciaPorcentual`, `MitadSeccion(nombre)` (lee la
+  primera medida del nombre, `0.70x0.70` → 0,35) y
+  `BaseDesdeCara(cara, haciaCamara, mediaSeccion)` (entra media sección hacia
+  donde mira la cámara).
+
+Punto delicado: la geometría de la viga 134 trae `puntoI` y `puntoJ` en
+`y = 3,96` y **simétricos respecto al origen**, de modo que el centro de la línea
+base coincide con `c.posicion` en horizontal. Eso es lo que permite comprobar
+`centro == posicion` sin tolerancia extra.
+
+#### Test EditMode nuevo: `Assets/Editor/ARDosPuntosTests.cs`
+
+**10 pruebas**: 6 `TestCase` del flujo completo de `PorDosPuntos` (simétricos,
+desplazados, girados 90°, girados 37°, alturas distintas usando **la menor**, y
+puntos invertidos que deben girar la viga 180°) y 4 tests sueltos
+(`DistanciaHorizontal`, `FueraDeTolerancia`, `MitadSeccion`, `BaseDesdeCara`).
+
+### 5) Parte 2b: el modo de marcado en la app (`ARInspeccionApp`)
+
+`ARInspeccionApp.cs`, +460 / −27. Se añade:
+
+- `enum ModoMarcado { Ninguno, Base, ExtremoI, ExtremoJ }`.
+- `IniciarMarcadoBase()`, `IniciarMarcadoViga()`, `CancelarMarcado()` y
+  `MarcarPunto(Vector3)`, los cuatro **públicos**.
+- Viga: dos toques → `ARColocacion.PorDosPuntos(puntoI, p, g)`. La **rotación se
+  guarda en el contenedor** del elemento, la raíz se queda en identidad.
+- Columna: un toque → `ARColocacion.BaseDesdeCara(...)`.
+- **Retícula** en el piso que sigue el raycast al centro de la pantalla, con
+  `RadioReticula = 0,10`; `ActualizarReticula()` mientras hay modo activo.
+- `RaycastPiso()`: primero `Plane`, y si no hay plano, `FeaturePoint` (paredes).
+- Reglas de toque: los toques que **empiezan sobre un botón no cuentan**; tocar
+  el piso **sólo coloca si no hay ancla**; `Restablecer` vuelve a la rotación
+  marcada; `QuitarAncla` y cambiar de elemento **borran** la rotación marcada.
+
+`ActualizarBotonesMarcado()` **se deja a propósito sin conectar** en esta parte:
+los botones llegan en la 2c.
+
+#### Test EditMode nuevo: `Assets/Editor/ARMarcadoTests.cs`
+
+**14 pruebas** del flujo: viga 134 marcada recta / girada 37° / girada con la
+cámara girada / con la cámara mirando al otro lado, columna 14 desde tres
+orientaciones de cámara, `Restablecer` vuelve a la rotación marcada,
+`QuitarAncla` la borra, cambiar de elemento cancela el marcado, marcar sin modo
+no coloca nada, se autocorrige el modo equivocado, luz medida demasiado
+distinta avisa, y puntos demasiado cerca pide marcar de nuevo.
+
+### 6) Parte 2c: los botones (`ARInterfaz` + `ARInspeccionApp`)
+
+`ARInterfaz.cs`, +55 / −8. Tres botones nuevos y tres eventos:
+
+| Botón | Texto | Evento | Cuándo se ve |
+|---|---|---|---|
+| `btnMarcarBase` | «Marcar base» | `MarcarBase` | columna o muro elegido |
+| `btnMarcarViga` | «Marcar extremos i y j» | `MarcarViga` | viga elegida |
+| `btnCancelarMarcado` | «Cancelar marcado» | `CancelarMarcado` | sólo mientras se marca |
+
+`MostrarMarcado(hayElemento, esViga, marcando)` decide la visibilidad: nunca
+`Marcar base` y `Marcar viga` a la vez, y `Cancelar marcado` excluye a los otros
+dos mientras hay marcado activo.
+
+**Orden en la lista**: los botones de marcado van **justo después de los
+toggles** de planta y **antes** de «Piso ±5 cm», «Quitar ancla», «Restablecer»,
+amplitud y «Diag». **«Colocar en el piso» y «Colocar aquí» quedan al FINAL**,
+porque son el método antiguo y el marcado es ahora el principal.
+
+En `ARInspeccionApp.cs` sólo van cuatro líneas: `ConstruirInterfaz` conecta los
+tres eventos y `ActualizarBotonesMarcado()` —que estaba vacío desde la 2b—
+ahora llama a `ui.MostrarMarcado(g != null, g != null && g.esViga, modo !=
+ModoMarcado.Ninguno)`.
+
+#### Test EditMode nuevo: `Assets/Editor/ARMarcadoUITests.cs`
+
+**5 pruebas**: `MarcarBase` conectado, con columna se ve «Marcar base» y no el de
+la viga, con viga se ve «Marcar extremos» y no «Marcar base», durante el marcado
+sólo se ve «Cancelar», y **«Colocar sin marcar» queda al final de la lista**.
+
+### Cómo se usa en terreno
+
+El anillo amarillo del centro de la pantalla es la retícula: dice en qué punto
+del piso se va a clavar el elemento.
+
+**Columna** (un toque):
+
+1. Elige la columna en la lista.
+2. Pulsa **«Marcar base»**.
+3. Gira el teléfono hasta poner el **anillo amarillo al pie de la cara
+   visible** de la columna.
+4. **Toca la pantalla fuera de los botones.**
+
+**Viga** (dos toques):
+
+1. Elige la viga.
+2. Pulsa **«Marcar extremos i y j»**.
+3. Pon el anillo en el piso **bajo el extremo i** y toca.
+4. Repite **bajo el extremo j** y toca.
+
+Mientras marcas, arriba aparece `Medido x m · modelo L m (±%)`, que avisa en
+verde si lo medido encaja con la longitud del modelo y en otro color si se pasa
+del 10 %. Si los dos puntos quedan demasiado cerca, la app pide marcar de nuevo.
+Para cancelar a medias: **«Cancelar marcado»**.
+
+> Importante: marcar y «Colocar en el piso» / «Colocar aquí» son **métodos
+> distintos**. Los dos últimos siguen al final de la lista y ya no son el camino
+> principal; el marcado es el que deja el elemento en su sitio real.
+
 ### Verificación
 
+Las cuatro partes, cada una por separado:
+
+| Parte | Commit | EditMode | Python |
+|---|---|---|---|
+| 1 | `d182ed3` | 55 / 55 | 154 + 1 |
+| 2a | `a86a113` | 65 / 65 | 154 + 1 |
+| 2b | `3468cbe` | 79 / 79 | 154 + 1 |
+| 2c | este | **84 / 84** | 154 + 1 |
+
+Salidas reales de la última (2c):
+
 ```text
-Python:    154 passed + 1 fallo conocido  (test_mfi_p0_elastico_agrietado, 4.41 s)
-EditMode:  55/55 Passed  (Unity 2022.3.62f3, batchmode, LogAssemblyErrors 0ms, sin errores CS)
+Python:    154 passed + 1 fallo conocido  (test_mfi_p0_elastico_agrietado, 4.71 s)
+EditMode:  84/84 Passed  (Unity 2022.3.62f3, batchmode, LogAssemblyErrors 0ms, sin errores CS)
 ```
 
-| fixture | tests |
-|---|---|
-| ARColocacionTests | 8 |
-| ARFramesCamaraTests | 6 |
-| AROrientacionTests | 15 |
-| **ARBillboardTests** (nuevo) | **4** |
-| ARPlanBTests | 7 |
-| ARRigTests | 4 |
-| LlenarElementosTests | 7 |
-| UIOverlapTests | 1 |
-| XRAndroidConfigTests | 3 |
+```text
+total=84 passed=84 failed=0 skipped=0 result=Passed
+
+  ARBillboardTests         Passed   4
+  ARColocacionTests        Passed   8
+  ARDosPuntosTests         Passed  10   <- 2a
+  ARFramesCamaraTests      Passed   6
+  ARMarcadoTests           Passed  14   <- 2b
+  ARMarcadoUITests         Passed   5   <- 2c
+  AROrientacionTests       Passed  15
+  ARPlanBTests             Passed   7
+  ARRigTests               Passed   4
+  LlenarElementosTests     Passed   7
+  UIOverlapTests           Passed   1
+  XRAndroidConfigTests     Passed   3
+```
+
+`UIOverlapTests` sigue en verde con los tres botones nuevos: `NoRaycastTargetImage
+SolapaBotones` comprueba que ningún `Image` con `raycastTarget` tapa los botones,
+y los de marcado se crean en la misma lista vertical que el resto.
+
+Además, los ficheros de código de las partes 2b y 2c se compararon **byte a byte**
+contra las referencias entregadas:
+
+```text
+diff ARInspeccionApp.cs ARInspeccionApp_referencia_2c.cs   ->  EXIT=0  (idénticos)
+diff ARInterfaz.cs       ARInterfaz_referencia_2c.cs       ->  EXIT=0  (idénticos)
+```
+
+Los parches se aplicaron con `git apply --check` limpio y **sin ningún `.rej`** en
+las tres partes.
 
 Sobre el fallo de Python: `test_mfi_p0_elastico_agrietado` (`tests/test_secciones.py:73`,
 `assert c.Mmax > 700.0`) **no se ha tocado**. Es una diferencia de plataforma: en
@@ -2102,6 +2270,13 @@ EditMode corre igual en este Mac porque no los necesita.
 - [ ] Prueba en dispositivo: confirmar que el texto ya se lee al derecho, que las
       marcas y rótulos se ven a 3-5 m y que el mensaje de estado ya no se pisa
       con el diagnóstico.
+- [ ] **Prueba en dispositivo del marcado** (lo más importante que queda):
+      comprobar que el anillo de la retícula sigue al centro de la pantalla al
+      mover el teléfono, que marca dos vigas paralelas en el sitio correcto, que
+      el mensaje `Medido x m · modelo L m (±%)` sale con la unidad y el color
+      esperados, y que tocar un botón no cuenta como marcado.
+- [ ] Comprobar en paredes sin ARCore grounding (`FeaturePoint`) que el marcado
+      también funciona; en el EditMode sólo se cubre la rama de `Plane`.
 - [ ] Instalar OpenJDK + Android SDK/NDK y ejecutar `Tools/MCOC/Build Android AR`
       (lo hacen los compañeros en Windows).
 - [ ] Acordar qué se hace con `test_mfi_p0_elastico_agrietado`: hoy la línea base

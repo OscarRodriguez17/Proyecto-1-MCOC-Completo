@@ -514,6 +514,10 @@ namespace MCOC.AR
             ui.Restablecer += Restablecer;
             ui.AmplitudMas += () => CambiarAmplitud(1.25f);
             ui.AmplitudMenos += () => CambiarAmplitud(1f / 1.25f);
+            ui.MarcarBase += IniciarMarcadoBase;
+            ui.MarcarViga += IniciarMarcadoViga;
+            ui.CancelarMarcado += CancelarMarcado;
+            ActualizarBotonesMarcado();
         }
 
         // =================================================================
@@ -1369,10 +1373,11 @@ namespace MCOC.AR
             return char.ToUpper(s[0]) + s.Substring(1);
         }
 
-        /// <summary>Muestra/oculta los botones de marcado. Se conecta a la interfaz en la Parte 2c.</summary>
         private void ActualizarBotonesMarcado()
         {
             if (ui == null) return;
+            var g = Seleccionado();
+            ui.MostrarMarcado(g != null, g != null && g.esViga, modo != ModoMarcado.Ninguno);
         }
 
         // ---------------------------- retícula ---------------------------

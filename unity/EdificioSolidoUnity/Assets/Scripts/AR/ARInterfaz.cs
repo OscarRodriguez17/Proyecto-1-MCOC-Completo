@@ -52,6 +52,10 @@ namespace MCOC.AR
         public Button btnRestablecer;
         public Button btnMas;
         public Button btnMenos;
+        // Corrección 5: colocar marcando el elemento real.
+        public Button btnMarcarBase;
+        public Button btnMarcarViga;
+        public Button btnCancelarMarcado;
 
         public event Action<int> ElementoElegido;
         public event Action<string> ToggleCambiado;
@@ -63,6 +67,9 @@ namespace MCOC.AR
         public event Action Restablecer;
         public event Action AmplitudMas;
         public event Action AmplitudMenos;
+        public event Action MarcarBase;
+        public event Action MarcarViga;
+        public event Action CancelarMarcado;
 
         private Font fuente;
 
@@ -165,21 +172,26 @@ namespace MCOC.AR
                 yd += 44f;
             }
 
-            // --- Plan A: raycast contra el piso detectado ---
-            ui.btnColocar = ui.CrearBoton(listaD, "Colocar en el piso", yd, 40f);
-            ui.btnColocar.onClick.AddListener(() => ui.Colocar?.Invoke());
+            // --- Colocación marcando el elemento real (Corrección 5) ---
+            // Es el modo principal: se muestra «Marcar base» para columnas y
+            // muros, y «Marcar extremos i y j» para vigas (MostrarMarcado).
+            ui.btnMarcarBase = ui.CrearBoton(listaD, "Marcar base", yd, 40f);
+            ui.btnMarcarBase.onClick.AddListener(() => ui.MarcarBase?.Invoke());
             yd += 44f;
 
-            // --- Plan B: piso estimado 1,40 m bajo el teléfono ---
-            ui.btnColocarAqui = ui.CrearBoton(listaD, "Colocar aquí", yd, 40f);
-            ui.btnColocarAqui.onClick.AddListener(() => ui.ColocarAqui?.Invoke());
+            ui.btnMarcarViga = ui.CrearBoton(listaD, "Marcar extremos i y j", yd, 40f);
+            ui.btnMarcarViga.onClick.AddListener(() => ui.MarcarViga?.Invoke());
+            yd += 44f;
+
+            ui.btnCancelarMarcado = ui.CrearBoton(listaD, "Cancelar marcado", yd, 40f);
+            ui.btnCancelarMarcado.onClick.AddListener(() => ui.CancelarMarcado?.Invoke());
             yd += 44f;
 
             ui.btnPisoMas = ui.CrearBoton(listaD, "Piso +5 cm", yd, 40f);
             ui.btnPisoMas.onClick.AddListener(() => ui.PisoMas?.Invoke());
             yd += 44f;
 
-            ui.btnPisoMenos = ui.CrearBoton(listaD, "Piso −5 cm", yd, 40f);
+            ui.btnPisoMenos = ui.CrearBoton(listaD, "Piso \u22125 cm", yd, 40f);
             ui.btnPisoMenos.onClick.AddListener(() => ui.PisoMenos?.Invoke());
             yd += 44f;
 
@@ -209,6 +221,20 @@ namespace MCOC.AR
             ui.btnDiag.onClick.AddListener(() => { if (ui.panelDiagnostico != null) ui.panelDiagnostico.SetActive(!ui.panelDiagnostico.activeSelf); });
             yd += 44f;
 
+            // --- Respaldo: colocar sin marcar (al final de la lista) ---
+            // Plan A: raycast contra el piso al centro de la pantalla.
+            ui.btnColocar = ui.CrearBoton(listaD, "Colocar en el piso", yd, 40f);
+            ui.btnColocar.onClick.AddListener(() => ui.Colocar?.Invoke());
+            yd += 44f;
+
+            // Plan B: piso estimado 1,40 m bajo el teléfono.
+            ui.btnColocarAqui = ui.CrearBoton(listaD, "Colocar aquí", yd, 40f);
+            ui.btnColocarAqui.onClick.AddListener(() => ui.ColocarAqui?.Invoke());
+            yd += 44f;
+
+            // Hasta que haya un elemento elegido no se puede marcar nada.
+            ui.MostrarMarcado(false, false, false);
+
             return ui;
         }
 
@@ -237,6 +263,22 @@ namespace MCOC.AR
                 tagsElemento.Add(tag);
             }
             return botonesElemento.Count;
+        }
+
+        /// <summary>
+        /// Qué botones de marcado se ven (Corrección 5):
+        ///  · «Marcar base» sólo con una columna o muro elegido;
+        ///  · «Marcar extremos i y j» sólo con una viga elegida;
+        ///  · «Cancelar marcado» sólo mientras se está marcando.
+        /// </summary>
+        public void MostrarMarcado(bool hayElemento, bool esViga, bool marcando)
+        {
+            if (btnMarcarBase != null)
+                btnMarcarBase.gameObject.SetActive(hayElemento && !esViga && !marcando);
+            if (btnMarcarViga != null)
+                btnMarcarViga.gameObject.SetActive(hayElemento && esViga && !marcando);
+            if (btnCancelarMarcado != null)
+                btnCancelarMarcado.gameObject.SetActive(marcando);
         }
 
         /// <summary>Borra los botones de elemento anteriores.</summary>
