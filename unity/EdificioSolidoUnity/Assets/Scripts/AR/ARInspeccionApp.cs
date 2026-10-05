@@ -402,8 +402,8 @@ namespace MCOC.AR
                     lr.sharedMaterial = matLinea;
                     lr.useWorldSpace = false;
                     lr.positionCount = 2;
-                    lr.startWidth = m.radio * 0.3f;
-                    lr.endWidth = m.radio * 0.3f;
+                    lr.startWidth = Mathf.Min(0.02f, m.radio * 0.5f);
+                    lr.endWidth = Mathf.Min(0.02f, m.radio * 0.5f);
                     lr.startColor = m.color;
                     lr.endColor = m.color;
                     lr.SetPositions(new[] { -d * m.radio, d * m.radio });
@@ -426,7 +426,7 @@ namespace MCOC.AR
             tm.text = m.texto;
             tm.font = fuente;
             tm.fontSize = 48;
-            tm.characterSize = 0.011f;
+            tm.characterSize = 0.018f;
             tm.anchor = TextAnchor.LowerLeft;
             tm.alignment = TextAlignment.Left;
             tm.color = m.color;
@@ -794,13 +794,14 @@ namespace MCOC.AR
                 }
 
                 string anclaStr = ancla != null ? "si" : "no";
-                string diagText = ARFramesCamara.Texto() + "\n"
+                string diagText = "ARSession: " + estado + " · planos: " + planos + " · camara: " + permiso + "\n"
+                    + ARFramesCamara.Texto() + "\n"
                     + "Camaras: " + camCount + " (" + camNames.ToString() + ")\n" + fondo + " / material=" + fondoMat + "\n" + "Pose camara: " + pose + "\n" + "Planos detectados: " + planos + "\n" + "Ancla: " + anclaStr;
 
                 if (ui != null)
                 {
                     if (ui.estado != null)
-                        ui.estado.text = "ARSession: " + estado + " · planos: " + planos + " · camara: " + permiso;
+                        ui.estado.text = mensaje;
                     if (ui.diagnostico != null)
                         ui.diagnostico.text = diagText;
                     // El contador va FUERA del panel de diagnóstico: tiene que
@@ -1043,9 +1044,16 @@ namespace MCOC.AR
         private void LateUpdate()
         {
             if (cam == null) cam = Camera.main;
-            if (cam == null) return;
-            transform.rotation = Quaternion.LookRotation(
-                cam.transform.position - transform.position, cam.transform.up);
+            Orientar(cam);
+        }
+
+        /// Un TextMesh se lee al derecho cuando su +Z apunta en dirección CONTRARIA a la cámara.
+        public void Orientar(Camera camara)
+        {
+            if (camara == null) return;
+            Vector3 dir = transform.position - camara.transform.position;
+            if (dir.sqrMagnitude < 1e-8f) return;
+            transform.rotation = Quaternion.LookRotation(dir, camara.transform.up);
         }
     }
 }

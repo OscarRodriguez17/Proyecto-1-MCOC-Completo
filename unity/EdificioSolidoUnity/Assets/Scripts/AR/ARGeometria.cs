@@ -100,7 +100,7 @@ namespace MCOC.AR
         public Color colorDemanda = new Color(0.20f, 0.85f, 0.55f, 1f);
         public Color colorTexto = Color.white;
 
-        public float anchoLinea = 0.005f;
-        public float anchoLineaPrincipal = 0.009f;
+        public float anchoLinea = 0.025f;
+        public float anchoLineaPrincipal = 0.04f;
     }
 }

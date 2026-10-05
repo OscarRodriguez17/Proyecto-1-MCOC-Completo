@@ -313,10 +313,10 @@ namespace MCOC.AR
             return new ARMarca
             {
                 posicion = p,
-                radio = 0.028f,
+                radio = 0.08f,
                 color = c,
                 texto = texto,
-                alturaTexto = Vector3.up * 0.035f
+                alturaTexto = Vector3.up * 0.10f
             };
         }
     }
