@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.XR.ARFoundation;
 using UnityEngine.XR.ARSubsystems;
 
@@ -27,6 +28,19 @@ namespace MCOC.AR
         public ARTipoTrazo tipo;
         public bool principal;
         public bool texto;
+    }
+
+    /// <summary>
+    /// Qué está esperando la app del próximo toque en pantalla (Corrección 5).
+    /// Ninguno: el toque no marca nada. Base: el pie de una columna/muro.
+    /// ExtremoI / ExtremoJ: el piso bajo cada extremo de una viga.
+    /// </summary>
+    public enum ModoMarcado
+    {
+        Ninguno,
+        Base,
+        ExtremoI,
+        ExtremoJ
     }
 
     public class ARInspeccionApp : MonoBehaviour
@@ -93,6 +107,24 @@ namespace MCOC.AR
         /// ancla, así que sigue al piso, pero no lo toca (Corrección 4, 2).
         /// </summary>
         private float offsetPiso;
+
+        // --- Colocación marcando el elemento real (Corrección 5) -----------
+        private ModoMarcado modo = ModoMarcado.Ninguno;
+        /// <summary>Punto del piso marcado bajo el extremo i (viga).</summary>
+        private Vector3 puntoI;
+        /// <summary>
+        /// Rotación que salió de marcar los dos extremos. Mientras haya ancla
+        /// marcada, ColocarEnAncla y «Restablecer» vuelven a ELLA y no a la
+        /// orientación por cámara (RotacionInicial).
+        /// </summary>
+        private Quaternion rotacionMarcada = Quaternion.identity;
+        private bool hayRotacionMarcada;
+        /// <summary>Anillo sobre el piso que indica qué punto se va a marcar.</summary>
+        private GameObject reticula;
+        private bool reticulaValida;
+        private Vector3 puntoReticula;
+        private bool toqueSobreUI;
+        private readonly List<ARRaycastHit> hitsPiso = new List<ARRaycastHit>();
 
         // =================================================================
         //  Ciclo de vida
@@ -628,10 +660,31 @@ namespace MCOC.AR
 
         private void Seleccionar(int tag)
         {
+            bool cambia = tag != tagSeleccionado;
             tagSeleccionado = tag;
+            if (cambia)
+            {
+                // Lo marcado era del elemento anterior: ni el marcado a medias
+                // ni su rotación valen para éste.
+                modo = ModoMarcado.Ninguno;
+                OcultarReticula();
+                hayRotacionMarcada = false;
+            }
             AplicarVisibilidad();          // sólo el contenedor elegido queda activo
             if (ancla != null) ColocarEnAncla();   // y vuelve a la misma ancla
             ActualizarInfo();
+            ActualizarBotonesMarcado();
+            if (cambia && datos != null)
+            {
+                mensaje = InstruccionInicial();
+                RefrescarEstado();
+            }
+        }
+
+        /// <summary>Selecciona un elemento por su tag (lo mismo que tocar su botón).</summary>
+        public void ElegirElemento(int tag)
+        {
+            Seleccionar(tag);
         }
 
         /// <summary>
@@ -645,7 +698,9 @@ namespace MCOC.AR
             amplitudVisual = Mathf.Clamp(amplitudPorDefecto, amplitudMin, amplitudMax);
             ReconstruirSeleccion();
             if (ancla != null) ColocarEnAncla();   // ColocarEnAncla reaplica la orientación
-            mensaje = "Restablecido: amplitud y orientación inicial.";
+            mensaje = hayRotacionMarcada
+                ? "Restablecido: amplitud y orientación marcada."
+                : "Restablecido: amplitud y orientación inicial.";
             RefrescarEstado();
         }
 
@@ -734,6 +789,9 @@ namespace MCOC.AR
             // reinicia, si no el siguiente giro compararía contra un ángulo
             // de hace rato.
             if (Input.touchCount != 2) gestoIniciado = false;
+
+            // Mientras se marca, la retícula sigue al centro de la pantalla.
+            if (modo != ModoMarcado.Ninguno) ActualizarReticula();
 
             diagnosticoTimer += Time.deltaTime;
             if (diagnosticoTimer > 0.5f)
@@ -824,12 +882,26 @@ namespace MCOC.AR
             {
                 toqueInicio = t0.position;
                 toqueMomento = Time.time;
+                // Se decide al EMPEZAR el toque: al terminar, el EventSystem
+                // ya pudo soltar el puntero. Un toque que empieza sobre un
+                // botón es del botón, nunca del piso.
+                toqueSobreUI = SobreUI(t0.fingerId);
             }
             else if (t0.phase == TouchPhase.Ended)
             {
+                if (toqueSobreUI) return;
                 float dt = Time.time - toqueMomento;
                 float d = Vector2.Distance(toqueInicio, t0.position);
-                if (dt < 0.4f && d < margenToleranciaToque && colocarAlTocar)
+                if (dt >= 0.4f || d >= margenToleranciaToque) return;
+
+                if (modo != ModoMarcado.Ninguno)
+                {
+                    ConfirmarMarcado(t0.position);
+                    return;
+                }
+                // Tocar el piso sólo coloca si todavía no hay nada colocado:
+                // un toque accidental no debe mover un elemento ya marcado.
+                if (colocarAlTocar && ancla == null)
                     ColocarAncla(t0.position);
             }
         }
@@ -897,28 +969,16 @@ namespace MCOC.AR
                 return;
             }
 
-            var hits = new List<ARRaycastHit>();
-            // Plan A, intento 1: el interior de un plano detectado
-            // (PlaneWithinPolygon), que es el raycast de referencia.
-            bool porPunto = false;
-            if (!raycastMgr.Raycast(pantalla, hits, TrackableType.PlaneWithinPolygon) ||
-                hits.Count == 0)
+            // Plan A: plano detectado y, si no, puntos de referencia de ARCore
+            // (ver RaycastPiso).
+            Vector3 pos;
+            bool porPunto;
+            if (!RaycastPiso(pantalla, out pos, out porPunto))
             {
-                // Plan A, intento 2: los puntos de referencia de ARCore
-                // (FeaturePoint). Cuando el móvil no llega a cerrar un polígono
-                // —sala a oscuras, moqueta, marble, luz rasante— el plano no
-                // aparece, pero los puntos SÍ. Es preferible anclar 1,40 m por
-                // debajo con «Colocar aquí» que decir que no se detectó piso.
-                hits.Clear();
-                if (!raycastMgr.Raycast(pantalla, hits, TrackableType.FeaturePoint) ||
-                    hits.Count == 0)
-                {
-                    mensaje = "No se detectó piso en esa pantalla. " +
-                              "Prueba «Colocar aquí» para anclar 1,40 m bajo el teléfono.";
-                    RefrescarEstado();
-                    return;
-                }
-                porPunto = true;
+                mensaje = "No se detectó piso en esa pantalla. " +
+                          "Prueba «Colocar aquí» para anclar 1,40 m bajo el teléfono.";
+                RefrescarEstado();
+                return;
             }
 
             // Patrón de AR Foundation 4.x: el ancla es un GameObject con el
@@ -928,8 +988,6 @@ namespace MCOC.AR
             //
             // Se toma la POSICIÓN del impacto con el piso, pero no su rotación:
             // la orientación la decide ARColocacion, no el raycast.
-            Vector3 pos = hits[0].pose.position;
-
             CrearAnclaEn(pos);
 
             mensaje = string.Format("Anclado en {0:F2}, {1:F2}, {2:F2} ({3})",
@@ -963,8 +1021,9 @@ namespace MCOC.AR
             var g = Seleccionado();
             var contenedor = ContenedorSeleccionado();
             if (g != null && contenedor != null)
-                contenedor.transform.localRotation =
-                    ARColocacion.RotacionInicial(g, FrenteCamara());
+                contenedor.transform.localRotation = hayRotacionMarcada
+                    ? rotacionMarcada                                  // viga marcada i → j
+                    : ARColocacion.RotacionInicial(g, FrenteCamara()); // por cámara
             AplicarVisibilidad();
         }
 
@@ -974,6 +1033,7 @@ namespace MCOC.AR
             // pierde con ella, y si no el siguiente «Colocar aquí» saldría
             // desplazado el número de pasos que se hubieran pulsado antes.
             offsetPiso = 0f;
+            hayRotacionMarcada = false;
 
             // La raíz de diagramas se SACA del ancla ANTES de destruirlo: es
             // hija suya, y `Destroy` de un GameObject se lleva por delante a
@@ -1033,6 +1093,379 @@ namespace MCOC.AR
             // aporta el Plan A o el Plan B, y el rumbo lo pone ColocarEnAncla
             // en el CONTENEDOR del elemento elegido.
             ColocarEnAncla();
+        }
+
+        // =================================================================
+        //  Colocación MARCANDO el elemento real (Corrección 5)
+        //
+        //  Flujo en terreno:
+        //   · Columna / muro: «Marcar base» → apuntar el centro de la pantalla
+        //     al pie de la columna → tocar. El ancla queda en el centro de su
+        //     base (media sección hacia adentro de la cara que se ve).
+        //   · Viga: «Marcar extremos i y j» → tocar el piso bajo el extremo i
+        //     → tocar el piso bajo el extremo j. El ancla va al punto medio y el
+        //     eje i→j del elemento queda sobre la línea marcada.
+        //
+        //  Así la posición y el rumbo salen del EDIFICIO, no de dónde está
+        //  parado el usuario ni de hacia dónde apunta la cámara: el diagrama
+        //  queda pegado al elemento al caminar alrededor.
+        // =================================================================
+
+        /// <summary>Qué espera la app del próximo toque.</summary>
+        public ModoMarcado Modo
+        {
+            get { return modo; }
+        }
+
+        /// <summary>Interfaz construida (para los tests).</summary>
+        public ARInterfaz Interfaz
+        {
+            get { return ui; }
+        }
+
+        /// <summary>True si el ancla actual salió de marcar los dos extremos de una viga.</summary>
+        public bool TieneRotacionMarcada
+        {
+            get { return hayRotacionMarcada; }
+        }
+
+        /// <summary>Último mensaje mostrado al usuario.</summary>
+        public string Mensaje
+        {
+            get { return mensaje; }
+        }
+
+        /// <summary>Empieza a marcar el pie de la columna / muro elegido.</summary>
+        public void IniciarMarcadoBase()
+        {
+            var g = Seleccionado();
+            if (g == null)
+            {
+                mensaje = "Primero elige un elemento en la lista.";
+                RefrescarEstado();
+                return;
+            }
+            if (g.esViga)
+            {
+                IniciarMarcadoViga();
+                return;
+            }
+            modo = ModoMarcado.Base;
+            MostrarReticula();
+            mensaje = InstruccionMarcado();
+            RefrescarEstado();
+            ActualizarBotonesMarcado();
+        }
+
+        /// <summary>Empieza a marcar los dos extremos de la viga elegida.</summary>
+        public void IniciarMarcadoViga()
+        {
+            var g = Seleccionado();
+            if (g == null)
+            {
+                mensaje = "Primero elige un elemento en la lista.";
+                RefrescarEstado();
+                return;
+            }
+            if (!g.esViga)
+            {
+                IniciarMarcadoBase();
+                return;
+            }
+            modo = ModoMarcado.ExtremoI;
+            MostrarReticula();
+            mensaje = InstruccionMarcado();
+            RefrescarEstado();
+            ActualizarBotonesMarcado();
+        }
+
+        /// <summary>Sale del modo de marcado sin tocar el ancla actual.</summary>
+        public void CancelarMarcado()
+        {
+            modo = ModoMarcado.Ninguno;
+            OcultarReticula();
+            mensaje = "Marcado cancelado.";
+            RefrescarEstado();
+            ActualizarBotonesMarcado();
+        }
+
+        /// <summary>
+        /// Registra un punto del piso según el modo actual. Es lo que hace el
+        /// toque en pantalla con el punto de la retícula; es público para que
+        /// los tests de EditMode recorran el mismo camino sin sesión AR.
+        /// </summary>
+        public void MarcarPunto(Vector3 p)
+        {
+            var g = Seleccionado();
+            if (g == null)
+            {
+                mensaje = "Primero elige un elemento en la lista.";
+                RefrescarEstado();
+                return;
+            }
+
+            switch (modo)
+            {
+                case ModoMarcado.Base:
+                {
+                    Vector3 centro = ARColocacion.BaseDesdeCara(
+                        p, FrenteCamara(), ARColocacion.MitadSeccion(g.seccion));
+                    modo = ModoMarcado.Ninguno;
+                    OcultarReticula();
+                    CrearAnclaEn(centro);   // orientación por cámara (RotacionInicial)
+                    mensaje = string.Format(
+                        "Base marcada: {0} {1}. Si no calza la altura, usa «Piso ±5 cm».",
+                        g.tipo, g.tag);
+                    break;
+                }
+
+                case ModoMarcado.ExtremoI:
+                    puntoI = p;
+                    modo = ModoMarcado.ExtremoJ;
+                    mensaje = InstruccionMarcado();
+                    break;
+
+                case ModoMarcado.ExtremoJ:
+                {
+                    var c = ARColocacion.PorDosPuntos(puntoI, p, g);
+                    if (c.distancia < ARColocacion.DistanciaMinimaPuntos)
+                    {
+                        modo = ModoMarcado.ExtremoI;
+                        mensaje = string.Format(
+                            "Los dos puntos quedaron a {0:F2} m. Marca de nuevo, " +
+                            "primero bajo el extremo i.", c.distancia);
+                        break;
+                    }
+
+                    modo = ModoMarcado.Ninguno;
+                    OcultarReticula();
+                    CrearAnclaEn(c.posicion);          // QuitarAncla borra la rotación anterior
+                    rotacionMarcada = c.rotacion;
+                    hayRotacionMarcada = true;
+                    ColocarEnAncla();                  // aplica la rotación marcada al contenedor
+
+                    float L = (float)g.longitud;
+                    mensaje = string.Format(
+                        "Medido {0:F2} m · modelo {1:F2} m ({2:+0.0;-0.0;0.0} %)",
+                        c.distancia, L, ARColocacion.DiferenciaPorcentual(c.distancia, L));
+                    if (ARColocacion.FueraDeTolerancia(c.distancia, L))
+                        mensaje += " — revisa los puntos: no coincide con L";
+                    break;
+                }
+
+                default:
+                    mensaje = g.esViga
+                        ? "Toca «Marcar extremos i y j» antes de marcar en el piso."
+                        : "Toca «Marcar base» antes de marcar en el piso.";
+                    break;
+            }
+
+            RefrescarEstado();
+            ActualizarBotonesMarcado();
+        }
+
+        /// <summary>
+        /// Toque en pantalla durante el marcado: usa el punto de la retícula
+        /// (centro de la pantalla) y, si no hay, un raycast donde se tocó.
+        /// </summary>
+        private void ConfirmarMarcado(Vector2 pantalla)
+        {
+            Vector3 p;
+            bool porPunto;
+            if (reticulaValida)
+            {
+                p = puntoReticula;
+            }
+            else if (!RaycastPiso(pantalla, out p, out porPunto))
+            {
+                mensaje = "No encuentro el piso ahí: mueve el teléfono apuntando al " +
+                          "piso hasta que aparezca el anillo y vuelve a tocar.";
+                RefrescarEstado();
+                return;
+            }
+            MarcarPunto(p);
+        }
+
+        /// <summary>
+        /// Raycast contra el piso: primero un plano detectado
+        /// (PlaneWithinPolygon) y, si no hay, los puntos de referencia de ARCore
+        /// (FeaturePoint), que aparecen aunque el plano no se cierre (piso
+        /// uniforme, poca luz).
+        /// </summary>
+        private bool RaycastPiso(Vector2 pantalla, out Vector3 punto, out bool porPunto)
+        {
+            punto = Vector3.zero;
+            porPunto = false;
+            if (raycastMgr == null) return false;
+            if (ARSession.state != ARSessionState.SessionTracking) return false;
+
+            hitsPiso.Clear();
+            if (raycastMgr.Raycast(pantalla, hitsPiso, TrackableType.PlaneWithinPolygon) &&
+                hitsPiso.Count > 0)
+            {
+                punto = hitsPiso[0].pose.position;
+                return true;
+            }
+
+            hitsPiso.Clear();
+            if (raycastMgr.Raycast(pantalla, hitsPiso, TrackableType.FeaturePoint) &&
+                hitsPiso.Count > 0)
+            {
+                punto = hitsPiso[0].pose.position;
+                porPunto = true;
+                return true;
+            }
+            return false;
+        }
+
+        private static bool SobreUI(int fingerId)
+        {
+            return EventSystem.current != null &&
+                   EventSystem.current.IsPointerOverGameObject(fingerId);
+        }
+
+        private string InstruccionInicial()
+        {
+            var g = Seleccionado();
+            if (g == null) return "Elige un elemento en la lista.";
+            return g.esViga
+                ? string.Format("Viga {0}: toca «Marcar extremos i y j» y marca el piso " +
+                                "bajo cada extremo.", g.tag)
+                : string.Format("{0} {1}: toca «Marcar base» y marca su pie en el piso.",
+                                Mayuscula(g.tipo), g.tag);
+        }
+
+        private string InstruccionMarcado()
+        {
+            var g = Seleccionado();
+            switch (modo)
+            {
+                case ModoMarcado.Base:
+                    return string.Format(
+                        "Apunta el centro de la pantalla al pie de la {0} {1} (la cara " +
+                        "que ves) y toca la pantalla.", g != null ? g.tipo : "columna",
+                        g != null ? g.tag : 0);
+                case ModoMarcado.ExtremoI:
+                    return "Apunta al piso BAJO el extremo i (" + Etiqueta(g, true) +
+                           ") y toca la pantalla.";
+                case ModoMarcado.ExtremoJ:
+                    return "Ahora apunta al piso BAJO el extremo j (" + Etiqueta(g, false) +
+                           ") y toca la pantalla.";
+                default:
+                    return InstruccionInicial();
+            }
+        }
+
+        private static string Etiqueta(ARGeometriaElemento g, bool i)
+        {
+            if (g == null) return i ? "i" : "j";
+            string e = i ? g.etiquetaI : g.etiquetaJ;
+            return string.IsNullOrEmpty(e) ? (i ? "i" : "j") : e;
+        }
+
+        private static string Mayuscula(string s)
+        {
+            if (string.IsNullOrEmpty(s)) return "Elemento";
+            return char.ToUpper(s[0]) + s.Substring(1);
+        }
+
+        /// <summary>Muestra/oculta los botones de marcado. Se conecta a la interfaz en la Parte 2c.</summary>
+        private void ActualizarBotonesMarcado()
+        {
+            if (ui == null) return;
+        }
+
+        // ---------------------------- retícula ---------------------------
+
+        /// <summary>Radio del anillo que marca el punto del piso (m).</summary>
+        public const float RadioReticula = 0.10f;
+
+        private void MostrarReticula()
+        {
+            if (reticula == null) reticula = CrearReticula();
+            reticulaValida = false;
+            // Se enciende cuando el raycast encuentra piso (ActualizarReticula).
+            if (reticula != null) reticula.SetActive(false);
+        }
+
+        private void OcultarReticula()
+        {
+            reticulaValida = false;
+            if (reticula != null) reticula.SetActive(false);
+        }
+
+        private GameObject CrearReticula()
+        {
+            var go = new GameObject("Reticula");
+            go.transform.SetParent(transform, false);
+            if (matLinea == null) return go;
+
+            // Anillo horizontal (plano XZ) más una cruz pequeña al centro.
+            const int n = 32;
+            var anillo = new GameObject("Anillo");
+            anillo.transform.SetParent(go.transform, false);
+            var lr = anillo.AddComponent<LineRenderer>();
+            lr.sharedMaterial = matLinea;
+            lr.useWorldSpace = false;
+            lr.loop = true;
+            lr.startWidth = 0.012f;
+            lr.endWidth = 0.012f;
+            lr.startColor = new Color(1f, 0.85f, 0.10f, 1f);
+            lr.endColor = lr.startColor;
+            lr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            lr.positionCount = n;
+            for (int k = 0; k < n; k++)
+            {
+                float a = 2f * Mathf.PI * k / n;
+                lr.SetPosition(k, new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * RadioReticula);
+            }
+
+            foreach (Vector3 d in new[] { Vector3.right, Vector3.forward })
+            {
+                var cruz = new GameObject("Cruz");
+                cruz.transform.SetParent(go.transform, false);
+                var lc = cruz.AddComponent<LineRenderer>();
+                lc.sharedMaterial = matLinea;
+                lc.useWorldSpace = false;
+                lc.positionCount = 2;
+                lc.startWidth = 0.008f;
+                lc.endWidth = 0.008f;
+                lc.startColor = lr.startColor;
+                lc.endColor = lr.startColor;
+                lc.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                lc.SetPositions(new[] { -d * 0.04f, d * 0.04f });
+            }
+            go.SetActive(false);
+            return go;
+        }
+
+        /// <summary>Cada frame, mientras se marca: la retícula sigue al centro de la pantalla.</summary>
+        private void ActualizarReticula()
+        {
+            if (reticula == null) reticula = CrearReticula();
+            Vector3 p;
+            bool porPunto;
+            Vector2 centro = new Vector2(Screen.width * 0.5f, Screen.height * 0.5f);
+            if (RaycastPiso(centro, out p, out porPunto))
+            {
+                reticulaValida = true;
+                puntoReticula = p;
+                if (reticula != null)
+                {
+                    // 5 mm sobre el piso para que no parpadee contra el plano.
+                    reticula.transform.position = p + Vector3.up * 0.005f;
+                    reticula.transform.rotation = Quaternion.identity;
+                    if (!reticula.activeSelf) reticula.SetActive(true);
+                }
+                mensaje = InstruccionMarcado();
+            }
+            else
+            {
+                reticulaValida = false;
+                if (reticula != null && reticula.activeSelf) reticula.SetActive(false);
+                mensaje = "Mueve el teléfono apuntando al piso hasta que aparezca el anillo…";
+            }
+            RefrescarEstado();
         }
     }
 
