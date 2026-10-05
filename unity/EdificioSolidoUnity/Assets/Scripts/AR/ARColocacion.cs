@@ -158,5 +158,78 @@ namespace MCOC.AR
         {
             return posicionAncla + rotacion * puntoLocal;
         }
+
+        // ============ Colocación MARCANDO el elemento real (Corrección 5) ============
+        // Columna: un punto al pie de la cara visible (BaseDesdeCara entra media sección).
+        // Viga: dos puntos, bajo i y bajo j. Ancla en el punto medio, eje x del elemento
+        // alineado con Pi→Pj. La escala NO se toca: la distancia sólo se compara con L.
+
+        public const float ToleranciaLuz = 0.10f;
+        public const float DistanciaMinimaPuntos = 0.50f;
+
+        public struct ColocacionDosPuntos
+        {
+            public Vector3 posicion;     // punto medio horizontal, y = la menor
+            public Quaternion rotacion;  // sólo en torno a la vertical
+            public float distancia;      // distancia horizontal medida (m)
+        }
+
+        /// OJO: NO usar Horizontal() con PUNTOS: Horizontal normaliza y sólo sirve para direcciones.
+        public static ColocacionDosPuntos PorDosPuntos(Vector3 Pi, Vector3 Pj, ARGeometriaElemento g)
+        {
+            float y = Mathf.Min(Pi.y, Pj.y);
+            Vector3 a = new Vector3(Pi.x, y, Pi.z);
+            Vector3 b = new Vector3(Pj.x, y, Pj.z);
+            Vector3 ejeX = g != null ? g.ejeX : Vector3.right;
+            var c = new ColocacionDosPuntos();
+            c.posicion = (a + b) * 0.5f;
+            c.rotacion = Quaternion.Euler(0f, Yaw(ejeX, b - a), 0f);
+            c.distancia = DistanciaHorizontal(Pi, Pj);
+            return c;
+        }
+
+        public static float DistanciaHorizontal(Vector3 a, Vector3 b)
+        {
+            float dx = b.x - a.x;
+            float dz = b.z - a.z;
+            return Mathf.Sqrt(dx * dx + dz * dz);
+        }
+
+        public static bool FueraDeTolerancia(float medida, float L, float tol = ToleranciaLuz)
+        {
+            if (L <= 1e-6f) return false;
+            return Mathf.Abs(medida - L) / L > tol;
+        }
+
+        public static float DiferenciaPorcentual(float medida, float L)
+        {
+            if (L <= 1e-6f) return 0f;
+            return (medida - L) / L * 100f;
+        }
+
+        /// "col_A_0.70x0.70" → 0,35 m (mitad de la primera medida). Acepta cm ("70x70"). Sin medidas → 0.
+        public static float MitadSeccion(string seccion)
+        {
+            if (string.IsNullOrEmpty(seccion)) return 0f;
+            var m = System.Text.RegularExpressions.Regex.Match(
+                seccion, @"(\d+(?:[.,]\d+)?)\s*[xX]\s*(\d+(?:[.,]\d+)?)");
+            if (!m.Success) return 0f;
+            float b;
+            if (!float.TryParse(m.Groups[1].Value.Replace(',', '.'),
+                                System.Globalization.NumberStyles.Float,
+                                System.Globalization.CultureInfo.InvariantCulture, out b))
+                return 0f;
+            if (b > 5f) b /= 100f;
+            return Mathf.Clamp(b * 0.5f, 0f, 1.5f);
+        }
+
+        /// Centro de la base de una columna desde el punto tocado al pie de su cara visible:
+        /// entra mitadSeccion metros en la dirección horizontal en que mira la cámara.
+        public static Vector3 BaseDesdeCara(Vector3 puntoCara, Vector3 frenteCamara, float mitadSeccion)
+        {
+            Vector3 f = Horizontal(frenteCamara);
+            if (f.sqrMagnitude < 1e-8f || mitadSeccion <= 0f) return puntoCara;
+            return puntoCara + f * mitadSeccion;
+        }
     }
 }
