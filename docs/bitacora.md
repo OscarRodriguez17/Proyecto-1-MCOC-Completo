@@ -1986,3 +1986,123 @@ Sin cambios respecto a la Sesión 22: falta el toolchain (OpenJDK + SDK + NDK) e
       que es donde antes salía el elemento girado, y el gesto de dos dedos encima
       de un piso ya desplazado con ±5 cm.
 - [ ] Instalar OpenJDK + Android SDK/NDK y ejecutar `Tools/MCOC/Build Android AR`.
+
+---
+
+## Sesión 24 - Corrección 5, Parte 1: texto al derecho, tamaños y mensaje de estado
+
+Tres cosas vistas en el teléfono con la app de la Sesión 23: el texto 3D salía
+**en espejo**, los rótulos y las marcas no se veían a 3-5 m, y el mensaje de
+estado pisaba lo que la app quería decir. Nada de esto toca la escala 1:1 del
+elemento ni el contrato `ar_elementos.json`.
+
+### 1) Texto en espejo (`ARBillboard`)
+
+`LateUpdate` orientaba el texto con `cam.transform.position - transform.position`,
+o sea con el **+Z del texto hacia la cámara**. Un `TextMesh` se lee al derecho
+cuando su +Z apunta en dirección **contraria** a la cámara, así que salía
+reflejado. Ahora:
+
+```
+private void LateUpdate()
+{
+    if (cam == null) cam = Camera.main;
+    Orientar(cam);
+}
+
+public void Orientar(Camera camara)
+{
+    if (camara == null) return;
+    Vector3 dir = transform.position - camara.transform.position;
+    if (dir.sqrMagnitude < 1e-8f) return;
+    transform.rotation = Quaternion.LookRotation(dir, camara.transform.up);
+}
+```
+
+La orientación sale a un método **público** `Orientar(Camera)` para poder
+ejercitarla desde un test sin esperar al `LateUpdate`. El guardia
+`dir.sqrMagnitude < 1e-8f` evita que `LookRotation` reciba un vector nulo.
+
+#### Test EditMode nuevo: `Assets/Editor/ARBillboardTests.cs`
+
+**4 pruebas**: tres `TestCase` de posición de cámara (detrás `(0,0,−3)`, al lado
+`(3,0,0)` y arriba en diagonal `(−2,1,5,2)`) que comprueban
+`dot(texto.forward, haciaAfuera) > 0,999` y `dot(texto.up, camara.up) > 0,9`, más
+`SinCamaraNoRevienta`, que llama `Orientar(null)`.
+
+Con el signo viejo `dot(texto.forward, haciaAfuera)` valía **−1** en los tres
+casos, con lo que la aserción principal falla; el test guarda algo.
+
+### 2) Tamaños legibles a 3-5 m
+
+La escala del ELEMENTO no cambia (sigue 1:1): esto es grosor de trazo y tamaño
+de rótulo, que no alteran longitudes ni alturas sobre el piso.
+
+| Archivo | Antes | Ahora |
+|---|---|---|
+| `ARGeometria.cs` `anchoLinea` | 0,005 | **0,025** |
+| `ARGeometria.cs` `anchoLineaPrincipal` | 0,009 | **0,04** |
+| `ARGeometriaBuilder.Marca` `radio` | 0,028 | **0,08** |
+| `ARGeometriaBuilder.Marca` `alturaTexto` | 0,035 | **0,10** |
+| `ARInspeccionApp.ConstruirMarca` ancho del eje | `radio * 0.3f` | **`Mathf.Min(0.02f, radio * 0.5f)`** |
+| `ARInspeccionApp.ConstruirMarca` `characterSize` | 0,011 | **0,018** |
+
+El ancho de la marca va con `Mathf.Min(0.02f, ...)` y no con `radio * 0.5f` a
+secas porque las marcas de la envolvente P–M y de la demanda siguen siendo
+pequeñas (`radio` 0,012 y 0,01): sin el tope, el texto de rechazo las volvería
+illegibles y el trazo se comería el gráfico.
+
+### 3) El mensaje de estado vuelve a ser el de la app
+
+El bloque de diagnóstico de `Update()` escribía cada medio segundo
+
+```
+ui.estado.text = "ARSession: " + estado + " · planos: " + planos + " · camara: " + permiso;
+```
+
+así que **tapaba** el `mensaje` que la app va cambiando según lo que pase
+("Anclado en…", "Piso +5 cm…", "No se detectó piso…"). Ahora esa línea es
+`ui.estado.text = mensaje;` y la misma información se **añade al principio de
+`diagText`**, así que sigue estando en el panel Diag y no se pierde.
+
+### Verificación
+
+```text
+Python:    154 passed + 1 fallo conocido  (test_mfi_p0_elastico_agrietado, 4.41 s)
+EditMode:  55/55 Passed  (Unity 2022.3.62f3, batchmode, LogAssemblyErrors 0ms, sin errores CS)
+```
+
+| fixture | tests |
+|---|---|
+| ARColocacionTests | 8 |
+| ARFramesCamaraTests | 6 |
+| AROrientacionTests | 15 |
+| **ARBillboardTests** (nuevo) | **4** |
+| ARPlanBTests | 7 |
+| ARRigTests | 4 |
+| LlenarElementosTests | 7 |
+| UIOverlapTests | 1 |
+| XRAndroidConfigTests | 3 |
+
+Sobre el fallo de Python: `test_mfi_p0_elastico_agrietado` (`tests/test_secciones.py:73`,
+`assert c.Mmax > 700.0`) **no se ha tocado**. Es una diferencia de plataforma: en
+Linux la suite da 155 passed con `openseespy==3.8.0.0` y aquí, en macOS arm64 con
+`3.7.1.2`, el M–φ cae ~19 % sobre el mismo procedimiento (645,88 kN·m en vez de
+~766). Ya está documentado en el commit `1c6e43d` ("§7 IA + corrección de
+reproducibilidad del build de openseespy"), que por eso el pin de `openseespy`
+no es cosmético. La línea base de esta sesión es **154 passed + 1 fallo conocido**.
+
+### Build Android AR: NO generado
+
+Sin cambios. Ni el APK ni los módulos de Android se tocan en esta sesión; el
+EditMode corre igual en este Mac porque no los necesita.
+
+### Pendientes
+
+- [ ] Prueba en dispositivo: confirmar que el texto ya se lee al derecho, que las
+      marcas y rótulos se ven a 3-5 m y que el mensaje de estado ya no se pisa
+      con el diagnóstico.
+- [ ] Instalar OpenJDK + Android SDK/NDK y ejecutar `Tools/MCOC/Build Android AR`
+      (lo hacen los compañeros en Windows).
+- [ ] Acordar qué se hace con `test_mfi_p0_elastico_agrietado`: hoy la línea base
+      en macOS es 154 + 1.
