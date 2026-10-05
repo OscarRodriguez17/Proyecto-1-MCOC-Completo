@@ -2400,15 +2400,83 @@ aspiración: la viga queda sobre la recta que une los **ejes** de las columnas.
 | `LasInstrucciones_NombranLasColumnasDeApoyo` | el texto al usuario dice «columna 14», no «extremo» |
 | `SinColumnaConocida_UsaValoresPorDefecto` | sin columna en el contrato usa 0,35 m y no revienta |
 
+### Parte 3c: el toggle «No principal» corregido y rótulos que no se enciman
+
+#### El bug: «No principal» estaba al revés
+
+El toggle se llamaba «No principal» y al activarse **ocultaba justo lo
+principal**. La causa era `EsPrincipal()`, que decidía comparando dos cadenas:
+
+```csharp
+private static bool EsPrincipal(ARGeometriaElemento g, ARTrazo t)
+{
+    if (t.etiqueta == null) return true;
+    return g.planoPrincipal != null && g.planoPrincipal.EndsWith(t.etiqueta);
+}
+```
+
+`g.planoPrincipal` traía el **texto** del plano (`"local x–z"`) y `t.etiqueta`
+el **nombre del trazo** (`"M_xz"`). `"local x–z".EndsWith("M_xz")` es `false`
+**siempre**, así que el diagrama principal nunca se reconocía como tal y el
+toggle hacía lo contrario de lo que prometía. Un método que compara texto con
+`EndsWith` para decidir geometría es el tipo de cosa que falla en silencio.
+
+**La corrección: que el dato venga del que lo sabe.** El builder es quien sabe
+qué plano es el principal, así que lo pone:
+
+- `ARTrazo.principal` y `ARMarca.principal` (`bool`, por defecto `true`).
+- `ARMarca.tipo` (`ARTipoTrazo`), para saber a qué diagrama pertenece cada cruz.
+- El builder calcula `esPrincipal = tipo == Normal || forzarAncho` — **N siempre
+  es principal**, y en V y M lo decide el plano.
+- **`EsPrincipal()` desaparece**, con `grep` limpio: no queda ninguna referencia.
+
+#### Rótulos a alturas distintas
+
+Todos los rótulos iban en el punto medio del elemento (`m = puntos.Count / 2`),
+así que N, V y M se **encimaban** en el mismo sitio. Ahora cada diagrama tiene su
+fracción de la longitud, con `FraccionRotulo(tipo, principal)`:
+
+| Diagrama | Fracción | |
+|---|---|---|
+| N | 0,20 | |
+| V | 0,45 | |
+| M | 0,70 | |
+| no principales | lo anterior **+ 0,12** | para que no caigan sobre su principal |
+
+`IndiceRotulo()` convierte la fracción en índice, con `Math.Max/Min` para no
+salirse. El texto también se **acorta**: de «i … j … Mmax …» a
+`«M_xz  i −114.3 · j −159.6 · máx 159.6 kN·m»`. Las marcas de P–M y de demanda
+llevan su `tipo`, así que se ocultan con su propio diagrama.
+
+#### `ARInspeccionApp.cs`: los rótulos y las cruces siguen a su toggle
+
+`bool vis = v.texto ? true : Visible(v.tipo, v.principal);` era la causa de que
+los rótulos se vieran **siempre**: el `? true` los dejaba pasar. Ahora es
+`bool vis = Visible(v.tipo, v.principal);` para los dos, y las cruces se registran
+en `visores` con `tipo = m.tipo, principal = m.principal` en lugar de
+`tipo = Eje, principal = true`.
+
+#### Test EditMode nuevo: `Assets/Editor/ARRotulosTests.cs`
+
+**5 pruebas**:
+
+| Prueba | Qué fija |
+|---|---|
+| `Principal_Viga134_EsElPlanoXZ` | en la viga 134 el plano principal es el **xz** |
+| `Principal_Columna14_EsElPlanoXY` | en la columna 14 es el **xy** |
+| `EnLaApp_PorDefectoSeVeElPrincipalYNoElSecundario` | **el bug**: por defecto se ve el principal, no el secundario |
+| `LosRotulos_VanAAlturasDistintas` | N, V y M no comparten índice |
+| `LosRotulos_SonCortos` | el texto cabe, con unidad y sin el Mmax en crudo |
+
 ### Verificación
 
 ```text
-Python:    154 passed + 1 fallo conocido  (test_mfi_p0_elastico_agrietado, 4.64 s)
-EditMode:  99/99 Passed  (Unity 2022.3.62f3, batchmode, LogAssemblyErrors 0ms, sin errores CS)
+Python:    154 passed + 1 fallo conocido  (test_mfi_p0_elastico_agrietado, 4.50 s)
+EditMode:  104/104 Passed  (Unity 2022.3.62f3, batchmode, LogAssemblyErrors 0ms, sin errores CS)
 ```
 
 ```text
-total=99 passed=99 failed=0 skipped=0 result=Passed
+total=104 passed=104 failed=0 skipped=0 result=Passed
 
   ARBillboardTests         Passed   4
   ARColocacionTests        Passed   8
@@ -2418,7 +2486,8 @@ total=99 passed=99 failed=0 skipped=0 result=Passed
   ARMarcadoUITests         Passed   5
   AROrientacionTests       Passed  15
   ARPisoTests              Passed  11
-  ARApoyosTests            Passed   4   <- nuevo (3b)
+  ARApoyosTests            Passed   4   <- 3b
+  ARRotulosTests           Passed   5   <- nuevo (3c)
   ARPlanBTests             Passed   7
   ARRigTests               Passed   4
   LlenarElementosTests     Passed   7
@@ -2436,6 +2505,9 @@ diff ARInspeccionApp.cs ARInspeccionApp_referencia_3a.cs  ->  EXIT=0  (idéntico
 diff ARInterfaz.cs       ARInterfaz_referencia_3a.cs       ->  EXIT=0  (idénticos)
 diff ARInspeccionApp.cs ARInspeccionApp_referencia_3b.cs  ->  EXIT=0  (idénticos)
 diff ARMarcadoTests.cs   ARMarcadoTests_referencia_3b.cs   ->  EXIT=0  (idénticos)
+diff ARInspeccionApp.cs  ARInspeccionApp_referencia_3c.cs    ->  EXIT=0  (idénticos)
+diff ARGeometria.cs      ARGeometria_referencia_3c.cs        ->  EXIT=0  (idénticos)
+diff ARGeometriaBuilder.cs ARGeometriaBuilder_referencia_3c.cs ->  EXIT=0  (idénticos)
 ```
 
 El parche se aplicó con `git apply --check` limpio y **sin ningún `.rej`**. Igual que en la 3a, en la 3b.
@@ -2463,6 +2535,14 @@ Sin cambios. Ni el APK ni los módulos de Android se tocan en esta parte.
       `ToleranciaAltura` 0,60 m) son suficientes con la desviación real del
       encaje: si el contrato tiene la columna 0,6 m desviada, `ColumnaBajoExtremo`
       no la encuentra y se cae al valor por defecto sin avisar.
+- [ ] **En dispositivo, comprobar el toggle «No principal»**: que al activarlo
+      desaparezca el **secundario** y quede el principal (justo lo contrario de
+      lo que hacía), y que los rótulos y las cruces **se oculten y vuelvan** con
+      su diagrama. Los tests lo fijan en EditMode, pero el comportamiento en
+      pantalla no se ha visto.
+- [ ] Verificar en el edificio que las **fracciones 20/45/70 %** separan de
+      verdad los rótulos en una viga real; con %+12 en los no principales puede
+      que dos rótulos sigan cerca.
 - [ ] Instalar OpenJDK + Android SDK/NDK y ejecutar `Tools/MCOC/Build Android AR`.
 - [ ] Acordar qué se hace con `test_mfi_p0_elastico_agrietado`: línea base en
       macOS 154 + 1.

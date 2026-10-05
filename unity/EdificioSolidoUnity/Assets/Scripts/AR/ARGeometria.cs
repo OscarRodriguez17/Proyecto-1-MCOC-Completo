@@ -25,6 +25,12 @@ namespace MCOC.AR
         public float ancho = 0.005f;
         public ARTipoTrazo tipo = ARTipoTrazo.Eje;
         public string etiqueta;
+        /// <summary>
+        /// True si pertenece al plano PRINCIPAL del elemento (o es N/eje/P-M). Lo
+        /// fija el builder; la app lo usa para el toggle «No principal»
+        /// (Corrección 6, parte 3c: antes se deducía del texto y salía al revés).
+        /// </summary>
+        public bool principal = true;
     }
 
     /// <summary>Marca (cruz 3D) en un punto notable: extremo o demanda.</summary>
@@ -35,6 +41,10 @@ namespace MCOC.AR
         public Color color = Color.white;
         public string texto;
         public Vector3 alturaTexto = Vector3.zero;
+        /// <summary>A qué diagrama pertenece: el rótulo se oculta con su toggle.</summary>
+        public ARTipoTrazo tipo = ARTipoTrazo.Eje;
+        /// <summary>True si es del plano principal (ver ARTrazo.principal).</summary>
+        public bool principal = true;
     }
 
     /// <summary>Todo lo dibujable de un elemento.</summary>

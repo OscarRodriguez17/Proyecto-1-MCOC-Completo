@@ -393,7 +393,7 @@ namespace MCOC.AR
                 {
                     go = lrgo,
                     tipo = t.tipo,
-                    principal = EsPrincipal(g, t)
+                    principal = t.principal
                 });
             }
 
@@ -415,11 +415,6 @@ namespace MCOC.AR
             AplicarVisibilidad();
         }
 
-        private static bool EsPrincipal(ARGeometriaElemento g, ARTrazo t)
-        {
-            if (t.etiqueta == null) return true;
-            return g.planoPrincipal != null && g.planoPrincipal.EndsWith(t.etiqueta);
-        }
 
         private void ConstruirMarca(Transform padre, ARMarca m)
         {
@@ -447,6 +442,8 @@ namespace MCOC.AR
                     lr.endColor = m.color;
                     lr.SetPositions(new[] { -d * m.radio, d * m.radio });
                     lr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                    // La cruz sigue al toggle de su diagrama, igual que el rótulo.
+                    visores.Add(new ARVisor { go = ejeGO, tipo = m.tipo, principal = m.principal });
                 }
             }
             else
@@ -473,7 +470,7 @@ namespace MCOC.AR
             mr.sharedMaterial = fuente.material;
             mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             t.AddComponent<ARBillboard>();
-            visores.Add(new ARVisor { go = t, tipo = ARTipoTrazo.Eje, principal = true, texto = true });
+            visores.Add(new ARVisor { go = t, tipo = m.tipo, principal = m.principal, texto = true });
         }
 
         // =================================================================
@@ -762,7 +759,8 @@ namespace MCOC.AR
             foreach (var v in visores)
             {
                 if (v.go == null) continue;
-                bool vis = v.texto ? true : Visible(v.tipo, v.principal);
+                // Los rótulos siguen al toggle de su diagrama (antes se veían siempre).
+                bool vis = Visible(v.tipo, v.principal);
                 var mr = v.go.GetComponent<MeshRenderer>();
                 if (mr != null) mr.enabled = vis;
                 var lr = v.go.GetComponent<LineRenderer>();

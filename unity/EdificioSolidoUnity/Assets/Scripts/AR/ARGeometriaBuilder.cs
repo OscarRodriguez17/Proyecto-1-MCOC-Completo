@@ -173,20 +173,49 @@ namespace MCOC.AR
             }
             if (puntos.Count < 2) return;
 
-            g.trazos.Add(Trazo(puntos, color,
+            // N siempre es "principal"; en V y M lo decide el plano (forzarAncho).
+            bool esPrincipal = tipo == ARTipoTrazo.Normal || forzarAncho;
+            var trazo = Trazo(puntos, color,
                 forzarAncho ? opt.anchoLineaPrincipal : opt.anchoLinea,
-                tipo, etiqueta != null && etiqueta.Length > 0 ? nombre : null));
+                tipo, etiqueta != null && etiqueta.Length > 0 ? nombre : null);
+            trazo.principal = esPrincipal;
+            g.trazos.Add(trazo);
 
-            // Etiqueta con los valores característicos en el punto medio.
-            int m = puntos.Count / 2;
+            // Rótulo con los valores característicos. Cada diagrama lo pone a una
+            // altura DISTINTA del elemento (antes todos iban al punto medio y se
+            // encimaban): N al 20 %, V al 45 %, M al 70 %; los no principales un
+            // poco más allá.
+            int m = IndiceRotulo(puntos.Count, tipo, esPrincipal);
             g.marcas.Add(new ARMarca
             {
                 posicion = puntos[m] + dir * 0.04f,
                 radio = 0.012f,
                 color = color,
                 texto = Resumen(d, nombre),
-                alturaTexto = dir * 0.05f
+                alturaTexto = dir * 0.05f,
+                tipo = tipo,
+                principal = esPrincipal
             });
+        }
+
+        /// <summary>Fracción de la longitud del elemento donde va el rótulo de cada diagrama.</summary>
+        public static float FraccionRotulo(ARTipoTrazo tipo, bool principal)
+        {
+            float f;
+            switch (tipo)
+            {
+                case ARTipoTrazo.Normal: f = 0.20f; break;
+                case ARTipoTrazo.Cortante: f = 0.45f; break;
+                case ARTipoTrazo.Momento: f = 0.70f; break;
+                default: f = 0.50f; break;
+            }
+            return principal ? f : f + 0.12f;
+        }
+
+        private static int IndiceRotulo(int n, ARTipoTrazo tipo, bool principal)
+        {
+            int k = (int)Math.Round(FraccionRotulo(tipo, principal) * (n - 1));
+            return Math.Max(0, Math.Min(n - 1, k));
         }
 
         /// <summary>Escala lineal única del diagrama: el mayor valor ocupa `amplitud`.</summary>
@@ -204,8 +233,14 @@ namespace MCOC.AR
             string sufijo = nombre.StartsWith("M") ? " kN\u00b7m"
                           : nombre.StartsWith("V") ? " kN"
                           : " kN";
-            return nombre + ": i=" + Fmt(d.i) + "  j=" + Fmt(d.j) + sufijo
-                 + "  |max|=" + Fmt(Math.Abs(d.maxAbs != null ? d.maxAbs.valor : 0.0));
+            // Rótulo corto (Corrección 6, 3c): «M_xz  i −114.3 · j −159.6 · máx 159.6 kN·m».
+            return nombre + "  i " + Fmt1(d.i) + " · j " + Fmt1(d.j)
+                 + " · máx " + Fmt1(Math.Abs(d.maxAbs != null ? d.maxAbs.valor : 0.0)) + sufijo;
+        }
+
+        private static string Fmt1(double v)
+        {
+            return v.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture);
         }
 
         private static string Fmt(double v)
@@ -262,7 +297,8 @@ namespace MCOC.AR
                 color = opt.colorPM,
                 texto = "P-M " + pm.seccion + "   DC=" + Fmt(pm.DC)
                       + "   M(P)=" + Fmt(pm.mCapacidadEnP) + " kN\u00b7m",
-                alturaTexto = Vector3.up * 0.05f
+                alturaTexto = Vector3.up * 0.05f,
+                tipo = ARTipoTrazo.PM
             });
         }
 
@@ -283,7 +319,8 @@ namespace MCOC.AR
                 texto = "G" + pt.P.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)
                       + " | M" + pt.M.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)
                       + (gobierna ? "  (gobierna)" : ""),
-                alturaTexto = Vector3.up * 0.04f
+                alturaTexto = Vector3.up * 0.04f,
+                tipo = ARTipoTrazo.Demanda
             });
         }
 
