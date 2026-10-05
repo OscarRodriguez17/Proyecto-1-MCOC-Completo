@@ -2281,3 +2281,134 @@ EditMode corre igual en este Mac porque no los necesita.
       (lo hacen los compañeros en Windows).
 - [ ] Acordar qué se hace con `test_mfi_p0_elastico_agrietado`: hoy la línea base
       en macOS es 154 + 1.
+
+---
+
+## Sesión 25 - Corrección 6, parte 3a: mira fija y punto del piso que no se pierde
+
+### El problema visto en terreno
+
+Con la app de la Sesión 24 en el edificio, marcar en el piso salía mal de dos
+formas:
+
+1. **El anillo se perdía.** `RaycastPiso` buscaba un plano ARCore y, si en ese
+   momento no había plano, la retícula **no aparecía**: el usuario apuntaba al
+   techo o a una mesa, lo que devolvía un punto alto que no era el piso, y a
+   veces no devolvía nada y el marcado se quedaba sin hacer. Como la retícula
+   solo se dibujaba cuando el raycast acertaba, no había forma de saber si
+   faltaba el punto o si el punto estaba mal.
+2. **Los textos se encimaban.** El rótulo «Medido x m · modelo L m (±%)» salía
+   pegado al de otros elementos, y no había ninguna referencia fija de «aquí es
+   donde voy a marcar».
+
+### Qué hace este parche
+
+**Matemática pura en `Assets/Scripts/AR/ARPiso.cs`** (nuevo, 103 líneas).
+
+`public enum OrigenPunto` dice de dónde salió el punto, y `public static class
+ARPiso` lleva la matemática, sin UI ni escenas:
+
+| Método | Qué hace |
+|---|---|
+| `EsPiso(yPunto, yCamara)` | **descarta cielos y mesas altas**: no es piso si el punto queda por encima de la cámara |
+| `CercaDelPiso(yPunto, yCamara, hayPisoConocido, yPiso)` | exige la altura del piso cuando ya se conoce |
+| `AlturaPisoEstimada(yCamara, hayPisoConocido, yPisoConocido)` | **1,40 m bajo el teléfono** si no hay piso conocido; si lo hay, lo reutiliza |
+| `InterseccionPlanoHorizontal(origen, direccion, y, ...)` | corta el rayo con un plano horizontal; **descarta** si el punto cae demasiado lejos |
+| `Describir(OrigenPunto)` | texto para el mensaje de estado |
+
+**Cadena de respaldos en `ARInspeccionApp.cs`.** `RaycastPiso` ahora delega en
+`ResolverPuntoPiso`, que prueba cuatro fuentes en orden y **siempre devuelve
+algún punto**:
+
+1. plano ARCore **bajo el teléfono** (no cualquier plano);
+2. **último piso conocido**, extendido (no se pierde si el plano parpadea);
+3. `FeaturePoint` a la **altura del piso** (muros y superficies verticales);
+4. **piso estimado**, 1,40 m bajo el teléfono.
+
+Se hacen públicos `PuntoPisoDesdeRayo(Ray, float, out Vector3, out OrigenPunto)`
+y `RegistrarAlturaPiso(float)`, más las propiedades `HayPisoConocido` y
+`AlturaPisoConocida`, para poder ejercitarlo desde tests.
+
+**Retícula con aviso de color.** `RadioReticula` pasa de 0,10 a **0,25 m**. El
+color dice de dónde salió el punto: **amarillo = piso detectado**, **naranja =
+estimado o punto suelto**, y cuando se marca sobre piso estimado la app **avisa
+en pantalla** para que el usuario sepa que está estimando.
+
+**Mira fija en `ARInterfaz.cs`.** GameObject `Mira` en el centro de la pantalla,
+con imágenes **`raycastTarget = false`** para que **no se coman los toques**, y
+`MostrarMira(bool)`. Se muestra **mientras se marca** y se oculta en cuanto
+terminas: es la referencia visual de «aquí voy a marcar» que faltaba.
+
+### Test EditMode nuevo: `Assets/Editor/ARPisoTests.cs`
+
+**11 pruebas**, todas de la matemática pura y de la mira:
+
+| Prueba | Qué fija |
+|---|---|
+| `EsPiso_DescartaCielosYMesasAltas` | un punto sobre la cámara no es piso |
+| `ApuntandoAlCielo_NoHayPunto` | rayo horizontal hacia arriba no da punto |
+| `CercaDelPiso_ConPisoConocido_ExigeLaMismaAltura` | con piso conocido se compara la altura |
+| `AlturaEstimada_SinPisoConocido_Es1_40BajoElTelefono` | el estimado son 1,40 m bajo el teléfono |
+| `ConPisoConocido_ElPuntoSaleDelPisoExtendido` | el piso conocido sobrevive a la pérdida de plano |
+| `SinPisoConocido_ElPuntoSaleDelPisoEstimado` | y si no hay, sale del estimado |
+| `Interseccion_RayoA45Grados_CaeA1_4m` | geometría del corte con plano horizontal |
+| `Interseccion_RayoHaciaArribaUHorizontal_NoHayPunto` | sin división por cero ni punto absurdo |
+| `Interseccion_DemasiadoLejos_SeDescarta` | se descarta el punto a distancia absurda |
+| `LaMira_NoInterceptaToques` | los `Image` de la mira tienen `raycastTarget = false` |
+| `LaMira_SoloSeVeMientrasSeMarca` | la mira no aparece fuera del marcado |
+
+### Verificación
+
+```text
+Python:    154 passed + 1 fallo conocido  (test_mfi_p0_elastico_agrietado, 5.42 s)
+EditMode:  95/95 Passed  (Unity 2022.3.62f3, batchmode, LogAssemblyErrors 0ms, sin errores CS)
+```
+
+```text
+total=95 passed=95 failed=0 skipped=0 result=Passed
+
+  ARBillboardTests         Passed   4
+  ARColocacionTests        Passed   8
+  ARDosPuntosTests         Passed  10
+  ARFramesCamaraTests      Passed   6
+  ARMarcadoTests           Passed  14
+  ARMarcadoUITests         Passed   5
+  AROrientacionTests       Passed  15
+  ARPisoTests              Passed  11   <- nuevo
+  ARPlanBTests             Passed   7
+  ARRigTests               Passed   4
+  LlenarElementosTests     Passed   7
+  UIOverlapTests           Passed   1
+  XRAndroidConfigTests     Passed   3
+```
+
+`UIOverlapTests` sigue en verde: la mira se añade al centro con `raycastTarget =
+false`, así que no interfiere con los botones.
+
+El fichero de código se comparó **byte a byte** contra la referencia entregada:
+
+```text
+diff ARInspeccionApp.cs ARInspeccionApp_referencia_3a.cs  ->  EXIT=0  (idénticos)
+diff ARInterfaz.cs       ARInterfaz_referencia_3a.cs       ->  EXIT=0  (idénticos)
+```
+
+El parche se aplicó con `git apply --check` limpio y **sin ningún `.rej`**.
+
+### Build Android AR: NO generado
+
+Sin cambios. Ni el APK ni los módulos de Android se tocan en esta parte.
+
+### Pendientes
+
+- [ ] **Prueba en dispositivo**, que es lo que motivó esta corrección: la mira
+      tiene que verse fija en el centro mientras se marca, el anillo tiene que
+      **no desaparecer** aunque ARCore pierda el plano, y el color (amarillo /
+      naranja) tiene que coincidir con lo que dice el aviso.
+- [ ] Comprobar que **el piso estimado de 1,40 m** sirve de algo cuando no hay
+      plano: en una sala real esa distancia depende de la altura del teléfono
+      que lleva el usuario, así que puede ir algo desviado.
+- [ ] Los rótulos «Medido x m · modelo L m (±%)» **siguen encimándose**: el
+      parche añade la mira, que ayuda, pero no reubica los textos.
+- [ ] Instalar OpenJDK + Android SDK/NDK y ejecutar `Tools/MCOC/Build Android AR`.
+- [ ] Acordar qué se hace con `test_mfi_p0_elastico_agrietado`: línea base en
+      macOS 154 + 1.

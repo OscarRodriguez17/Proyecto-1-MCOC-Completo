@@ -56,6 +56,8 @@ namespace MCOC.AR
         public Button btnMarcarBase;
         public Button btnMarcarViga;
         public Button btnCancelarMarcado;
+        /// <summary>Mira fija en el centro de la pantalla (Corrección 6): indica dónde se marca.</summary>
+        public GameObject mira;
 
         public event Action<int> ElementoElegido;
         public event Action<string> ToggleCambiado;
@@ -235,6 +237,11 @@ namespace MCOC.AR
             // Hasta que haya un elemento elegido no se puede marcar nada.
             ui.MostrarMarcado(false, false, false);
 
+            // Mira fija en el centro de la pantalla: el punto que se marca es
+            // SIEMPRE el que queda bajo ella. Oculta fuera del modo de marcado.
+            ui.mira = ui.CrearMira(ui.canvas.transform);
+            ui.MostrarMira(false);
+
             return ui;
         }
 
@@ -279,6 +286,50 @@ namespace MCOC.AR
                 btnMarcarViga.gameObject.SetActive(hayElemento && esViga && !marcando);
             if (btnCancelarMarcado != null)
                 btnCancelarMarcado.gameObject.SetActive(marcando);
+        }
+
+        /// <summary>Muestra u oculta la mira fija del centro de la pantalla.</summary>
+        public void MostrarMira(bool visible)
+        {
+            if (mira != null) mira.SetActive(visible);
+        }
+
+        /// <summary>
+        /// Cruz amarilla con contorno oscuro, fija en el centro de la pantalla.
+        /// No intercepta toques (raycastTarget = false en todas sus imágenes).
+        /// </summary>
+        private GameObject CrearMira(Transform padre)
+        {
+            var go = new GameObject("Mira", typeof(RectTransform));
+            go.transform.SetParent(padre, false);
+            var rt = go.GetComponent<RectTransform>();
+            rt.anchorMin = new Vector2(0.5f, 0.5f);
+            rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.sizeDelta = new Vector2(90f, 90f);
+            rt.anchoredPosition = Vector2.zero;
+
+            // Contorno oscuro (más ancho) y luego la cruz amarilla encima.
+            BarraMira(go.transform, new Vector2(94f, 12f), new Color(0f, 0f, 0f, 0.6f));
+            BarraMira(go.transform, new Vector2(12f, 94f), new Color(0f, 0f, 0f, 0.6f));
+            BarraMira(go.transform, new Vector2(90f, 6f), new Color(1f, 0.85f, 0.10f, 1f));
+            BarraMira(go.transform, new Vector2(6f, 90f), new Color(1f, 0.85f, 0.10f, 1f));
+            return go;
+        }
+
+        private static void BarraMira(Transform padre, Vector2 tam, Color c)
+        {
+            var b = new GameObject("BarraMira", typeof(RectTransform), typeof(Image));
+            b.transform.SetParent(padre, false);
+            var rt = b.GetComponent<RectTransform>();
+            rt.anchorMin = new Vector2(0.5f, 0.5f);
+            rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.sizeDelta = tam;
+            rt.anchoredPosition = Vector2.zero;
+            var img = b.GetComponent<Image>();
+            img.color = c;
+            img.raycastTarget = false;
         }
 
         /// <summary>Borra los botones de elemento anteriores.</summary>

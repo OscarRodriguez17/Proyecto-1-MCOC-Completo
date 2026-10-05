@@ -126,6 +126,13 @@ namespace MCOC.AR
         private bool toqueSobreUI;
         private readonly List<ARRaycastHit> hitsPiso = new List<ARRaycastHit>();
 
+        // --- Punto del piso que nunca se pierde (Corrección 6, parte 3a) ----
+        /// <summary>Altura del último piso detectado por ARCore (bajo el teléfono).</summary>
+        private bool hayPisoConocido;
+        private float yPisoConocido;
+        /// <summary>De dónde salió el punto actual de la retícula.</summary>
+        private OrigenPunto origenReticula = OrigenPunto.Ninguno;
+
         // =================================================================
         //  Ciclo de vida
         // =================================================================
@@ -1282,44 +1289,127 @@ namespace MCOC.AR
             }
             else if (!RaycastPiso(pantalla, out p, out porPunto))
             {
-                mensaje = "No encuentro el piso ahí: mueve el teléfono apuntando al " +
-                          "piso hasta que aparezca el anillo y vuelve a tocar.";
+                mensaje = "No encuentro el piso ahí: inclina el teléfono hacia el piso " +
+                          "hasta que aparezca el anillo y vuelve a tocar.";
                 RefrescarEstado();
                 return;
             }
+            OrigenPunto origen = reticulaValida ? origenReticula : OrigenPunto.Ninguno;
             MarcarPunto(p);
+            // Si el punto salió del piso ESTIMADO, avisarlo: la altura puede no calzar.
+            if (origen == OrigenPunto.PisoEstimado || origen == OrigenPunto.PuntoCaracteristico)
+            {
+                mensaje += "  (" + ARPiso.Describir(origen) + ": si no calza, usa «Piso ±5 cm»)";
+                RefrescarEstado();
+            }
         }
 
         /// <summary>
-        /// Raycast contra el piso: primero un plano detectado
-        /// (PlaneWithinPolygon) y, si no hay, los puntos de referencia de ARCore
-        /// (FeaturePoint), que aparecen aunque el plano no se cierre (piso
-        /// uniforme, poca luz).
+        /// Punto del piso bajo el centro (o el punto) de la pantalla. Usa la
+        /// cadena de respaldos de <see cref="ARPiso"/>: plano detectado bajo el
+        /// teléfono → último piso conocido extendido → punto característico a
+        /// la altura del piso → piso estimado 1,40 m bajo el teléfono. Así el
+        /// anillo no se pierde aunque ARCore no vea el piso en ese punto.
         /// </summary>
         private bool RaycastPiso(Vector2 pantalla, out Vector3 punto, out bool porPunto)
         {
+            OrigenPunto origen;
+            bool ok = ResolverPuntoPiso(pantalla, out punto, out origen);
+            porPunto = origen != OrigenPunto.PisoDetectado && origen != OrigenPunto.PisoExtendido;
+            return ok;
+        }
+
+        private bool ResolverPuntoPiso(Vector2 pantalla, out Vector3 punto, out OrigenPunto origen)
+        {
             punto = Vector3.zero;
-            porPunto = false;
-            if (raycastMgr == null) return false;
+            origen = OrigenPunto.Ninguno;
+            if (camara == null || raycastMgr == null) return false;
             if (ARSession.state != ARSessionState.SessionTracking) return false;
 
+            float yCam = camara.transform.position.y;
+
+            // 1) Plano detectado, sólo si está BAJO el teléfono (no cielos).
             hitsPiso.Clear();
-            if (raycastMgr.Raycast(pantalla, hitsPiso, TrackableType.PlaneWithinPolygon) &&
-                hitsPiso.Count > 0)
+            if (raycastMgr.Raycast(pantalla, hitsPiso, TrackableType.PlaneWithinPolygon))
             {
-                punto = hitsPiso[0].pose.position;
+                foreach (var h in hitsPiso)
+                {
+                    if (!ARPiso.EsPiso(h.pose.position.y, yCam)) continue;
+                    punto = h.pose.position;
+                    RegistrarAlturaPiso(punto.y);
+                    origen = OrigenPunto.PisoDetectado;
+                    return true;
+                }
+            }
+
+            Ray rayo = camara.ScreenPointToRay(pantalla);
+
+            // 2) Último piso conocido, prolongado como plano infinito.
+            if (hayPisoConocido &&
+                ARPiso.InterseccionPlanoHorizontal(rayo.origin, rayo.direction, yPisoConocido, out punto))
+            {
+                origen = OrigenPunto.PisoExtendido;
                 return true;
             }
 
+            // 3) Punto característico a la altura del piso.
             hitsPiso.Clear();
-            if (raycastMgr.Raycast(pantalla, hitsPiso, TrackableType.FeaturePoint) &&
-                hitsPiso.Count > 0)
+            if (raycastMgr.Raycast(pantalla, hitsPiso, TrackableType.FeaturePoint))
             {
-                punto = hitsPiso[0].pose.position;
-                porPunto = true;
+                foreach (var h in hitsPiso)
+                {
+                    if (!ARPiso.CercaDelPiso(h.pose.position.y, yCam, hayPisoConocido, yPisoConocido))
+                        continue;
+                    punto = h.pose.position;
+                    origen = OrigenPunto.PuntoCaracteristico;
+                    return true;
+                }
+            }
+
+            // 4) Piso estimado.
+            return PuntoPisoDesdeRayo(rayo, yCam, out punto, out origen);
+        }
+
+        /// <summary>
+        /// Parte de la cadena que NO necesita ARCore (pasos 2 y 4): piso
+        /// conocido extendido o, si no hay, piso estimado bajo el teléfono.
+        /// Pública para los tests de EditMode.
+        /// </summary>
+        public bool PuntoPisoDesdeRayo(Ray rayo, float yCamara, out Vector3 punto, out OrigenPunto origen)
+        {
+            origen = OrigenPunto.Ninguno;
+            if (hayPisoConocido &&
+                ARPiso.InterseccionPlanoHorizontal(rayo.origin, rayo.direction, yPisoConocido, out punto))
+            {
+                origen = OrigenPunto.PisoExtendido;
+                return true;
+            }
+            float y = ARPiso.AlturaPisoEstimada(yCamara, hayPisoConocido, yPisoConocido);
+            if (ARPiso.InterseccionPlanoHorizontal(rayo.origin, rayo.direction, y, out punto))
+            {
+                origen = hayPisoConocido ? OrigenPunto.PisoExtendido : OrigenPunto.PisoEstimado;
                 return true;
             }
             return false;
+        }
+
+        /// <summary>Recuerda la altura del piso detectado (la usa el respaldo 2).</summary>
+        public void RegistrarAlturaPiso(float y)
+        {
+            hayPisoConocido = true;
+            yPisoConocido = y;
+        }
+
+        /// <summary>True si ARCore ya detectó un piso bajo el teléfono en esta sesión.</summary>
+        public bool HayPisoConocido
+        {
+            get { return hayPisoConocido; }
+        }
+
+        /// <summary>Altura del último piso detectado (sólo vale si <see cref="HayPisoConocido"/>).</summary>
+        public float AlturaPisoConocida
+        {
+            get { return yPisoConocido; }
         }
 
         private static bool SobreUI(int fingerId)
@@ -1378,12 +1468,15 @@ namespace MCOC.AR
             if (ui == null) return;
             var g = Seleccionado();
             ui.MostrarMarcado(g != null, g != null && g.esViga, modo != ModoMarcado.Ninguno);
+            // La mira fija del centro de la pantalla se ve SIEMPRE mientras se marca,
+            // aunque el anillo del piso todavía no aparezca.
+            ui.MostrarMira(modo != ModoMarcado.Ninguno);
         }
 
         // ---------------------------- retícula ---------------------------
 
         /// <summary>Radio del anillo que marca el punto del piso (m).</summary>
-        public const float RadioReticula = 0.10f;
+        public const float RadioReticula = 0.25f;
 
         private void MostrarReticula()
         {
@@ -1413,8 +1506,8 @@ namespace MCOC.AR
             lr.sharedMaterial = matLinea;
             lr.useWorldSpace = false;
             lr.loop = true;
-            lr.startWidth = 0.012f;
-            lr.endWidth = 0.012f;
+            lr.startWidth = 0.03f;
+            lr.endWidth = 0.03f;
             lr.startColor = new Color(1f, 0.85f, 0.10f, 1f);
             lr.endColor = lr.startColor;
             lr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
@@ -1433,12 +1526,12 @@ namespace MCOC.AR
                 lc.sharedMaterial = matLinea;
                 lc.useWorldSpace = false;
                 lc.positionCount = 2;
-                lc.startWidth = 0.008f;
-                lc.endWidth = 0.008f;
+                lc.startWidth = 0.02f;
+                lc.endWidth = 0.02f;
                 lc.startColor = lr.startColor;
                 lc.endColor = lr.startColor;
                 lc.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-                lc.SetPositions(new[] { -d * 0.04f, d * 0.04f });
+                lc.SetPositions(new[] { -d * 0.10f, d * 0.10f });
             }
             go.SetActive(false);
             return go;
@@ -1449,28 +1542,43 @@ namespace MCOC.AR
         {
             if (reticula == null) reticula = CrearReticula();
             Vector3 p;
-            bool porPunto;
+            OrigenPunto origen;
             Vector2 centro = new Vector2(Screen.width * 0.5f, Screen.height * 0.5f);
-            if (RaycastPiso(centro, out p, out porPunto))
+            if (ResolverPuntoPiso(centro, out p, out origen))
             {
                 reticulaValida = true;
                 puntoReticula = p;
+                origenReticula = origen;
                 if (reticula != null)
                 {
                     // 5 mm sobre el piso para que no parpadee contra el plano.
                     reticula.transform.position = p + Vector3.up * 0.005f;
                     reticula.transform.rotation = Quaternion.identity;
                     if (!reticula.activeSelf) reticula.SetActive(true);
+                    ColorearReticula(origen);
                 }
-                mensaje = InstruccionMarcado();
+                mensaje = InstruccionMarcado() + "  [" + ARPiso.Describir(origen) + "]";
             }
             else
             {
                 reticulaValida = false;
+                origenReticula = OrigenPunto.Ninguno;
                 if (reticula != null && reticula.activeSelf) reticula.SetActive(false);
-                mensaje = "Mueve el teléfono apuntando al piso hasta que aparezca el anillo…";
+                mensaje = "Inclina el teléfono hacia el PISO (la mira del centro debe apuntar al piso).";
             }
             RefrescarEstado();
+        }
+
+        /// <summary>Amarillo: piso detectado. Naranjo: piso estimado o punto suelto (revisar).</summary>
+        private void ColorearReticula(OrigenPunto origen)
+        {
+            bool seguro = origen == OrigenPunto.PisoDetectado || origen == OrigenPunto.PisoExtendido;
+            Color c = seguro ? new Color(1f, 0.85f, 0.10f, 1f) : new Color(1f, 0.45f, 0.05f, 1f);
+            foreach (var lr in reticula.GetComponentsInChildren<LineRenderer>(true))
+            {
+                lr.startColor = c;
+                lr.endColor = c;
+            }
         }
     }
 
