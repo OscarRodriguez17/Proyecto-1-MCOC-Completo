@@ -1231,20 +1231,23 @@ namespace MCOC.AR
                 }
 
                 case ModoMarcado.ExtremoI:
-                    puntoI = p;
+                    // Se marca el PIE de la columna que sostiene el extremo: se entra
+                    // media sección hacia su eje, que es donde llega el eje de la viga.
+                    puntoI = CentroApoyo(p, true);
                     modo = ModoMarcado.ExtremoJ;
                     mensaje = InstruccionMarcado();
                     break;
 
                 case ModoMarcado.ExtremoJ:
                 {
-                    var c = ARColocacion.PorDosPuntos(puntoI, p, g);
+                    Vector3 pj = CentroApoyo(p, false);
+                    var c = ARColocacion.PorDosPuntos(puntoI, pj, g);
                     if (c.distancia < ARColocacion.DistanciaMinimaPuntos)
                     {
                         modo = ModoMarcado.ExtremoI;
                         mensaje = string.Format(
                             "Los dos puntos quedaron a {0:F2} m. Marca de nuevo, " +
-                            "primero bajo el extremo i.", c.distancia);
+                            "primero el pie de la columna del extremo i.", c.distancia);
                         break;
                     }
 
@@ -1423,8 +1426,9 @@ namespace MCOC.AR
             var g = Seleccionado();
             if (g == null) return "Elige un elemento en la lista.";
             return g.esViga
-                ? string.Format("Viga {0}: toca «Marcar extremos i y j» y marca el piso " +
-                                "bajo cada extremo.", g.tag)
+                ? string.Format("Viga {0}: toca «Marcar extremos i y j» y marca el pie de " +
+                                "{1} y luego el de {2}.", g.tag,
+                                ARApoyos.NombreApoyo(Apoyo(true)), ARApoyos.NombreApoyo(Apoyo(false)))
                 : string.Format("{0} {1}: toca «Marcar base» y marca su pie en el piso.",
                                 Mayuscula(g.tipo), g.tag);
         }
@@ -1440,14 +1444,38 @@ namespace MCOC.AR
                         "que ves) y toca la pantalla.", g != null ? g.tipo : "columna",
                         g != null ? g.tag : 0);
                 case ModoMarcado.ExtremoI:
-                    return "Apunta al piso BAJO el extremo i (" + Etiqueta(g, true) +
-                           ") y toca la pantalla.";
+                    return "Apunta la mira al PIE de " + ARApoyos.NombreApoyo(Apoyo(true)) +
+                           " (extremo i, " + Etiqueta(g, true) + "), en la cara que ves, y toca la pantalla.";
                 case ModoMarcado.ExtremoJ:
-                    return "Ahora apunta al piso BAJO el extremo j (" + Etiqueta(g, false) +
-                           ") y toca la pantalla.";
+                    return "Ahora al PIE de " + ARApoyos.NombreApoyo(Apoyo(false)) +
+                           " (extremo j, " + Etiqueta(g, false) + ") y toca la pantalla.";
                 default:
                     return InstruccionInicial();
             }
+        }
+
+        /// <summary>Elemento del contrato que está seleccionado (o null).</summary>
+        private ARElemento ElementoSeleccionado()
+        {
+            if (datos == null || datos.elementos == null || tagSeleccionado < 0) return null;
+            ARElemento el;
+            return datos.elementos.TryGetValue(tagSeleccionado.ToString(), out el) ? el : null;
+        }
+
+        /// <summary>Columna del contrato bajo el extremo i (o j) de la viga elegida, o null.</summary>
+        private ARElemento Apoyo(bool extremoI)
+        {
+            return ARApoyos.ColumnaBajoExtremo(datos, ElementoSeleccionado(), extremoI);
+        }
+
+        /// <summary>
+        /// Centro de la columna de apoyo a partir del punto tocado al pie de su
+        /// cara visible (media sección hacia adentro, en la dirección de la cámara).
+        /// </summary>
+        private Vector3 CentroApoyo(Vector3 puntoCara, bool extremoI)
+        {
+            return ARColocacion.BaseDesdeCara(puntoCara, FrenteCamara(),
+                                              ARApoyos.MitadApoyo(Apoyo(extremoI)));
         }
 
         private static string Etiqueta(ARGeometriaElemento g, bool i)

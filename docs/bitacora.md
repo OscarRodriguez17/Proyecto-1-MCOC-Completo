@@ -2190,8 +2190,8 @@ del piso se va a clavar el elemento.
 
 1. Elige la viga.
 2. Pulsa **«Marcar extremos i y j»**.
-3. Pon el anillo en el piso **bajo el extremo i** y toca.
-4. Repite **bajo el extremo j** y toca.
+3. Pon la **mira al PIE de la columna 14**, en la **cara que ves**, y toca.
+4. Repite en el **PIE de la columna 26** y toca.
 
 Mientras marcas, arriba aparece `Medido x m · modelo L m (±%)`, que avisa en
 verde si lo medido encaja con la longitud del modelo y en otro color si se pasa
@@ -2357,15 +2357,58 @@ terminas: es la referencia visual de «aquí voy a marcar» que faltaba.
 | `LaMira_NoInterceptaToques` | los `Image` de la mira tienen `raycastTarget = false` |
 | `LaMira_SoloSeVeMientrasSeMarca` | la mira no aparece fuera del marcado |
 
+### Parte 3b: la viga se marca por el PIE de sus columnas de apoyo
+
+En la 3a el usuario marcaba **bajo el extremo i y bajo el j**, en teoría donde
+están las columnas. En la práctica eso falla: el extremo de la viga está
+**sobre** la columna, y quien está en el edificio con el teléfono **no ve ese
+extremo**, ve la **cara de la columna**. Marcando en el aire o en un punto
+parecido, la viga sale desplazada.
+
+**Matemática pura en `Assets/Scripts/AR/ARApoyos.cs`** (nuevo, 95 líneas).
+`public static class ARApoyos` busca en el contrato `ar_elementos.json` la
+columna cuya **cabeza coincide con el extremo** de la viga:
+
+| Método | Qué hace |
+|---|---|
+| `ColumnaBajoExtremo(datos, viga, extremoI)` | la columna de apoyo: para la viga 134, la **14** bajo el extremo i y la **26** bajo el j. Usa `ToleranciaPlanta = 0,50` m y `ToleranciaAltura = 0,60` m |
+| `MitadApoyo(columna)` | media sección de la columna: **`MitadColumnaPorDefecto = 0,35` m**, o la medida real si el nombre la trae |
+| `NombreApoyo(columna)` | el nombre para las instrucciones en pantalla |
+
+**Cambio en `ARInspeccionApp.cs`.** `CentroApoyo(puntoCara, extremoI)` toma el
+punto que el usuario tocó en la **cara visible** de la columna y lo mete
+**media sección (0,35 m) hacia su eje**: el punto marcado es el **pie de la
+columna**, no el eje, pero la viga se calcula sobre el eje. Las instrucciones ya
+**nombran la columna**: «Apunta la mira al PIE de …» en vez de «bajo el extremo».
+
+#### Test existente ajustado (el único)
+
+`Viga134_DosToques_QuedaSobreLaRectaMarcada` (los 4 `TestCase`):
+antes marcaba los puntos directamente sobre la recta; ahora mete
+`Pi += f * 0.35f` y `Pj += f * 0.35f` con `f` la dirección de la cámara, que es
+exactamente lo que hace `CentroApoyo`. Sigue siendo el mismo test, con la misma
+aspiración: la viga queda sobre la recta que une los **ejes** de las columnas.
+
+#### Test EditMode nuevo: `Assets/Editor/ARApoyosTests.cs`
+
+**4 pruebas**:
+
+| Prueba | Qué fija |
+|---|---|
+| `Viga134_ApoyaEnColumna14_YColumna26` | la búsqueda en el contrato acierta las dos columnas |
+| `Viga134_MarcadaPorElPieDeSusColumnas_QuedaSobreSusEjes` | marcar el pie deja la viga sobre los ejes |
+| `LasInstrucciones_NombranLasColumnasDeApoyo` | el texto al usuario dice «columna 14», no «extremo» |
+| `SinColumnaConocida_UsaValoresPorDefecto` | sin columna en el contrato usa 0,35 m y no revienta |
+
 ### Verificación
 
 ```text
-Python:    154 passed + 1 fallo conocido  (test_mfi_p0_elastico_agrietado, 5.42 s)
-EditMode:  95/95 Passed  (Unity 2022.3.62f3, batchmode, LogAssemblyErrors 0ms, sin errores CS)
+Python:    154 passed + 1 fallo conocido  (test_mfi_p0_elastico_agrietado, 4.64 s)
+EditMode:  99/99 Passed  (Unity 2022.3.62f3, batchmode, LogAssemblyErrors 0ms, sin errores CS)
 ```
 
 ```text
-total=95 passed=95 failed=0 skipped=0 result=Passed
+total=99 passed=99 failed=0 skipped=0 result=Passed
 
   ARBillboardTests         Passed   4
   ARColocacionTests        Passed   8
@@ -2374,7 +2417,8 @@ total=95 passed=95 failed=0 skipped=0 result=Passed
   ARMarcadoTests           Passed  14
   ARMarcadoUITests         Passed   5
   AROrientacionTests       Passed  15
-  ARPisoTests              Passed  11   <- nuevo
+  ARPisoTests              Passed  11
+  ARApoyosTests            Passed   4   <- nuevo (3b)
   ARPlanBTests             Passed   7
   ARRigTests               Passed   4
   LlenarElementosTests     Passed   7
@@ -2390,9 +2434,11 @@ El fichero de código se comparó **byte a byte** contra la referencia entregada
 ```text
 diff ARInspeccionApp.cs ARInspeccionApp_referencia_3a.cs  ->  EXIT=0  (idénticos)
 diff ARInterfaz.cs       ARInterfaz_referencia_3a.cs       ->  EXIT=0  (idénticos)
+diff ARInspeccionApp.cs ARInspeccionApp_referencia_3b.cs  ->  EXIT=0  (idénticos)
+diff ARMarcadoTests.cs   ARMarcadoTests_referencia_3b.cs   ->  EXIT=0  (idénticos)
 ```
 
-El parche se aplicó con `git apply --check` limpio y **sin ningún `.rej`**.
+El parche se aplicó con `git apply --check` limpio y **sin ningún `.rej`**. Igual que en la 3a, en la 3b.
 
 ### Build Android AR: NO generado
 
@@ -2409,6 +2455,14 @@ Sin cambios. Ni el APK ni los módulos de Android se tocan en esta parte.
       que lleva el usuario, así que puede ir algo desviado.
 - [ ] Los rótulos «Medido x m · modelo L m (±%)» **siguen encimándose**: el
       parche añade la mira, que ayuda, pero no reubica los textos.
+- [ ] **Prueba en dispositivo del marcado por apoyos (3b)**: apuntar la mira al
+      pie de la columna 14 y ver que la viga sale **sobre el eje** y no
+      desplazada hacia la cara que se ve, y lo mismo con la 26. Es el motivo de
+      esta parte y no se ha podido comprobar en un teléfono.
+- [ ] Comprobar que las **tolerancias** (`ToleranciaPlanta` 0,50 m,
+      `ToleranciaAltura` 0,60 m) son suficientes con la desviación real del
+      encaje: si el contrato tiene la columna 0,6 m desviada, `ColumnaBajoExtremo`
+      no la encuentra y se cae al valor por defecto sin avisar.
 - [ ] Instalar OpenJDK + Android SDK/NDK y ejecutar `Tools/MCOC/Build Android AR`.
 - [ ] Acordar qué se hace con `test_mfi_p0_elastico_agrietado`: línea base en
       macOS 154 + 1.

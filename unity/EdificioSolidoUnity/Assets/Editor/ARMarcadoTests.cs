@@ -120,7 +120,13 @@ namespace MCOC.AR.Editores
             Assert.IsTrue(AnclaExiste(app));
             Assert.IsTrue(app.TieneRotacionMarcada);
 
-            // Ancla en el punto medio de lo marcado.
+            // Se marcó el PIE de cada columna de apoyo (cara visible): el eje de la
+            // viga está media sección (0,35 m) más adentro, en la dirección de la cámara.
+            Vector3 f = Quaternion.Euler(0f, yawCamara, 0f) * Vector3.forward;
+            Pi += f * 0.35f;
+            Pj += f * 0.35f;
+
+            // Ancla en el punto medio de los centros de las columnas.
             Vector3 medio = (Pi + Pj) * 0.5f;
             Vector3 ancla = app.PosicionAncla();
             Assert.AreEqual(medio.x, ancla.x, TOL);
