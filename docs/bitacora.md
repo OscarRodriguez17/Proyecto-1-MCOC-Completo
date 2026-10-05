@@ -2202,6 +2202,20 @@ Para cancelar a medias: **«Cancelar marcado»**.
 > distintos**. Los dos últimos siguen al final de la lista y ya no son el camino
 > principal; el marcado es el que deja el elemento en su sitio real.
 
+**Ver los diagramas de cualquier elemento: «Panel 2D»**
+
+1. Elige un elemento en la lista (viga, columna o muro).
+2. Pulsa **«Panel 2D»**, que está justo antes de «Diag».
+3. Aparece un **recuadro fijo** con los tres diagramas del plano principal de
+   ese elemento: **N, V y M**, con su leyenda (valor máximo y unidad).
+4. Si cambias de elemento con el panel abierto, **se redibuja solo** con los
+   diagramas del nuevo. Para cerrarlo, vuelve a pulsar «Panel 2D».
+
+Es el **respaldo legible**: los diagramas 3D del piso sirven para ver la forma,
+y el panel 2D para leer los valores sin rodear el elemento. En las vigas, el
+momento sale **hacia abajo cuando M > 0**, como es costumbre: tensión arriba,
+compresión abajo.
+
 ### Verificación
 
 Las cuatro partes, cada una por separado:
@@ -2468,15 +2482,58 @@ en `visores` con `tipo = m.tipo, principal = m.principal` en lugar de
 | `LosRotulos_VanAAlturasDistintas` | N, V y M no comparten índice |
 | `LosRotulos_SonCortos` | el texto cabe, con unidad y sin el Mmax en crudo |
 
+### Parte 3d: panel 2D de diagramas (respaldo legible)
+
+Los diagramas se dibujan **en el piso, en 3D**, y eso tiene dos problemas en
+terreno: hay que rodear el elemento para leerlos, y si el AR pierde el plano se
+van con él. La 3c separó los rótulos, pero **siguen siendo texto en el espacio**.
+Esta parte añade un **respaldo fijo en pantalla**: los mismos diagramas del
+elemento elegido, en un recuadro 2D que siempre se lee igual.
+
+**Dibujo puro en `Assets/Scripts/AR/ARGrafico.cs`** (nuevo, 169 líneas).
+`public static class ARGrafico` con:
+
+- `Series(el)` → las **tres series** N, V y M **del plano principal** (para la
+  viga 134 el `xz`, para la columna 14 el `xy`).
+- `Leyenda(Serie)` → el texto de cada fila.
+- `APixel(x, v, L, vmaxAbs, …)` → proyecta un valor a coordenadas de píxel,
+  **con ejes y signos** (para que se vea en qué lado del cero cae cada curva).
+- `Dibujar(el, destino)` → genera la `Texture2D`: un gráfico de **3 filas**, una
+  por diagrama, reutilizando la textura si se le pasa una. En **vigas con
+  M > 0, el momento va hacia abajo** (tensión arriba, compresión abajo).
+
+**`ARInterfaz.cs`**: botón **«Panel 2D»**, creado **justo antes de «Diag»**, con
+el evento `Panel2D`. El recuadro lleva `panel2DImagen` (RawImage),
+`panel2DTitulo`, `panel2DLeyendas` (3 `Text`) y **todo con `raycastTarget =
+false`**, para no robarle toques a los botones. Métodos `MostrarPanel2D(bool)` y
+`ActualizarPanel2D(...)`. Nace oculto (`MostrarPanel2D(false)` al construir).
+
+**`ARInspeccionApp.cs`**: `AlternarPanel2D()`, `RefrescarPanel2D()` y la
+propiedad `Panel2DVisible`. El panel **sigue al elemento elegido**: al cambiar de
+elemento, si está visible, se refresca con los diagramos del nuevo.
+
+#### Test EditMode nuevo: `Assets/Editor/ARPanel2DTests.cs`
+
+**6 pruebas**:
+
+| Prueba | Qué fija |
+|---|---|
+| `Series_Viga134_PlanoXZ` | la viga toma N, V y M **del plano xz** |
+| `Series_Columna14_PlanoXY` | la columna toma **del xy** |
+| `Leyenda_Viga134_TraeLosValoresDeReferencia` | la leyenda trae los valores reales del contrato |
+| `APixel_EjesYSentidos` | la proyección mantiene ejes y lado positivo/negativo |
+| `Dibujar_Viga134_ElMomentoQuedaEnLaFilaDeAbajo` | con M > 0 el momento se dibuja abajo |
+| `ElPanel_SeAbreConElBoton_YSigueAlElemento` | el botón abre el panel y al cambiar de elemento se redibuja |
+
 ### Verificación
 
 ```text
-Python:    154 passed + 1 fallo conocido  (test_mfi_p0_elastico_agrietado, 4.50 s)
-EditMode:  104/104 Passed  (Unity 2022.3.62f3, batchmode, LogAssemblyErrors 0ms, sin errores CS)
+Python:    154 passed + 1 fallo conocido  (test_mfi_p0_elastico_agrietado, 4.61 s)
+EditMode:  110/110 Passed  (Unity 2022.3.62f3, batchmode, LogAssemblyErrors 0ms, sin errores CS)
 ```
 
 ```text
-total=104 passed=104 failed=0 skipped=0 result=Passed
+total=110 passed=110 failed=0 skipped=0 result=Passed
 
   ARBillboardTests         Passed   4
   ARColocacionTests        Passed   8
@@ -2485,6 +2542,7 @@ total=104 passed=104 failed=0 skipped=0 result=Passed
   ARMarcadoTests           Passed  14
   ARMarcadoUITests         Passed   5
   AROrientacionTests       Passed  15
+  ARPanel2DTests           Passed   6   <- nuevo (3d)
   ARPisoTests              Passed  11
   ARApoyosTests            Passed   4   <- 3b
   ARRotulosTests           Passed   5   <- nuevo (3c)
@@ -2508,6 +2566,8 @@ diff ARMarcadoTests.cs   ARMarcadoTests_referencia_3b.cs   ->  EXIT=0  (idéntic
 diff ARInspeccionApp.cs  ARInspeccionApp_referencia_3c.cs    ->  EXIT=0  (idénticos)
 diff ARGeometria.cs      ARGeometria_referencia_3c.cs        ->  EXIT=0  (idénticos)
 diff ARGeometriaBuilder.cs ARGeometriaBuilder_referencia_3c.cs ->  EXIT=0  (idénticos)
+diff ARInspeccionApp.cs ARInspeccionApp_referencia_3d.cs    ->  EXIT=0  (idénticos)
+diff ARInterfaz.cs       ARInterfaz_referencia_3d.cs       ->  EXIT=0  (idénticos)
 ```
 
 El parche se aplicó con `git apply --check` limpio y **sin ningún `.rej`**. Igual que en la 3a, en la 3b.
@@ -2543,6 +2603,12 @@ Sin cambios. Ni el APK ni los módulos de Android se tocan en esta parte.
 - [ ] Verificar en el edificio que las **fracciones 20/45/70 %** separan de
       verdad los rótulos en una viga real; con %+12 en los no principales puede
       que dos rótulos sigan cerca.
+- [ ] **En dispositivo, abrir «Panel 2D»** sobre una viga y una columna reales:
+      que las tres filas se lean sin ambigüedad, que las leyendas no se corten en
+      pantalla y que al cambiar de elemento con el panel abierto se redibuje.
+- [ ] Comprobar que el **ancho del recuadro** sirve en pantalla: el gráfico es
+      una `Texture2D` de tamaño fijo, así que en una pantalla estrecha las
+      leyendas de los extremos pueden quedar apretadas.
 - [ ] Instalar OpenJDK + Android SDK/NDK y ejecutar `Tools/MCOC/Build Android AR`.
 - [ ] Acordar qué se hace con `test_mfi_p0_elastico_agrietado`: línea base en
       macOS 154 + 1.

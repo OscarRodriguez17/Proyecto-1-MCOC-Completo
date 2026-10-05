@@ -521,6 +521,7 @@ namespace MCOC.AR
             ui.MarcarBase += IniciarMarcadoBase;
             ui.MarcarViga += IniciarMarcadoViga;
             ui.CancelarMarcado += CancelarMarcado;
+            ui.Panel2D += AlternarPanel2D;
             ActualizarBotonesMarcado();
         }
 
@@ -682,11 +683,51 @@ namespace MCOC.AR
             if (ancla != null) ColocarEnAncla();   // y vuelve a la misma ancla
             ActualizarInfo();
             ActualizarBotonesMarcado();
+            if (panel2DVisible) RefrescarPanel2D();   // el panel sigue al elemento elegido
             if (cambia && datos != null)
             {
                 mensaje = InstruccionInicial();
                 RefrescarEstado();
             }
+        }
+
+        // --- Panel 2D (Corrección 6, parte 3d) --------------------------------
+        private bool panel2DVisible;
+        private Texture2D texPanel2D;
+
+        /// <summary>True si el panel 2D de diagramas está a la vista.</summary>
+        public bool Panel2DVisible
+        {
+            get { return panel2DVisible; }
+        }
+
+        /// <summary>Muestra/oculta el panel 2D (botón «Panel 2D»).</summary>
+        public void AlternarPanel2D()
+        {
+            panel2DVisible = !panel2DVisible;
+            if (ui != null) ui.MostrarPanel2D(panel2DVisible);
+            if (panel2DVisible) RefrescarPanel2D();
+        }
+
+        /// <summary>Redibuja el panel 2D con el elemento elegido (mismos datos que el AR).</summary>
+        private void RefrescarPanel2D()
+        {
+            if (ui == null) return;
+            ARElemento el = null;
+            if (datos != null && datos.elementos != null && tagSeleccionado >= 0)
+                datos.elementos.TryGetValue(tagSeleccionado.ToString(), out el);
+            if (el == null)
+            {
+                ui.ActualizarPanel2D("Elige un elemento en la lista.", null, null);
+                return;
+            }
+            texPanel2D = ARGrafico.Dibujar(el, texPanel2D);
+            var leyendas = new List<string>();
+            foreach (var s in ARGrafico.Series(el)) leyendas.Add(ARGrafico.Leyenda(s));
+            string titulo = string.Format("Tag {0} · {1} {2} · L = {3:0.##} m · caso {4}",
+                                          el.tag, el.tipo, el.seccion, el.L,
+                                          datos.caso);
+            ui.ActualizarPanel2D(titulo, leyendas, texPanel2D);
         }
 
         /// <summary>Selecciona un elemento por su tag (lo mismo que tocar su botón).</summary>

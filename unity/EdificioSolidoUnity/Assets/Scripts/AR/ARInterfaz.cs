@@ -58,6 +58,12 @@ namespace MCOC.AR
         public Button btnCancelarMarcado;
         /// <summary>Mira fija en el centro de la pantalla (Corrección 6): indica dónde se marca.</summary>
         public GameObject mira;
+        // Corrección 6, parte 3d: panel 2D con los diagramas del elemento elegido.
+        public Button btnPanel2D;
+        public GameObject panel2D;
+        public RawImage panel2DImagen;
+        public Text panel2DTitulo;
+        public Text[] panel2DLeyendas = new Text[3];
 
         public event Action<int> ElementoElegido;
         public event Action<string> ToggleCambiado;
@@ -72,6 +78,7 @@ namespace MCOC.AR
         public event Action MarcarBase;
         public event Action MarcarViga;
         public event Action CancelarMarcado;
+        public event Action Panel2D;
 
         private Font fuente;
 
@@ -219,6 +226,11 @@ namespace MCOC.AR
                 yd += 44f;
             }
 
+            // Panel 2D: los diagramas en un recuadro fijo, legible siempre (respaldo del AR).
+            ui.btnPanel2D = ui.CrearBoton(listaD, "Panel 2D", yd, 40f);
+            ui.btnPanel2D.onClick.AddListener(() => ui.Panel2D?.Invoke());
+            yd += 44f;
+
             ui.btnDiag = ui.CrearBoton(listaD, "Diag", yd, 40f);
             ui.btnDiag.onClick.AddListener(() => { if (ui.panelDiagnostico != null) ui.panelDiagnostico.SetActive(!ui.panelDiagnostico.activeSelf); });
             yd += 44f;
@@ -241,6 +253,9 @@ namespace MCOC.AR
             // SIEMPRE el que queda bajo ella. Oculta fuera del modo de marcado.
             ui.mira = ui.CrearMira(ui.canvas.transform);
             ui.MostrarMira(false);
+
+            ui.CrearPanel2D(ui.canvas.transform);
+            ui.MostrarPanel2D(false);
 
             return ui;
         }
@@ -286,6 +301,57 @@ namespace MCOC.AR
                 btnMarcarViga.gameObject.SetActive(hayElemento && esViga && !marcando);
             if (btnCancelarMarcado != null)
                 btnCancelarMarcado.gameObject.SetActive(marcando);
+        }
+
+        /// <summary>Muestra u oculta el panel 2D de diagramas.</summary>
+        public void MostrarPanel2D(bool visible)
+        {
+            if (panel2D != null) panel2D.SetActive(visible);
+        }
+
+        /// <summary>Pone en el panel 2D el título, las tres leyendas y la textura del gráfico.</summary>
+        public void ActualizarPanel2D(string titulo, IList<string> leyendas, Texture2D grafico)
+        {
+            if (panel2DTitulo != null) panel2DTitulo.text = titulo ?? "";
+            for (int k = 0; k < panel2DLeyendas.Length; k++)
+            {
+                if (panel2DLeyendas[k] == null) continue;
+                panel2DLeyendas[k].text = leyendas != null && k < leyendas.Count ? leyendas[k] : "";
+            }
+            if (panel2DImagen != null) panel2DImagen.texture = grafico;
+        }
+
+        /// <summary>
+        /// Recuadro a la izquierda-centro de la pantalla: título arriba, gráfico de
+        /// tres filas (N, V, M) y una leyenda sobre cada fila. Nada de él intercepta
+        /// toques (raycastTarget = false), así que no tapa botones ni el marcado.
+        /// </summary>
+        private void CrearPanel2D(Transform padre)
+        {
+            var go = new GameObject("Panel2D", typeof(RectTransform), typeof(RawImage));
+            go.transform.SetParent(padre, false);
+            var rt = go.GetComponent<RectTransform>();
+            rt.anchorMin = new Vector2(0.02f, 0.16f);
+            rt.anchorMax = new Vector2(0.64f, 0.74f);
+            rt.offsetMin = Vector2.zero;
+            rt.offsetMax = Vector2.zero;
+            panel2D = go;
+            panel2DImagen = go.GetComponent<RawImage>();
+            panel2DImagen.raycastTarget = false;
+            panel2DImagen.color = Color.white;
+
+            panel2DTitulo = CrearTexto(go.transform, "Panel2DTitulo", 22, TextAnchor.LowerLeft,
+                                       new Vector2(0f, 1f), new Vector2(1f, 1f),
+                                       new Vector2(4f, 4f), new Vector2(0f, 40f));
+            for (int k = 0; k < 3; k++)
+            {
+                // Cada fila ocupa un tercio; la leyenda va en su borde superior.
+                float yTop = 1f - k / 3f;
+                panel2DLeyendas[k] = CrearTexto(go.transform, "Panel2DLeyenda" + k, 18,
+                                                TextAnchor.UpperLeft,
+                                                new Vector2(0f, yTop), new Vector2(1f, yTop),
+                                                new Vector2(30f, -30f), new Vector2(-10f, -4f));
+            }
         }
 
         /// <summary>Muestra u oculta la mira fija del centro de la pantalla.</summary>
