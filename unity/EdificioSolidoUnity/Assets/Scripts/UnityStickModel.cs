@@ -2597,7 +2597,7 @@ namespace MCOC.Unity
                 double Vzx = esf.Vz + esf.Wz * x;
                 double Myx = esf.My + esf.Vz * x + 0.5 * esf.Wz * x * x;
                 double Vyx = esf.Vy + esf.Wy * x;
-                double Mzx = esf.Mz + esf.Vy * x + 0.5 * esf.Wy * x * x;
+                double Mzx = esf.Mz - esf.Vy * x - 0.5 * esf.Wy * x * x;
 
                 GUILayout.Space(3);
                 GUILayout.Label("N(x)  = " + Nx.ToString("F1") + " kN", valorStyle);
@@ -2626,7 +2626,9 @@ namespace MCOC.Unity
         // Ventana de diagramas (Semana 04): GUI.Window ARRASTRABLE que grafica
         // UN esfuerzo elegido (Axial / Corte / Momento) a lo largo del
         // elemento con los coeficientes de `esfuerzos_completos`:
-        //   N(x) = -N ;  V(x) = V + W*x ;  M(x) = M + V*x + W*x^2/2
+        //   N(x) = -N ;  V(x) = V + W*x
+        //   My(x) = My + Vz*x + Wz*x^2/2   (dMy/dx = +Vz)
+        //   Mz(x) = Mz - Vy*x - Wy*x^2/2   (dMz/dx = -Vy)
         // (W = 0 en columnas/muros -> lineal; vigas con carga -> parabolico).
         // ------------------------------------------------------------------
         private double ValorDiagramaD(EsfuerzosVigaModelo esf, double x)
@@ -2636,7 +2638,7 @@ namespace MCOC.Unity
                 return compEsfuerzoD == 0 ? esf.Vz + esf.Wz * x : esf.Vy + esf.Wy * x;
             return compEsfuerzoD == 0
                 ? esf.My + esf.Vz * x + 0.5 * esf.Wz * x * x
-                : esf.Mz + esf.Vy * x + 0.5 * esf.Wy * x * x;
+                : esf.Mz - esf.Vy * x - 0.5 * esf.Wy * x * x;
         }
 
         private void NombreYUnidadEsfuerzoD(out string nombre, out string unidad)
@@ -2933,7 +2935,7 @@ namespace MCOC.Unity
                 double x = t * esf.L;
                 double Nx = -esf.N;
                 double Myx = esf.My + esf.Vz * x + 0.5 * esf.Wz * x * x;
-                double Mzx = esf.Mz + esf.Vy * x + 0.5 * esf.Wy * x * x;
+                double Mzx = esf.Mz - esf.Vy * x - 0.5 * esf.Wy * x * x;
                 Vector3 baseP = Vector3.Lerp(p0, p1, t);
                 ptsN[k] = baseP + ex * (float)Nx;
                 ptsMy[k] = baseP + ez * (float)Myx;

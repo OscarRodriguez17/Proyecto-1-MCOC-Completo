@@ -233,7 +233,8 @@ namespace MCOC.Unity
     /// <summary>
     /// Coeficientes mínimos por viga y caso (JSON: bloque esfuerzos) para
     /// evaluar los diagramas en cualquier x∈[0,L]:
-    ///   N(x)=-N ; Vz(x)=Vz+Wz·x ; My(x)=My+Vz·x+Wz·x²/2 ; Vy/Mz análogos.
+    ///   N(x)=-N ; Vz(x)=Vz+Wz·x ; My(x)=My+Vz·x+Wz·x²/2 ;
+    ///   Vy(x)=Vy+Wy·x ; Mz(x)=Mz-Vy·x-Wy·x²/2.
     /// </summary>
     public class EsfuerzosVigaModelo
     {

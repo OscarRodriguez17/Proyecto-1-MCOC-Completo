@@ -91,9 +91,17 @@ mostrándolos **lado a lado**.
   columna/muro de A o B vuelve a mostrar su **P–M con demanda y caso activo**.
   Se añadió además una **ventana de diagramas arrastrable** (`GUI.Window`) que
   grafica UN esfuerzo a elección (Axial/Corte Vz·Vy/Momento My·Mz) con las
-  fórmulas `N(x)=-N`, `V=V+W·x`, `M=M+V·x+W·x²/2`, muestra extremos i/j,
-  máximo y el valor en el slider, y sigue al elemento/caso activo. **Tests: 134
-  passed.**
+fórmulas `N(x)=-N`, `V=V+W·x`, `M=M+V·x+W·x²/2`, muestra extremos i/j,
+   máximo y el valor en el slider, y sigue al elemento/caso activo. **Tests: 134
+   passed.**
+- **Semana 06 COMPLETA (Sesiones 19 y 20):** corrección del signo de `Mz(x)` en el
+  visor y en `src/secciones/diagramas.py`, **y app AR de inspección terminada**.
+  `src/ar/` genera `results/ar_elementos.json` (tags **14** y **26** columnas con
+  `M_xy` + panel P–M, **134** viga con `M_xz`; caso **GQ**) desde los datos ya
+  verificados, con **12 tests propios** → **Suite: 150 passed**. Escena
+  `Assets/Scenes/AR_Inspeccion.unity` (175 líneas, un GameObject) + 5 guiones en
+  `Assets/Scripts/AR/`, shader propio sin URP, AR Foundation **4.2.0** y dos menús
+  de build Android. **Tests: 150 passed.**
 - **Repositorio GitHub (Sesión 8, después):** subido a
   `https://github.com/OscarRodriguez17/Proyecto-1-MCOC-Completo` (público,
   branch `master`, commit `9413022`). Instrucciones exactas para entregar en
@@ -1481,3 +1489,500 @@ puede subir al APK ya instalado o hay que recompilar?" La respuesta es
 - Gesto táctil y layout adaptativo (§6.3 del reporte): **requieren recompilar**;
   la lectura del dato ya no.
 
+---
+
+## Sesión 19 - Miércoles 30 de septiembre 2026 (signo de Mz + arranque de AR)
+
+**Tarea:** Parte 0 completa (corrección del signo de `Mz(x)`) y attempt de
+Partes 1-3 (parche de datos AR + app AR + documentación).
+
+### El bug de Mz: por qué `+Vy·x` estaba mal
+
+El visor evaluaba `Mz(x) = Mz + Vy·x + Wy·x²/2`, o sea **la misma** fórmula que
+`My(x) = My + Vz·x + Wz·x²/2`. No son análogos. En los ejes locales de OpenSees:
+
+| conjugado | relación |
+|---|---|
+| `dVz/dx = +Wz` | y `dMy/dx = +Vz` |
+| `dVy/dx = +Wy` | y **`dMz/dx = -Vy`** |
+
+El corte vertical va antes que su momento (`dMy/dx = +Vz`); el corte en local y
+se lleva su momento con signo invertido (`dMz/dx = -Vy`).
+
+**Evidencia numérica (Edificio A, `elementTag = 14`, caso `GQ`, L = 3,960 m,
+Wy = 0, Vy = -112,59 kN, Mz_i = -226,47 kN·m):**
+
+| | Mz(L) |
+|---|---|
+| con `+Vy·x` (lo que había) | **-672,32 kN·m** |
+| con `-Vy·x` (lo correcto) | **+219,38 kN·m** |
+| OpenSees (`localForce`, extremo j) | **+219 kN·m** |
+
+### Cambios (aditivos salvo la corrección)
+
+- **`UnityStickModel.cs`** (3 fórmulas + el comentario de convención que decía
+  `M(x) = M + V·x + W·x²/2` para los dos planos):
+  - `:2600` `Mzx` del panel de consulta;
+  - `:2639` `ValorDiagramaD()` de la ventana 2D arrastrable;
+  - `:2936` `ReconstruirDiagramas3D()` de la curva Mz roja.
+- **`ModeloComplejo.cs:236`**: docstring de `EsfuerzosVigaModelo`, que decía
+  *"Vy/Mz análogos"*. Solo comentario.
+- **`src/benchmark_3d/esfuerzos.py`** y **`src/edificio_b/esfuerzos.py`**:
+  docstrings (fórmulas + bloque de cierre) y `_cierre_por_viga()`.
+- **`tests/test_esfuerzos_a.py`** (2 tests) y
+  **`tests/test_edificio_b/test_esfuerzos.py`** (2 tests).
+- **`reports/semana06.md`** (nuevo).
+
+`My` **no se tocó**: es correcto y su verificación ya cerraba. Tampoco se
+tocaron `Main.unity`, los JSON canónicos, ni `src/secciones/`.
+
+### El cierre de Mz que faltaba
+
+`_cierre_por_viga` solo comprobaba `Vz(L)` y `My(L)`, y por eso nadie notó el
+error: `Mz` no se comparaba contra el extremo j. Ahora los tres:
+
+```
+Vz(L) = Vz + Wz·L           = -Vz_j
+My(L) = My + Vz·L + Wz·L²/2 = -My_j
+Mz(L) = Mz - Vy·L - Wy·L²/2 = -Mz_j   <- nuevo
+```
+
+`dMz` entra en `vigas_sin_cierre`, así que `cierre_ok` de los cinco casos ya
+exige los tres.
+
+### Verificación
+
+- `python -m pytest tests -q` → **138 passed** (134 + 4 nuevos), 4,3 s.
+- **Guardas que muerden** (mutación: revertir el signo a `+` en A) → fallan
+  `test_cierre_diagrama_por_viga_y_caso` (preexistente, porque `cierre_ok` ahora
+  cubre Mz) y `test_semana06_cierre_mz_por_viga_y_caso`. Restaurado: 8 passed.
+- **Cobertura del cierre, y su límite honesto.** Una viga solo discrimina el
+  signo si `Vy != 0`:
+  - **A**: 228 vigas, **14 con `Vy != 0`** → con el signo correcto el cierre da
+    4e-10..7e-10 × tol; con el viejo, **6,3 × tol (GQ), 66,8 × (EX),
+    113 × (EY)**. Guarda de regresión real.
+  - **B**: 215 vigas y **`Vy = 0` en las 5** (sin carga en local y, sin torsión
+    de diafragma que reparta corte) → `Mz` es **constante** y el cierre se
+    reduce a `Mz_i = -Mz_j`. Es válido, pero **no puede distinguir los dos
+    signos**. Por eso la guarda de signo vive en el test de **A**, y el de B lo
+    documenta en vez de fingir que discrimina.
+- **Compilación C#: exit 0, sin errores ni avisos**, para `Assembly-CSharp`
+  (76 800 B) y `Assembly-CSharp-Editor` (10 240 B). El Editor de Unity está
+  abierto sobre el proyecto, así que `-batchmode` no puede tomar el cerrojo
+  (`exit=1073741845`); se compiló con **el mismo compilador y las mismas
+  referencias que usa Unity**: `Editor/Data/DotNetSdkRoslyn/csc.dll` + el host
+  `Editor/Data/NetCoreRuntime/dotnet.exe`, alimentado con el response file que
+  Unity dejó en `Library/Bee/artifacts/1900b0aE.dag/Assembly-CSharp.rsp`, con
+  `-out`/`-refout` redirigidos a un temporal para no pisar los artefactos del
+  editor.
+- `UnityStickModel.cs`: UTF-8 **sin BOM**, CRLF íntegro (2 978 → 2 980 líneas) y
+  los bytes no ASCII preservados.
+
+### Pendientes / bloqueos
+
+1. **`parche_datos_AR.zip` no existe.** La Parte 1 lo pide en la raíz del
+   proyecto; no está en el repo ni en el perfil de usuario. Lo único comprimido
+   que hay es `para_entrega.zip`, una entrega anterior de la semana 03
+   (`secciones/`, `edificio_solido_visor.json`, figuras de la s03) — **no** es
+   el parche. Sin él no hay `src/ar/`, ni `tests/test_ar_elementos.py`, ni
+   `results/ar_elementos.json`, ni las figuras `ar_ref_*.png`.
+   **Por eso las Partes 1 y 2 no se ejecutaron**: escribir la escena AR contra
+   un JSON inventado daría una app que no calza con los datos reales, y la
+   aceptación pide `ar_elementos.json` en `StreamingAssets`.
+2. **Suite en 138, no ≥146** — los ~8-12 tests que faltan son los del parche.
+3. **Decisión pendiente del usuario: el mismo bug está en
+   `src/secciones/diagramas.py`** y **no se tocó** por la regla de no modificar
+   el motor de secciones:
+   - `:242` `"Mz": coef["Mz"] + coef["Vy"] * x + coef["Wy"] * x * x / 2.0`
+     (y el docstring en `:28`);
+   - `tests/test_secciones.py:492` **patea el error**:
+     `assert d["Mz"] == approx(coef["Mz"] + coef["Vy"] * x)`;
+   - `_cierre_verticales()` (`:247-270`) solo cierra `dN`, `dVz` y `dMy`:
+     **`dMz` no se cierra**, que es justo por lo que pasó inadvertido aquí
+     también.
+
+   **Matiz importante:** los **datos son correctos** — el JSON exporta
+   coeficientes (`Mz_i`, `Vy`, `Wy`, `L`) de `localForce`, no diagramas
+   evaluados. El error está **solo en el evaluador** `diagramas.evaluar()`, que
+   hoy consume **un único sitio**: el test de paridad. Ni el visor Unity (que
+   tiene su propio evaluador, ya corregido) ni la app AR pasan por él **hoy**.
+   Pero es quien genera `esfuerzos_completos` de columnas y muros, así que si
+   la app AR se apoya en él para muestrear diagramas **heredaría el signo
+   equivocado**.
+4. **APK**: hoy `MCOCBuildAndroid.cs` fija `AndroidApiLevel22` y compila **solo**
+   `Main.unity`. Con la app AR hay que subir a **API 24**, poner
+   `AR_Inspeccion.unity` **primera**, añadir permiso de cámara y fijar
+   IL2CPP **ARM64** + **OpenGLES3**. **Sigue sin instalarse el módulo Android
+   Build Support** en esta máquina (`Editor/Data/PlaybackEngines/` solo tiene
+   `windowsstandalonesupport`), así que el APK no se puede compilar ni probar
+   aquí.
+
+### Fijado para cuando llegue el parche
+
+- **Coordenadas** (todo medido en el código, §2 del reporte):
+  `(x, y, z)_SI → (x + offset.x, z, y + offset.y)_Unity`; ejes locales con el
+  mismo canje `(vx, vy, vz) → (vx, vz, vy)`. **Escala 1:1**, sin conversión de
+  unidades; lo único escalable en pantalla es la **amplitud** del diagrama,
+  como fracción de `L`.
+- **Rotación/traslación/anchor**: la geometría del edificio **no** se hereda;
+  el diagrama se ancla con un `ARAnchor` frente a la cámara y de ahí manda el
+  usuario (arrastrar = mover, pellizcar = escalar, dos dedos = girar), con
+  botón "Recolocar".
+- **Teléfono = visor de resultados verificados.** El JSON trae los diagramas
+  **ya muestreados** contra `x`: el teléfono **no evalúa ninguna fórmula**
+  estructural. Decisión de alcance, enunciada en §4 del reporte.
+- El proyecto sólido reutiliza el cargador existente
+  (`persistentDataPath → StreamingAssets`), así que `ar_elementos.json` también
+  se podrá actualizar por `adb push` sin recompilar.
+
+---
+
+## 📅 Sesión 20 — Miércoles 30 de septiembre 2026 (app AR: datos reales + escena + build Android)
+
+> Continuación de la Sesión 19. Cierra las Partes 1 y 2 de la Semana 06.
+> **Suite: 138 → 150 passed.** `Assembly-CSharp` y `Assembly-CSharp-Editor`
+> compilan con **exit 0**.
+
+### 1. `parche_datos_AR.zip`: no existe (confirmado otra vez)
+
+Se buscó de nuevo en la raíz y en el perfil: el único comprimido es
+`para_entrega.zip`, de la semana 03. **Decisión taken:** no inventar un esquema de
+datos, sino escribir el pipeline AR **contra los datos reales ya verificados** de
+este proyecto. `src/complejo.py` ya tenía `esfuerzos_completos` con los momentos
+evaluados en `i` y `j` de cada elemento, que es exactamente lo que el teléfono
+necesita.
+
+### 2. `src/ar/` — el exportador
+
+Nuevo módulo que escribe `results/ar_elementos.json`:
+
+| tag | tipo | `L` | plano principal | P–M |
+|---|---|---|---|---|
+| 14 | columna | 3,96 m | `M_xy` | sí (`pm`) |
+| 26 | columna | 3,96 m | `M_xy` | sí (`pm`) |
+| 134 | viga | 10,0 m | `M_xz` | no |
+
+El JSON lleva por elemento los 9 esfuerzos muestreados contra `x`, los ejes
+locales, los extremos i/j, y —en columnas— la demanda `pm` para el panel P–M.
+Incluye un bloque `convenciones` que **reescribe explícitamente la fórmula** de
+`Mz` (`Mz(x) = Mz − Vy·x − Wy·x²/2`) y el sentido de `M > 0`: el teléfono no
+hereda ninguna convención implícita. La viga 134 sale con `M_xy` nulo, que es
+correcto (viga vertical, sin flexión en su plano fuerte).
+
+`src/complejo.py` lo invoca al final y copia el resultado a
+`Assets/StreamingAssets/ar_elementos.json`. También genera las tres figuras
+`reports/fig/ar_ref_tag{14,26,134}.png` con el mismo contrato visual que la app.
+
+### 3. `src/secciones/diagramas.py` — el error de signo, corregido
+
+Autorizado explícitamente en esta sesión. Cuatro sitios:
+
+- evaluador: `Mz + Vy·x + Wy·x²/2` → `Mz − Vy·x − Wy·x²/2`;
+- docstring de `diagramas.py`;
+- el test de paridad `test_secciones.py`, que **fijaba el error**;
+- `_cierre_verticales()` ahora cuadra **`dMz`** además de `dN`, `dVz`, `dMy`.
+
+El cierre de `dMz` es lo que faltaba para que el error **no pudiera** volver a
+pasar inadvertido, igual que se hizo en A y B.
+
+### 4. Unity: paquetes XR y por qué la línea 4.2.0
+
+`Packages/manifest.json` suma `arcore`, `arfoundation`, `arsubsystems` **4.2.0**
+y `xr.management` **4.4.0**.
+
+**Descartada la 5.x a propósito:** el proyecto usa el render pipeline
+**incorporado**, y los asmdef de AR Foundation 5.x referencian
+`Unity.RenderPipelines.Universal.Runtime` de forma **no opcional**, lo que
+arrastraría URP + SRP por el grafo de dependencias. En 4.2.0 esas referencias
+están detrás de `versionDefines` sobre `MODULE_URP_ENABLED` /
+`MODULE_LWRP_ENABLED`, así que sin URP instalado el código de URP no compila.
+
+Como AR Foundation no venía instalado, sus ensamblados se compilaron desde las
+fuentes reales de los paquetes con el mismo Roslyn de Unity, **sin** definir esas
+dos constantes, para poder verificar el proyecto de verdad.
+
+### 5. La app
+
+| Fichero | Rol |
+|---|---|
+| `Assets/Scripts/AR/ARDatos.cs` | mapeo del JSON con Json.NET + validación. **No evalúa fórmulas.** |
+| `Assets/Scripts/AR/ARGeometria.cs` | tipos y opciones de presentación |
+| `Assets/Scripts/AR/ARGeometriaBuilder.cs` | eje, N/V/M, marcas, rótulos, flecha de tracción, panel P–M |
+| `Assets/Scripts/AR/ARInterfaz.cs` | Canvas, lista de elementos, toggles N/V/M, botones |
+| `Assets/Scripts/AR/ARInspeccionApp.cs` | rig AR, raycast, `ARAnchor`, gestos, colocación |
+| `Assets/Shaders/LineaAR.shader` + `Assets/Resources/MCOC_LineaAR.mat` | `LineRenderer` por vertex color, en `Resources` para sobrevivir al stripping |
+| `Assets/Scenes/AR_Inspeccion.unity` | **175 líneas**, un GameObject con `ARInspeccionApp` |
+
+Decisiones que no son obvias y conviene no perder:
+
+- **El rig AR se construye en código**, no en la escena: `ARSession`, cámara,
+  `ARPlaneManager`, `ARAnchorManager` y `ARRaycastManager` se crean en `Start()`.
+  La escena queda como un fichero auditable y no depende de cómo AR Foundation
+  serialice sus componentes internos.
+- **No hay `ARSessionManager`:** ese componente no existe en AR Foundation
+  4.2.0. El estado se lee de `ARSession.state` y el valor correcto es
+  `ARSessionState.SessionTracking`, no `ARSessionState.Tracking`.
+- **Android:** `Application.streamingAssetsPath` devuelve un `jar:`, así que la
+  carga va por `UnityWebRequest` y no por `File.ReadAllText`.
+- **Anclaje:** las anclas son `GameObject` + `AddComponent<ARAnchor>()`, y se
+  destruyen a mano; `ARAnchorManager.AnchorManager` es lo que las registra.
+- **Sin URP de verdad:** el shader propio es deliberado, para que el APK de AR no
+  dependa de un pipeline que el proyecto no usa.
+
+### 6. Build Android: dos APKs
+
+`Assets/Editor/MCOCXRSetup.cs` (nuevo) configura *XR Plug-in Management* al vuelo:
+`XRGeneralSettingsPerBuildTarget.XRGeneralSettingsForBuildTarget(Android)`,
+`InitManagerOnStart = true` y `XRPackageMetadataStore.AssignLoader(manager,
+"ARCoreLoader", Android)`. Como vive en `Assets/Editor/`, **no** arrastra
+referencias AR al APK del visor.
+
+`MCOCBuildAndroid.cs` quedó con **dos menús**:
+
+| Menú | Escenas | Paquete | API |
+|---|---|---|---|
+| `Tools/MCOC/Build Android AR` | `AR_Inspeccion.unity` (**índice 0**) + `Main.unity` | `com.mcoc.edificiocomplejo.ar` | 24, IL2CPP ARM64, GLES3, cámara |
+| `Tools/MCOC/Build Android visor` | `Main.unity` | `com.mcoc.edificiocomplejo` | 22, igual que la semana 05 |
+
+### 7. Verificación
+
+```
+python -m pytest tests -q                      → 150 passed in 5.48s
+Assembly-CSharp        (con AR Foundation)     → EXIT 0   (107 008 bytes)
+Assembly-CSharp-Editor (XR + build)            → EXIT 0   (14 336 bytes)
+```
+
+Bugs de API que salieron al compilar de verdad y quedaron corregidos:
+`PlayerSettings.Android.stereoRenderingPath` y `AndroidStereoRenderingPath` **no
+existen** en 2022.3 (el nombre bueno es `renderOutsideSafeArea`);
+`SetUseDefaultGraphicsAPIs`/`SetGraphicsAPIs` piden **`BuildTarget`**, no
+`BuildTargetGroup`. Sin esa comprobación, el build habría fallado en Unity con un
+error igual de poco descriptivo.
+
+### 8. Pendientes (los dos únicos)
+
+- [ ] **Instalar Android Build Support** (Unity Hub → Edit → Installs) para
+      producir y probar los APKs. `PlaybackEngines/` solo tiene
+      `windowsstandalonesupport`.
+- [ ] Probar la colocación en un **teléfono con ARCore**: raycast de plano,
+      anclaje, gestos y lectura del panel P–M frente a las figuras `ar_ref_*`.
+
+
+## 🔄 Sesión 21 - Miércoles 30 de septiembre 2026 (parche anclaje AR)
+
+### ¿Qué se hizo?
+
+- **Aplicado parche `parche_anclaje_AR.zip`**: se copiaron los 4 archivos a sus rutas definitivas:
+  - `src/ar/exportar_ar.py` (exportador con `anclaje`)
+  - `tests/test_ar_elementos.py` (tests de anclaje + paridad M/My–Mz/M_xy)
+  - `results/ar_elementos.json` (regenerado con `anclaje`)
+  - `unity/EdificioSolidoUnity/Assets/StreamingAssets/ar_elementos.json` (copia runtime)
+- **Python**: exportador genera `anclaje.punto_unity`, `z_piso`, alturas i/j (3.96 m). Tests añadidos: `test_columna14_mz_en_cabeza_es_219_4_kNm`, `test_paridad_evaluadores_secciones_vs_app_ar` (134/14/26). **155 passed in 4.46s**.
+- **C# (runtime AR)**:
+  - `ARDatos.cs`: añadido `ARAnclaje`, `ARAltura`, campo `ARElemento.anclaje`; validación.
+  - `ARGeometria.cs`: `puntoI,puntoJ,ejeX,ladoPrincipal,esViga`; documentación escala 1:1 y desplazamiento `−anclaje.punto_unity`.
+  - `ARGeometriaBuilder.cs`: aplica desplazamiento, conserva extremos desplazados y captura `ladoPrincipal`.
+  - `ARColocacion.cs`: `Horizontal`, `Derecha`, `Yaw`, `RotacionInicial`, `PuntoEnAncla` (orientación sólo yaw, eje X horizontal del elemento).
+  - `ARInspeccionApp.cs`: contenedores por tag, `SetActive`, recolocación en el mismo ancla, orientación inicial, amplitud, `Restablecer`, posición sin rotación de pose, gestos corregidos (reinicio de `gestoIniciado` cuando `touchCount != 2`).
+  - `ARInterfaz.cs`: `Restablecer`, `Amplitud ±` (reemplaza Escala ±), `Quitar ancla`.
+- **Tests EditMode Unity**: `Assets/Editor/ARColocacionTests.cs` (5 pruebas). **Pasaron 5/5** (corregida la aserción de rotación vertical: `dot(up, rot*up)=1`).
+- **Metas AR reparados**: 10 `.meta` con GUID inválido regenerados para que Unity importe correctamente (`ARInspeccionApp.cs.meta`, `LineaAR.shader.meta`, etc.).
+- **Compilación Unity**: `Assembly-CSharp.dll` y `Assembly-CSharp-Editor.dll` generados sin errores CS.
+- **Integridad**: `Main.unity` sin cambios respecto a HEAD.
+
+### Verificación
+
+```text
+Python: 155 passed in 4.46s
+EditMode (Unity 2022.3.62f3): 5/5 Passed
+Compilación batchmode: sin errores CS; Tundra build success
+Main.unity: inalterado (hash blob idéntico a HEAD)
+```
+
+### Pendientes
+
+- [ ] Verificar el ZIP final con todos los archivos modificados/aplicados (si se requiere entregar).
+- [ ] (Opcional) Ejecutar PlayMode ligero si se desea validar UI/gestos, aunque fuera del alcance inmediato.
+
+
+
+## Sesión 22 - Viernes 2 de octubre 2026 (Corrección 3: pose, lista, Plan B, frames y XR Android)
+
+### Qué se hizo?
+
+- **Reparado el texto corrupto (mojibake)** en `ARInspeccionApp.cs`, `MCOCBuildAndroid.cs` y en esta bitácora: se sustituyeron los caracteres de reemplazo U+FFFD por su letra acentuada correcta. Verificado: 0 U+FFFD en los tres archivos.
+- **`ARInspeccionApp.cs` — integración completa**:
+  - `Preparar()` idempotente (se puede llamar varias veces sin duplicar nada).
+  - `AplicarContrato(ARRaiz)`: el callback `OK` ya rellena la lista con la cabecera `MCOC · AR · caso GQ` y deja seleccionado el primer elemento (tag `14`).
+  - Lista ordenada por el orden de contrato (`14`, `26`, `134`).
+  - `DestroyOtherCameras()` al arrancar para que sólo quede la de AR.
+  - Plan A / Plan B, `DesplazarPiso(...)` en pasos de 5 cm y `RumboCamara()`.
+  - `ARFramesCamara.Activar()` y contador de frames visible en la interfaz.
+  - `Destruir(GameObject)` nuevo helper: `Destroy` en modo edición lanzaba un error que Unity reportaba como log no gestionado y hacía fallar los tests.
+- **`ARInterfaz.cs`**: paneles con `Image.raycastTarget = false` para no bloquear los toques; `TextAnchor.MiddleCenter`; `CargarFuente()` segura en batchmode (no rompe si no encuentra la fuente).
+- **`ARRig.cs`**: pose real con `TrackedPoseDriver` (`GenericXRDevice`, `ColorCamera`, `UpdateAndBeforeRender`, `RotationAndPosition`).
+- **`ARColocacion.cs`**: `AlturaCamaraSobrePiso`, `PasoPiso`, `AnclaEstimadaBajoCamara(...)` (1.40 m bajo la cámara) y `DesplazarPiso(...)`.
+- **Dependencia añadida** a `Packages/manifest.json`: `"com.unity.xr.legacyinputhelpers": "2.1.12"`.
+- **Correcciones de API** que rompían la compilación: `ARPlaneManager.trackables.count`, `ARSession.state` como miembro estático, `Canvas` desde `UnityEngine`, eventos `Action` envueltos en lambdas.
+- **`MCOCXRSetup.cs` reescrito para XR Management 4.4.0**: el asset maestro correcto es `XRGeneralSettingsPerBuildTarget`; `XRGeneralSettings` y `XRManagerSettings` quedan como sub-assets. Se usa `XRManagerSettings.activeLoaders` (el `loaders` ya no existe). Se eliminaron los assets legacy que se habían creado por error (`Assets/XR/XRGeneralSettings.asset` y `Assets/XR/XRManagerSettings.asset`).
+- **Diagnóstico del fallo de XR**: los dos tests de XR fallaban no por la API sino porque el test comprobaba los settings **sin pasar por la asignación del loader**. Con un test temporal se confirmó que `XRPackageMetadataStore.AssignLoader(...)` sí funciona en batchmode (`ARCore` presente, `activeLoaders = 1`). Se hizo público `MCOCXRSetup.ActivarArcoreAndroid()` y el test ahora recorre el camino real de configuración; el diagnóstico temporal se borró.
+- **NRE de los `LineRenderer`**: en modo headless, un segundo `LineRenderer` en el mismo GameObject falla. `ConstruirMarca` crea ahora un GameObject hijo por eje.
+- **`MCOCBuildAndroid.cs`**: `BuildAr()` registra el loader ARCore si falta, y todos los avisos van también al log (`Faller(...)`) para que el build funcione en batchmode. El log del APK incluye ahora el tamaño en MB.
+- **Tests**: ampliados `ARRigTests`, `LlenarElementosTests`, `ARColocacionTests`, `ARFramesCamaraTests`, `ARPlanBTests`, `XRAndroidConfigTests`.
+- **Metas creados** para los ficheros que Unity no tenía importados (`ARRig.cs`, `ARFramesCamara.cs` y varios tests de `Editor`).
+- **`pytest.ini` añadido**: la suite recogía dos `test_secciones.py` (`tests/` y `para_entrega/`) y chocaban en el mismo nombre de módulo.
+
+### Verificación
+
+```text
+Python:     155 passed
+EditMode:   34/34 Passed  (Unity 2022.3.62f3, batchmode, sin errores de compilación)
+```
+
+### Build Android AR: NO generado
+
+Se intentó `Tools/MCOC/Build Android AR` en batchmode y **falló**. Causa raíz, verificada:
+
+```text
+UnityException: JDK not found
+Java Development Kit (JDK) directory is not set or invalid.
+JDK was not installed with Unity at
+  ...\Editor\Data\PlaybackEngines\AndroidPlayer\OpenJDK
+CheckAndroidJDK:Execute
+```
+
+En esta máquina **no hay ningún JDK instalado** (ni `JAVA_HOME`, ni en `Android Studio`, ni en `Program Files\Java`, ni Adoptium/Corretto/Zulu). Además faltan también los otros dos componentes del Android Build Support dentro de `PlaybackEngines\AndroidPlayer`:
+
+| Componente | Estado  |
+| ---------- | ------- |
+| `OpenJDK`  | ausente  |
+| `SDK`      | ausente  |
+| `NDK`      | ausente  |
+
+Por tanto **no se ha generado ningún APK**. El código de build y la configuración XR están correctos y listos; lo que falta es el toolchain.
+
+### Pendientes
+
+- [ ] Instalar desde Unity Hub los módulos **OpenJDK**, **Android SDK & NDK Tools** en la versión `2022.3.62f3`, y volver a ejecutar `Tools/MCOC/Build Android AR`.
+- [ ] Verificar el APK resultante (`build\EdificioComplejo_MCOC_AR.apk`) y anotar tamaño y salida de consola.
+- [ ] Prueba en dispositivo real con ARCore: colocación, Plan B (piso +/-), lista, contador de frames.
+
+---
+
+## Sesión 23 - Viernes 2 de octubre 2026 (Corrección 4: orientación doble, piso ±5 cm y respaldo de FeaturePoint)
+
+Corrección 4 sobre la app AR. Todo lo demás se mantiene: mismo contrato
+(`ar_elementos.json`), mismo rig, mismos botones, misma escala 1:1.
+
+### 1) Orientación doble (el error de verdad)
+
+`ColocarEnAncla` orientaba el elemento **dos veces**:
+
+| antes | ahora |
+|---|---|
+| `raizVisual.localRotation = RumboCamara()` | `raizVisual.localRotation = Quaternion.identity` |
+| `contenedor.localRotation = RotacionInicial(g, FrenteCamara())` | idem (sin cambios) |
+
+La orientación la pone **sólo el contenedor**, que es además donde acumula el
+gesto de dos dedos. `RumboCamara()` quedó sin uso y **se ha borrado**; el
+comentario de la cabecera de `ARColocacion` deja escrito que es el único sitio
+donde se decide la orientación.
+
+Por qué pasaba desapercibido: con la cámara mirando a **+Z** el yaw es 0, las
+dos rotaciones se suman y el resultado es el correcto. En cuanto el teléfono
+mira a otro lado, el rumbo se aplicaba dos veces y el elemento quedaba girado un
+ángulo arbitrario.
+
+#### Test EditMode parametrizado nuevo: `Assets/Editor/AROrientacionTests.cs`
+
+**15 casos** (5 frentes de cámara: `+Z`, `+X`, `−Z`, `−X`, `37°`) × 3
+comprobaciones. Monta la app por el camino real del teléfono
+(`Preparar` → `AplicarContrato` → `ColocarAqui`), gira `app.Camara` al frente,
+y mide sobre los `Transform` reales de la jerarquía
+`ancla → raizVisual → contenedor`, con la geometría que la app tiene cargada
+en `geoPorTag`:
+
+| prueba | qué comprueba |
+|---|---|
+| `Viga134_A3_96m_...` | `(j − i)` mundial paralelo a `ARColocacion.Derecha(frente)` (`dot > 0,999`), luz 10 m y los dos extremos a 3,96 m sobre el piso |
+| `LaRaizDeDiagramas_NoRota` | la raíz en identidad y el ancla sin rotación |
+| `Columna14_LaTraccionDeMpositivo...` | `rot * ladoPrincipal = −Derecha(frente)`, y que la flecha de tracción dibujada sale hacia la izquierda |
+
+**El test se ha verificado contra el bug**: reintroduciendo el yaw de cámara
+en la raíz, fallan **12 de 15**, y los 3 que pasan son exactamente los de frente
+`+Z`. Esa es la firma del fallo, y confirma que el test guarda algo.
+
+### 2) Piso ±5 cm sin tocar el ancla
+
+`DesplazarPiso` escribía en `ancla.transform.position`, y eso **no aguanta**:
+`ARCore` reescribe la pose del `ARAnchor` en cuanto el subsystem la actualiza, así
+que el ajuste se perdía al primer update. Ahora:
+
+- campo acumulado `offsetPiso` (float, metros);
+- se aplica con `AplicarOffsetPiso()` → `raizVisual.localPosition = (0, offsetPiso, 0)`;
+  la raíz cuelga del ancla, así que sigue al piso sin escribir en la pose que
+  controla ARCore;
+- `ColocarEnAncla` y `Restablecer` lo respetan (`Restablecer` es sobre el
+  elemento: amplitud y rumbo, no sobre el cuadre del piso);
+- `QuitarAncla` lo pone a 0;
+- nuevo `ARColocacion.AcumularPiso(offsetActual, pasos)`; `DesplazarPiso(Vector3,int)`
+  se queda como la aritmética del paso de 5 cm.
+
+API nueva pública para los tests: `OffsetPiso()` y `PosicionPiso()`
+(= `ancla.position + (0, offsetPiso, 0)`). `DesplazarPiso` **no** llama a
+`ColocarEnAncla` a propósito: ésta reorienta el contenedor y se comería el giro
+del gesto de dos dedos.
+
+**Fallo extra que destaparon los tests**: `QuitarAncla` destruía el GameObject
+del ancla **antes** de sacar de debajo la raíz de diagramas, que es su hija.
+Unity se lleva por delante todos los hijos al destruir, así que **el diagrama
+entero se perdía** y el siguiente «Colocar aquí» no tenía nada que mostrar
+(era lo mismo al recolocar, porque `CrearAnclaEn` empieza llamando a
+`QuitarAncla`). Corregido: la raíz se reparenta primero, el ancla se destruye
+después. `Destruir` (el helper que usa `DestroyImmediate` en modo edición) no lo
+camuflaba en los tests anteriores.
+
+### 3) Bonus: `FeaturePoint` como respaldo del raycast
+
+En `ColocarAncla`, si el raycast `PlaneWithinPolygon` no devuelve nada se reintenta
+con `TrackableType.FeaturePoint` antes de decir «No se detectó piso». Cuando el
+móvil no cierra un polígono (sala a oscuras, moqueta, luz rasante) el plano no
+aparece pero los puntos de referencia sí. El mensaje distingue el origen
+(`raycast` / `punto de referencia`) y, si tampoco hay puntos, sugiere «Colocar
+aquí».
+
+### Verificación
+
+```text
+Python:   155 passed in 5.70s
+EditMode: 51/51 Passed  (Unity 2022.3.62f3, batchmode, sin errores CS)
+```
+
+| fixture | tests |
+|---|---|
+| ARColocacionTests | 8 |
+| ARFramesCamaraTests | 6 |
+| **AROrientacionTests** (nuevo) | **15** |
+| ARPlanBTests | 7 (antes 5) |
+| ARRigTests | 4 |
+| LlenarElementosTests | 7 |
+| UIOverlapTests | 1 |
+| XRAndroidConfigTests | 3 |
+
+Se añadieron 2 pruebas a `ARPlanBTests`: `CambiarDeTagYRestablecer_MantienenElDesplazamientoDelPiso`
+y `QuitarAncla_PuestaElDesplazamientoACero` (esta última es la que destapó el
+borrado del diagrama). Se generó `.meta` para el test nuevo
+(`0022762fecf34e9eab44f4d1e3a0c426`) porque si no Unity no lo importa y la suite
+no lo ve.
+
+### Build Android AR: NO generado
+
+Sin cambios respecto a la Sesión 22: falta el toolchain (OpenJDK + SDK + NDK) en
+`2022.3.62f3`. El APK se compila en el Mac.
+
+### Pendientes
+
+- [ ] Prueba en dispositivo con ARCore: colocar mirando a **+X o −X** (no sólo +Z),
+      que es donde antes salía el elemento girado, y el gesto de dos dedos encima
+      de un piso ya desplazado con ±5 cm.
+- [ ] Instalar OpenJDK + Android SDK/NDK y ejecutar `Tools/MCOC/Build Android AR`.

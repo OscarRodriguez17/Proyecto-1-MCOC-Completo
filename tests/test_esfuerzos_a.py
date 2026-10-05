@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
 """Tests de la pasada dedicada de DIAGRAMAS de viga (Edificio A):
-  - Cierre del diagrama por viga y caso: |Vz(L) - (-Vzj)| y |My(L) - (-Myj)|
-    con tol < 1e-6·max(1,|valor|) (fórmulas exactas del enunciado).
+  - Cierre del diagrama por viga y caso: |Vz(L) - (-Vzj)|, |My(L) - (-Myj)| y
+    |Mz(L) - (-Mzj)| con tol < 1e-6·max(1,|valor|) (fórmulas exactas del
+    enunciado; el cierre de Mz es el de la semana 06).
   - Equilibrio global de la pasada por caso: ΣR + Σaplicada ≈ 0.
   - Discriminador del peso propio: Wz(G)+Wz(Q)=Wz(GQ) por viga (la sobrecarga
     Q no arrastra peso propio). 0 fallas.
+  - Signo de Mz: Mz(x) = Mz - Vy·x - Wy·x²/2 (dMz/dx = -Vy), no "+".
   - Contrato: el JSON de A (modelo_resultados.json) y el del visor sólido
     (edificio_solido.json) traen los coeficientes por viga y caso.
 """
@@ -44,6 +46,28 @@ def data_a(tmp_a):
     return analizar.run_analisis(d, "modelo_resultados.json",
                                  "Edificio A - esfuerzos (test)",
                                  (0.0, 0.0), out_dir=str(tmp_a))
+
+
+@pytest.fixture
+def cierre_mz():
+    """Pasada GQ de A con el DETALLE del cierre por viga (dMz/tolMz) y los
+    esfuerzos del extremo j leídos de `localForce`.
+
+    El detalle se captura dentro del fixture, mientras el modelo de la pasada
+    sigue vivo: `verificar_diagramas` no expone `cierre` y el estado de OpenSees
+    es global, así que el test no debe volver a preguntar por `localForce`.
+    Fixture de función (no de módulo) justamente por eso: cada test que lo pide
+    vuelve a resolver el caso GQ y no hereda el modelo de otro test.
+    """
+    import openseespy.opensees as ops
+    tipo, _aplicada, w = esfuerzos._correr_caso("GQ", dat=d, offset=(0.0, 0.0))
+    bloque = esfuerzos._extraer(tipo, w)
+    cierre = esfuerzos._cierre_por_viga(tipo, bloque, w)
+    j = {}
+    for k in bloque:
+        f = ops.eleResponse(int(k), "localForce")
+        j[k] = (float(f[8]), float(f[10]), float(f[11]))   # Vzj, Myj, Mzj
+    return bloque, cierre, j
 
 
 def test_cierre_diagrama_por_viga_y_caso(diagramas):
@@ -97,6 +121,52 @@ def test_formulas_evaluacion(diagramas):
     assert abs(Myx - (My + Vz * x + Wz * x * x / 2.0)) < 1e-9
     v = verif[caso]
     assert v["equilibrio"]
+
+
+def test_semana06_cierre_mz_por_viga_y_caso(diagramas, cierre_mz):
+    """Mz(L) = Mz - Vy·L - Wy·L²/2 = -Mz_j en TODAS las vigas.
+
+    Es el cierre que faltaba: `_cierre_por_viga` solo cubría Vz y My, y por eso
+    el error de signo de Mz pasó inadvertido. Ahora `cierre_ok` de los 5 casos
+    exige los TRES cierres (dMz entra en `vigas_sin_cierre`).
+    """
+    verif, _ = diagramas
+    for caso in CASOS:
+        assert verif[caso]["cierre_ok"], f"cierre (Vz/My/Mz) FALLA en {caso}"
+        assert verif[caso]["vigas_sin_cierre"] == []
+    bloque, cierre, _j = cierre_mz
+    assert len(cierre) == len(bloque) == 228
+    malos = {e: (c["dMz"], c["tolMz"]) for e, c in cierre.items()
+             if c["dMz"] > c["tolMz"]}
+    assert malos == {}, f"Mz(L) != -Mz_j en {len(malos)} vigas de A (caso GQ)"
+
+
+def test_semana06_signo_de_mz_es_menos(cierre_mz):
+    """Guarda de regresión del SIGNO de Mz (semana 06).
+
+    A tiene 14 vigas con Vy != 0 (la torsión del diafragma rígido reparte Vy),
+    así que el signo de Vy·x SÍ se puede discriminar contra `localForce`:
+    con "+Vy·x" el cierre se va a 6–113 veces la tolerancia, con "-Vy·x" queda
+    en ~1e-10 de ella.
+    """
+    bloque, _cierre, j = cierre_mz
+    con_vy = {k: b for k, b in bloque.items() if abs(b["Vy"]) > 1e-9}
+    assert con_vy, ("sin vigas con Vy != 0 en A: este test no distinguiría "
+                    "el signo de Mz y no sirve como guarda")
+
+    # la viga más sensible:|max(Vy·L)| / max(1,|Mzj|)
+    peor = max(con_vy, key=lambda k: abs(con_vy[k]["Vy"] * con_vy[k]["L"]))
+
+    def d(L_old):
+        """|Mz(L) - (-Mz_j)| / max(1,|Mz_j|) con la fórmula dada por L_old."""
+        b = bloque[peor]
+        return abs(L_old(b) + j[peor][2]) / max(1.0, abs(j[peor][2]))
+
+    nuevo = d(lambda b: b["Mz"] - b["Vy"] * b["L"] - b["Wy"] * b["L"] ** 2 / 2.0)
+    viejo = d(lambda b: b["Mz"] + b["Vy"] * b["L"] + b["Wy"] * b["L"] ** 2 / 2.0)
+    assert nuevo < 1e-6, f"Mz con el signo correcto no cierra (rel {nuevo:.3e})"
+    assert viejo > 1.0, (f"el signo viejo cerraría ({viejo:.3e}): la guarda "
+                         f"deja de distinguir las dos fórmulas")
 
 
 def test_json_a_lleva_esfuerzos(data_a):

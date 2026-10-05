@@ -20,7 +20,13 @@ tests/test_edificio_b/test_esfuerzos.py):
     Vz(x) = Vz + Wz·x
     My(x) = My + Vz·x + Wz·x²/2
     Vy(x) = Vy + Wy·x
-    Mz(x) = Mz + Vy·x + Wy·x²/2
+    Mz(x) = Mz - Vy·x - Wy·x²/2
+
+El signo de Mz NO es análogo al de My: en los ejes locales de OpenSees
+(dVy/dx = +Wy y dVz/dx = +Wz) el conjugado de My es Vz con dMy/dx = +Vz, pero
+el conjugado de Vy es Mz con dMz/dx = -Vy. De ahí el signo menos en Vy·x y en
+Wy·x²/2 (semana 06: con los dos signos positivos el diagrama de Mz no cerraba
+contra `localForce` y la cabeza de las columnas se erraba).
 
 Cargas por caso (los qG/qQ salen de tributario.tributaria_por_viga):
   - G : w = qG + γ·A            (viga)  + PP de columnas/muros al nodo superior
@@ -31,8 +37,11 @@ Cargas por caso (los qG/qQ salen de tributario.tributaria_por_viga):
 Solver idéntico a analizar.py: BandGeneral/RCM/Transformation/Linear.
 
 Cierre por viga y caso (equilibrio del elemento ya cargado): de `localForce`
-salen Vzi, Myi en i y Vzj, Myj en j con
+salen Vzi, Vyi, Myi, Mzi en i y Vzj, Myj, Mzj en j con
     Vz(L) = Vzi - w·L = -Vzj      y    My(L) = Myi + Vzi·L - w·L²/2 = -Myj
+    Mz(L) = Mzi - Vyi·L - Wyi·L²/2 = -Mzj
+(con Wy = wy = carga en local y, 0 en este modelo; por eso en la práctica el
+diagrama de Mz es lineal en las vigas, igual que el de Vz.)
 (verificado aquí y en el test de cierre con tol < 1e-6·max(1,|valor|)).
 
 Unidades: m, kN.  ADITIVO: no toca geometría, IDs, construir.py, verificar.py
@@ -177,7 +186,11 @@ def _extraer(M, w_por_viga):
 
 
 def _cierre_por_viga(bloque, w_por_viga):
-    """Cierre Vz(L)=-Vzj y My(L)=-Myj por viga (para verificación)."""
+    """Cierre Vz(L)=-Vzj, My(L)=-Myj y Mz(L)=-Mzj por viga (para verificación).
+
+    Mz usa la fórmula corregida (semana 06): Mz(L) = Mz - Vy·L - Wy·L²/2, con el
+    signo menos que fija dMz/dx = -Vy en los ejes locales de OpenSees.
+    """
     res = {}
     for k in sorted(bloque, key=int):
         b = bloque[k]
@@ -191,11 +204,14 @@ def _cierre_por_viga(bloque, w_por_viga):
         _Ni, _Vyi, _Vzi, _Ti, _Myi, _Mzi, _Nj, _Vyj, Vzj, _Tj, Myj, _Mzj = f
         VzL = b["Vz"] + b["Wz"] * L
         MyL = b["My"] + b["Vz"] * L + b["Wz"] * L * L / 2.0
+        MzL = b["Mz"] - b["Vy"] * L - b["Wy"] * L * L / 2.0
         res[int(k)] = {
             "dVz": abs(VzL - (-Vzj)),
             "dMy": abs(MyL - (-Myj)),
+            "dMz": abs(MzL - (-_Mzj)),
             "tolVz": 1e-6 * max(1.0, abs(Vzj)),
             "tolMy": 1e-6 * max(1.0, abs(Myj)),
+            "tolMz": 1e-6 * max(1.0, abs(_Mzj)),
         }
     return res
 
@@ -208,6 +224,7 @@ def _correr_todo(verbose=True):
       por_caso: {caso: {str(e): {L,N,Vy,Vz,T,My,Mz,Wy,Wz}}}
       verif:    {caso: {aplicada, reacciones, e_fx/e_fy/e_fz, equilibrio,
                         n_vigas, cierre_ok, vigas_sin_cierre}}
+    `cierre_ok` exige los TRES cierres por viga: Vz, My y Mz.
     """
     por_caso = {}
     verif = {}
@@ -235,7 +252,8 @@ def _correr_todo(verbose=True):
         bloque = _extraer(M, w_por_viga)
         cierre = _cierre_por_viga(bloque, w_por_viga)
         malos = [e for e, c in cierre.items()
-                 if c["dVz"] > c["tolVz"] or c["dMy"] > c["tolMy"]]
+                 if c["dVz"] > c["tolVz"] or c["dMy"] > c["tolMy"]
+                 or c["dMz"] > c["tolMz"]]
         ok_c = not malos
         ok_cierre = ok_cierre and ok_c
 
@@ -274,8 +292,8 @@ def correr_esfuerzos(verbose=True):
 
 def verificar_diagramas(verbose=True):
     """Corre la pasada y devuelve la verificación completa por caso
-    (equilibrio global ΣR + Σaplicada ≈ 0 y cierre Vz(L)=-Vzj / My(L)=-Myj
-    con tol 1e-6·max(1,|valor|)). Usado por tests/test_edificio_b/."""
+    (equilibrio global ΣR + Σaplicada ≈ 0 y cierre Vz(L)=-Vzj / My(L)=-Myj /
+    Mz(L)=-Mzj con tol 1e-6·max(1,|valor|)). Usado por tests/test_edificio_b/."""
     por_caso, verif = _correr_todo(verbose=verbose)
     return verif, por_caso
 

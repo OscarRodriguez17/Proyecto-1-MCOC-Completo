@@ -478,7 +478,11 @@ def test_semana04_esfuerzos_completos_esquema_por_caso():
 
 def test_semana04_diagramas_evaluador_formulas():
     """N(-x), V(x), M(x) coinciden con la convención verificada de semana 03
-    (N(x) = -N, momento con repartición cuadrática) para col/muro/viga."""
+    (N(x) = -N, momento con repartición cuadrática) para col/muro/viga.
+
+    Semana 06: Mz(x) = Mz - Vy·x - Wy·x²/2 (el signo menos viene de
+    dMz/dx = -Vy en los ejes locales de OpenSees; con el + no cerraba contra
+    localForce del extremo j)."""
     from secciones import diagramas
     coef = {"N": -140.0, "Vy": 1.5, "Vz": 2.0, "T": 3.0,
             "My": 4.0, "Mz": 5.0, "Wy": 0.0, "Wz": -2.0, "L": 4.0}
@@ -489,7 +493,7 @@ def test_semana04_diagramas_evaluador_formulas():
     assert d["My"] == pytest.approx(coef["My"] + coef["Vz"] * x
                                     + coef["Wz"] * x * x / 2.0)
     assert d["Vy"] == pytest.approx(coef["Vy"])
-    assert d["Mz"] == pytest.approx(coef["Mz"] + coef["Vy"] * x)
+    assert d["Mz"] == pytest.approx(coef["Mz"] - coef["Vy"] * x)
     assert d["T"] == pytest.approx(coef["T"])
 
 
@@ -529,8 +533,9 @@ def test_semana04_equilibrio_y_cierre_verticales():
             v = vf[clave][caso]
             assert v["equilibrio"] is True                    # eq global
             cv = v["cierre_verticales"]
-            assert cv["ok"] is True                           # dN=dVz=dMy≈0
+            assert cv["ok"] is True                   # dN=dVz=dMy=dMz≈0
             assert cv["max_dN"] < 1e-6 and cv["max_dMy"] < 1e-6
+            assert cv["max_dMz"] < 1e-6               # semana 06: Mz(L) = -Mz_j
 
 
 def test_semana04_overlay_solido_y_streaming(overlay):

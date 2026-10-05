@@ -25,9 +25,13 @@ y con el panel de Unity de la semana 03):
     Vz(x) = Vz + Wz·x
     My(x) = My + Vz·x + Wz·x²/2
     Vy(x) = Vy + Wy·x
-    Mz(x) = Mz + Vy·x + Wy·x²/2
+    Mz(x) = Mz - Vy·x - Wy·x²/2
     T(x)  = T
     (ver ``evaluar``)
+
+    El signo de Mz lleva el menos porque ``dMz/dx = -Vy`` en los ejes locales de
+    OpenSees, mientras que ``dMy/dx = +Vz``. Semana 06: con ``+Vy·x`` el
+    diagrama de Mz no cerraba contra ``localForce`` del extremo j.
 
 METADATOS por elemento (traza completa para el postprocesador Unity):
   - tipo de VISOR (`column`/`wall`/`vigas_x`/`vigas_y`), sección, material
@@ -42,7 +46,8 @@ METADATOS por elemento (traza completa para el postprocesador Unity):
     de ambos edificios.
 
 Verificación nueva (``verif``): cierre de los ELEMENTOS VERTICALES —con
-``Wz = 0``— ``Vz(L) = -Vzj``, ``My(L) = -Myj`` y ``N` constante (``Ni+Nj≈0``)
+``Wz = 0``— ``Vz(L) = -Vzj``, ``My(L) = -Myj``, ``Mz(L) = -Mzj`` (semana 06) y
+``N`` constante (``Ni+Nj≈0``)
 más el equilibrio global ΣR + Σaplicada ≈ 0 por caso (igual que semana 03).
 
 Unidades: m, kN, kN·m.  ADITIVO: no toca construir/analizar/esfuerzos de
@@ -232,6 +237,14 @@ def evaluar(coef, x):
 
     Paridad exacta con el panel de la semana 03 y con las fórmulas de
     `edificio_b/esfuerzos.py` (N(x) = -N, etc.).
+
+    OJO con el signo de Mz (corregido en la semana 06): NO es análogo al de My.
+    En los ejes locales de OpenSees el conjugado de Vy es Mz con
+    ``dMz/dx = -Vy`` (el corte en local y lleva su momento con signo invertido),
+    mientras que el conjugado de Vz es My con ``dMy/dx = +Vz``. Con el signo
+    ``+Vy·x`` el diagrama de Mz NO cerraba contra ``localForce`` del extremo j.
+    Quien necesite ``dM/dx = +V`` en el plano x–y debe exportar el corte
+    como ``-Vy(x)``, que es lo que hace `src/ar/exportar_ar.py` (V_xy = -Vy).
     """
     return {
         "N": -coef["N"],
@@ -239,18 +252,22 @@ def evaluar(coef, x):
         "Vz": coef["Vz"] + coef["Wz"] * x,
         "T": coef["T"],
         "My": coef["My"] + coef["Vz"] * x + coef["Wz"] * x * x / 2.0,
-        "Mz": coef["Mz"] + coef["Vy"] * x + coef["Wy"] * x * x / 2.0,
+        "Mz": coef["Mz"] - coef["Vy"] * x - coef["Wy"] * x * x / 2.0,
     }
 
 
 # ---------------------------------------------------------------- verificación
 def _cierre_verticales(tipo_elem, bloque):
-    """Cierre en extremos de columnas/muros/aspas (Wz=0).
+    """Cierre en extremos de columnas/muros/aspas (Wz=0, Wy=0).
 
-    Vz(L) = Vz == -Vzj; My(L) = My + Vz·L == -Myj; N constante: Ni + Nj ≈ 0.
-    Devuelve (max_dN, max_dVz, max_dMy); tol relativa 1e-6·max(1,|ref|).
+    Vz(L) = Vz == -Vzj; My(L) = My + Vz·L == -Myj; Mz(L) = Mz - Vy·L ==
+    -Mzj; N constante: Ni + Nj ≈ 0. Devuelve (max_dN, max_dVz, max_dMy,
+    max_dMz); tol relativa 1e-6·max(1,|ref|).
+
+    `max_dMz` se añadió en la semana 06: sin él el cierre era ciego al error de
+    signo de Mz, que es justamente por lo que pasó inadvertido hasta esa semana.
     """
-    max_dN = max_dVz = max_dMy = 0.0
+    max_dN = max_dVz = max_dMy = max_dMz = 0.0
     for e in sorted(tipo_elem):
         t = tipo_elem[e]
         if t == "brazo" or t == "viga":
@@ -258,16 +275,21 @@ def _cierre_verticales(tipo_elem, bloque):
         f = ops.eleResponse(e, "localForce")
         if f is None or len(f) < 12:
             continue
-        Ni, _Vyi, Vzi, _Ti, Myi, _Mzi, Nj, _Vyj, Vzj, _Tj, Myj, _Mzj = f
+        Ni, Vyi, Vzi, _Ti, Myi, Mzi, Nj, _Vyj, Vzj, _Tj, Myj, Mzj = f
         L = _larga(*ops.eleNodes(e))
         VzL = Vzi                                   # Wz = 0
         MyL = Myi + Vzi * L
+        # Wy = 0 -> Mz es LINEAL (constante solo si ademas Vy = 0). Con el signo
+        # corregido: Mz(L) = Mz - Vy·L - Wy·L²/2 = Mzi - Vyi·L.
+        MzL = Mzi - Vyi * L
         max_dN = max(max_dN, abs(Ni + Nj) / max(1.0, abs(Nj)))
         max_dVz = max(max_dVz, abs(VzL - (-Vzj)) / max(1.0, abs(Vzj)))
         max_dMy = max(max_dMy, abs(MyL - (-Myj)) / max(1.0, abs(Myj)))
-    ok = max_dN < 1e-6 and max_dVz < 1e-6 and max_dMy < 1e-6
+        max_dMz = max(max_dMz, abs(MzL - (-Mzj)) / max(1.0, abs(Mzj)))
+    ok = (max_dN < 1e-6 and max_dVz < 1e-6
+          and max_dMy < 1e-6 and max_dMz < 1e-6)
     return {"max_dN": max_dN, "max_dVz": max_dVz, "max_dMy": max_dMy,
-            "ok": bool(ok)}
+            "max_dMz": max_dMz, "ok": bool(ok)}
 
 
 def _equilibrio(base_nodes):
@@ -393,5 +415,5 @@ def resultado(cache_semana03, verbose=True):
                 cv = v["cierre_verticales"]
                 print(f"  {caso}: eq={v['equilibrio']} n={v['n_elementos']} "
                       f"cierreV dN={cv['max_dN']:.1e} dVz={cv['max_dVz']:.1e} "
-                      f"dMy={cv['max_dMy']:.1e}")
+                      f"dMy={cv['max_dMy']:.1e} dMz={cv['max_dMz']:.1e}")
     return out

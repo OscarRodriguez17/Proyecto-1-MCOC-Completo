@@ -2,7 +2,7 @@
 
 > Repositorio: `https://github.com/OscarRodriguez17/Proyecto-1-MCOC-Completo.git`
 > Rama `master` — Commit + tag a evaluar: consultar `docs/bitacora.md` (sesión final).
-> Suite de verificación: `python -m pytest tests/ -q` → **134 passed**.
+> Suite de verificación: `python -m pytest tests/ -q` → **150 passed**.
 
 ## Reportes semanales
 
@@ -12,6 +12,7 @@
 | [semana04.md](semana04.md) | 4 | **Unity como postprocesador estructural**: esfuerzos completos por elementTag (9 coeficientes, 315 elems B / 343 A), metadatos y ejes locales, panel de consulta por clic (viga/columna/muro), diagramas 3D y ventana 2D, **ventana P–M** (envolvente + balanceado + `M_cap(P_d)` + D/C) y cadena de trazabilidad completa tag 41 → JSON → panel → P–M. |
 | [semana05.md](semana05.md) | 5 | Modelo "de la hoja al teléfono": **MOD1** sobrecarga `SC_PISO` 3,0→4,0 (Q 11 029,6→14 423,3 kN) y **MOD2** muro t 0,60→0,70 (P₀_aci 38 645,8→44 829,6; D/C 0,74→0,79) con flujo **editar → correr → "Recargar JSON"**; superposición interactiva G+Q≡GQ/G+EX/G+Q+EX (`|superpuesta − OpenSees| ≈ e-11`); sidequest "carga móvil" documentada (NO implementada en v1); **build Android** (`Tools/MCOC/Build Android`) y **actualización de los datos en el teléfono sin recompilar** (`adb push` a `persistentDataPath`). |
 | [supuesto_armado_edificio_A.md](supuesto_armado_edificio_A.md) | Anexo | Hipótesis de armado y materiales del Edificio A (f'c 30 MPa G35, columna 70×70 8Ø28, recetas de muros) — supuesto documentado para el catálogo. |
+| [semana06.md](semana06.md) | 6 | **Corrección del signo de `Mz(x)`** (era `Mz + Vy·x + Wy·x²/2`; correcto `Mz − Vy·x − Wy·x²/2`, porque `dMz/dx = −Vy`) en las 3 fórmulas del visor, con evidencia contra OpenSees (A tag 14 GQ: **−672,32 → +219,38 kN·m** vs **+219**); **cierre `Mz(L) = −Mz_j`** añadido a A y B; el mismo bug corregido en `src/secciones/diagramas.py` con `dMz` en `_cierre_verticales()`. **App AR de inspección en obra completa**: `src/ar/` genera `ar_elementos.json` (tags 14/26 columnas con P–M, 134 viga) desde los datos ya verificados, 12 tests propios (**suite 138 → 150**); escena `AR_Inspeccion.unity` + 5 guiones en `Assets/Scripts/AR/`, shader propio sin URP, AR Foundation 4.2.0 y build Android con API 24 / IL2CPP ARM64 / OpenGLES3 / ARCore. El APK **no se genera en esta máquina** (falta Android Build Support, §8.3). |
 
 Figuras de apoyo: `reports/fig/` (envolventes de muros/columnas, superposición, mosaico).
 
@@ -39,21 +40,26 @@ Figuras de apoyo: `reports/fig/` (envolventes de muros/columnas, superposición,
 3. **Suite de protección**:
 
    ```
-   python -m pytest tests/ -q    # → 134 passed
+   python -m pytest tests/ -q    # → 150 passed
    ```
 
 ## Cómo generar el build Android (APK)
 
 Desde `unity/EdificioSolidoUnity` con el módulo **Android Build Support**
-instalado (SDK/NDK/JDK):
+instalado (SDK/NDK/JDK) — *Unity Hub → Edit → Installs → Android Build Support*.
+Hay **dos** APKs distintos:
 
-1. Menú **`Tools/MCOC/Preparar escena Main`** (deja escena + cámara + StickModel).
-2. Menú **`Tools/MCOC/Build Android`** → compila
-   `assets/scenes/Main.unity` a `build/EdificioComplejo_MCOC.apk` con
-   package **`com.mcoc.edificiocomplejo`**, **min SDK 22**, **landscape
-   (LandscapeLeft)**, `bundleVersion 1.0`, IL2CPP.
-3. Instalar el APK en el teléfono (los datos van embebidos en `StreamingAssets`,
-   sin internet).
+1. **`Tools/MCOC/Build Android visor`** → `build/EdificioComplejo_MCOC.apk`,
+   package **`com.mcoc.edificiocomplejo`**, solo `Assets/Scenes/Main.unity`,
+   `bundleVersion 1.0`, IL2CPP. Es el visor clásico, **sin AR Foundation**.
+
+2. **`Tools/MCOC/Build Android AR`** → `build/EdificioComplejo_MCOC_AR.apk`,
+   package **`com.mcoc.edificiocomplejo.ar`**, escenas
+   `AR_Inspeccion.unity` (índice 0) + `Main.unity`, **min SDK 24**,
+   **IL2CPP ARM64**, **OpenGLES3**, loader **ARCore** y permiso de cámara.
+
+Los dos scripts llaman a `MCOCXRSetup.ConfigurarAndroid()`, que activa el
+`ARCoreLoader` en *XR Plug-in Management* solo para el target Android.
 
 ## Cómo actualizar los DATOS en el teléfono (sin recompilar el APK)
 
@@ -72,5 +78,7 @@ lo que quedó en el dispositivo. Después, en el teléfono, se aprieta
 fecha. Con `-Borrar` (o con el botón **"Usar JSON del APK"** del panel) se vuelve
 al JSON embebido. Detalle en `reports/semana05.md` §6.2.
 
-> El APK y las capturas de Play (`[CAPTURA: …]` en semana04/05) se completan a
-> mano en Unity — ver pendientes en `docs/bitacora.md`.
+> **Pendiente de hardware:** el APK y las capturas de Play
+> (`[CAPTURA: …]` en semana04/05) se completan a mano en Unity. La app AR exige
+> además un **teléfono con ARCore** para validar la colocación — ver los
+> pendientes en `docs/bitacora.md`.

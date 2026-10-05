@@ -7,6 +7,7 @@ Uso:
     python src\\complejo.py                 # analiza A y B, fusiona, visualiza
     python src\\complejo.py --offset-b 70   # separacion del Edificio B en X [m]
     python src\\complejo.py --sin-visualizar
+    python src\\complejo.py --sin-ar        # sin los datos de la app AR
 """
 import argparse
 import os
@@ -85,17 +86,45 @@ def _enriquecer_secciones_solido():
         print("[SECCIONES] overlay omitido:", exc)
 
 
+def _exportar_ar():
+    """Datos PRECALCULADOS para la app AR de inspeccion (Semana 06).
+
+    Aditivo y opcional: escribe `results/ar_elementos.json` (diagramas ya
+    muestreados por el exportador; el telefono solo lee y dibuja) y lo copia al
+    StreamingAssets del proyecto Unity solido. Va DESPUES del overlay de
+    secciones porque las columnas necesitan `secciones.elementos[tag].demanda`
+    para el bloque P-M. Nunca debe tumbar el pipeline.
+    """
+    import shutil
+    results = os.path.abspath(os.path.join(AQUI, "..", "results"))
+    sa = os.path.abspath(os.path.join(
+        AQUI, "..", "unity", "EdificioSolidoUnity", "Assets", "StreamingAssets"))
+    try:
+        from ar import exportar_ar
+        exportar_ar.exportar(verbose=True)
+        src = os.path.join(results, "ar_elementos.json")
+        if os.path.isdir(sa) and os.path.isfile(src):
+            shutil.copy2(src, os.path.join(sa, "ar_elementos.json"))
+            print("[AR] StreamingAssets (solido) actualizado: ar_elementos.json")
+    except Exception as exc:  # aditivo: no afecta al resto del pipeline
+        print("[AR] exportacion omitida:", exc)
+
+
 def main():
     ap = argparse.ArgumentParser(description="Complejo de Ingenieria A+B")
     ap.add_argument("--offset-b", type=float, default=60.0,
                     help="Offset X [m] del Edificio B (default 60)")
     ap.add_argument("--sin-visualizar", action="store_true")
+    ap.add_argument("--sin-ar", action="store_true",
+                    help="No genera results/ar_elementos.json (app AR)")
     args = ap.parse_args()
 
     fusionar.fusion(offset_b_x=args.offset_b)
     _sincronizar_unity()
     _exportar_y_sincronizar_solido(args.offset_b)
     _enriquecer_secciones_solido()
+    if not args.sin_ar:
+        _exportar_ar()
     if not args.sin_visualizar:
         import visualizar_complejo
         import visualizar_complejo_html
