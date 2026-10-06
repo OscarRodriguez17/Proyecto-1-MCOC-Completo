@@ -397,9 +397,10 @@ namespace MCOC.AR.Editores
         [Test]
         public void LosTextos_CrecenConLaDistancia()
         {
-            Assert.AreEqual(1f, ARBillboard.EscalaPorDistancia(1.5f), 1e-5f);
-            Assert.AreEqual(4f, ARBillboard.EscalaPorDistancia(6f), 1e-5f);
-            Assert.AreEqual(0.8f, ARBillboard.EscalaPorDistancia(0.3f), 1e-5f);
+            Assert.AreEqual(1f, ARBillboard.EscalaPorDistancia(3f), 1e-5f);
+            Assert.AreEqual(1.5f, ARBillboard.EscalaPorDistancia(4.5f), 1e-5f);
+            Assert.AreEqual(2f, ARBillboard.EscalaPorDistancia(20f), 1e-5f, "Con tope: no tapan la pantalla.");
+            Assert.AreEqual(0.6f, ARBillboard.EscalaPorDistancia(0.3f), 1e-5f);
         }
 
         [Test]

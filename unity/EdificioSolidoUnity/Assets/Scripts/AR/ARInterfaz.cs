@@ -201,7 +201,7 @@ namespace MCOC.AR
             ui.btnEncuadrar.onClick.AddListener(() => ui.Encuadrar?.Invoke());
             yd += 44f;
 
-            ui.btnMarcarBase = ui.CrearBoton(listaD, "Marcar base", yd, 40f);
+            ui.btnMarcarBase = ui.CrearBoton(listaD, "Marcar base (anillo)", yd, 40f);
             ui.btnMarcarBase.onClick.AddListener(() => ui.MarcarBase?.Invoke());
             yd += 44f;
 
@@ -328,17 +328,21 @@ namespace MCOC.AR
         /// Qué botones de marcado se ven (Corrección 5):
         ///  · «Marcar base» sólo con una columna o muro elegido;
         ///  · «Encuadrar: 4 esquinas» con cualquier elemento elegido (Corrección 8);
-        ///  · «Marcar base» / «Marcar viga: …» quedan ocultos (reemplazados);
+        ///  · «Marcar base» (columnas) y «Marcar viga: …» (vigas): el anillo de la corrección 7;
         ///  · «Cancelar marcado» sólo mientras se está marcando.
         /// </summary>
         public void MostrarMarcado(bool hayElemento, bool esViga, bool marcando)
         {
             if (btnEncuadrar != null)
                 btnEncuadrar.gameObject.SetActive(hayElemento && !marcando);
-            // Reemplazados por el encuadre (Corrección 8, 5a): ocultos, pero conectados.
-            if (btnMarcarBase != null) btnMarcarBase.gameObject.SetActive(false);
-            if (btnMarcarViga != null) btnMarcarViga.gameObject.SetActive(false);
-            if (btnMarcarTecho != null) btnMarcarTecho.gameObject.SetActive(false);
+            // Corrección 10 (7a): vuelven los marcados con ANILLO de la corrección 7,
+            // junto al encuadre. Así se puede usar el que mejor resulte en terreno.
+            if (btnMarcarBase != null)
+                btnMarcarBase.gameObject.SetActive(hayElemento && !esViga && !marcando);
+            if (btnMarcarViga != null)
+                btnMarcarViga.gameObject.SetActive(hayElemento && esViga && !marcando);
+            if (btnMarcarTecho != null)
+                btnMarcarTecho.gameObject.SetActive(hayElemento && esViga && !marcando);
             if (btnCancelarMarcado != null)
                 btnCancelarMarcado.gameObject.SetActive(marcando);
         }

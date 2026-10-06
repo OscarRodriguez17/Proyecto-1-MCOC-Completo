@@ -224,12 +224,12 @@ namespace MCOC.AR.Editores
         /// de 4 esquinas), pero sigue conectado y el modo funciona.
         /// </summary>
         [Test]
-        public void Botones_ApuntarALaViga_OcultoPeroConectado()
+        public void Botones_ApuntarALaViga_VisibleYConectado()
         {
             var app = Montar();
             var ui = app.Interfaz;
             app.ElegirElemento(134);
-            Assert.IsFalse(Visible(ui.btnMarcarTecho), "Reemplazado por «Encuadrar: 4 esquinas».");
+            Assert.IsTrue(Visible(ui.btnMarcarTecho), "Vuelve junto al encuadre (Corrección 10).");
             ui.btnMarcarTecho.onClick.Invoke();
             Assert.AreEqual(ModoMarcado.TechoI, app.Modo, "El botón está conectado.");
 

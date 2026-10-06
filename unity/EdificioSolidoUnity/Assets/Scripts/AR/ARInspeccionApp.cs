@@ -2623,12 +2623,15 @@ namespace MCOC.AR
         }
 
         /// <summary>Distancia (m) a la que el texto se ve con su tamaño de base.</summary>
-        public const float DistanciaReferencia = 1.5f;
+        public const float DistanciaReferencia = 3.0f;
 
-        /// <summary>Escala del texto a <paramref name="distancia"/> m: proporcional, entre 0,8 y 6.</summary>
+        /// <summary>
+        /// Escala del texto a <paramref name="distancia"/> m: proporcional, entre 0,6 y 2.
+        /// (Corrección 10, 7b: con 1,5 m y tope 6 los rótulos salían enormes y tapaban todo.)
+        /// </summary>
         public static float EscalaPorDistancia(float distancia)
         {
-            return Mathf.Clamp(distancia / DistanciaReferencia, 0.8f, 6f);
+            return Mathf.Clamp(distancia / DistanciaReferencia, 0.6f, 2f);
         }
 
         /// Un TextMesh se lee al derecho cuando su +Z apunta en dirección CONTRARIA a la cámara.

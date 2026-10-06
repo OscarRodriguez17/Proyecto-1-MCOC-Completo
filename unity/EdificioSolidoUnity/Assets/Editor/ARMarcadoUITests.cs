@@ -53,31 +53,31 @@ namespace MCOC.AR.Editores
             return b != null && b.gameObject.activeSelf;
         }
 
-        // Corrección 8 (5a): el encuadre de 4 esquinas reemplaza en la interfaz a
-        // «Marcar base» y «Marcar viga: …», que quedan ocultos (pero conectados).
+        // Corrección 10 (7a): el encuadre de 4 esquinas convive con los marcados con
+        // anillo de la corrección 7 («Marcar base», «Marcar viga: …»).
 
         [Test]
-        public void Viga_MuestraEncuadrar_YNoLosMarcadosAntiguos()
+        public void Viga_MuestraEncuadrar_YLosMarcadosDeViga()
         {
             var app = Montar();
             var ui = app.Interfaz;
             app.ElegirElemento(134);
             Assert.IsTrue(Visible(ui.btnEncuadrar));
-            Assert.IsFalse(Visible(ui.btnMarcarViga));
-            Assert.IsFalse(Visible(ui.btnMarcarTecho));
+            Assert.IsTrue(Visible(ui.btnMarcarViga));
+            Assert.IsTrue(Visible(ui.btnMarcarTecho));
             Assert.IsFalse(Visible(ui.btnMarcarBase));
             Assert.IsFalse(Visible(ui.btnCancelarMarcado));
             Limpiar(app);
         }
 
         [Test]
-        public void Columna_MuestraEncuadrar_YNoLosMarcadosAntiguos()
+        public void Columna_MuestraEncuadrar_YMarcarBase()
         {
             var app = Montar();
             var ui = app.Interfaz;
             app.ElegirElemento(14);
             Assert.IsTrue(Visible(ui.btnEncuadrar));
-            Assert.IsFalse(Visible(ui.btnMarcarBase));
+            Assert.IsTrue(Visible(ui.btnMarcarBase));
             Assert.IsFalse(Visible(ui.btnMarcarViga));
             Assert.IsFalse(Visible(ui.btnCancelarMarcado));
             Limpiar(app);
