@@ -119,6 +119,31 @@ namespace MCOC.AR
         /// </summary>
         private Quaternion rotacionMarcada = Quaternion.identity;
         private bool hayRotacionMarcada;
+
+        // --- Cada elemento en su lugar (Corrección 7, parte 4a) ---------------
+        /// <summary>
+        /// Rumbo del elemento colocado, FIJADO al colocarlo: por cámara al usar
+        /// «Marcar base» / «Colocar aquí», o el de los dos extremos marcados en una
+        /// viga. Ya no se recalcula con la cámara al re-elegir el elemento, al
+        /// «Restablecer» ni con gestos: el diagrama no se mueve una vez puesto.
+        /// </summary>
+        private Quaternion rotacionFija = Quaternion.identity;
+
+        /// <summary>Colocación guardada de un elemento: su ancla, su piso y su rumbo.</summary>
+        private class Colocacion
+        {
+            public ARAnchor ancla;
+            public float offsetPiso;
+            public Quaternion rotacion;
+            public bool marcadaViga;
+        }
+
+        /// <summary>
+        /// Colocación de CADA elemento (tag → ancla propia). Al cambiar de
+        /// elemento, el anterior conserva la suya y el nuevo vuelve a la suya; si
+        /// el nuevo no se ha colocado, no aparece en el ancla de otro.
+        /// </summary>
+        private readonly Dictionary<int, Colocacion> colocaciones = new Dictionary<int, Colocacion>();
         /// <summary>Anillo sobre el piso que indica qué punto se va a marcar.</summary>
         private GameObject reticula;
         private bool reticulaValida;
@@ -605,8 +630,7 @@ namespace MCOC.AR
             }
 
             offsetPiso = ARColocacion.AcumularPiso(offsetPiso, pasos);
-            // No se llama a ColocarEnAncla: ÉSTA reorienta el contenedor con la
-            // orientación inicial y se comería el giro del gesto de dos dedos.
+            // Sólo cambia la altura: no hace falta pasar por ColocarEnAncla.
             AplicarOffsetPiso();
 
             Vector3 pos = PosicionPiso();
@@ -670,25 +694,102 @@ namespace MCOC.AR
         private void Seleccionar(int tag)
         {
             bool cambia = tag != tagSeleccionado;
-            tagSeleccionado = tag;
             if (cambia)
             {
-                // Lo marcado era del elemento anterior: ni el marcado a medias
-                // ni su rotación valen para éste.
+                // Cada elemento tiene SU colocación (Corrección 7, 4a): la del que
+                // se deja se guarda tal cual, y la del nuevo se recupera. Antes el
+                // nuevo aparecía en el ancla del anterior (la columna en el punto
+                // medio de la viga) y se reorientaba con la cámara: "se movía".
+                GuardarColocacion(tagSeleccionado);
+                tagSeleccionado = tag;
+                // El marcado a medias era del elemento anterior.
                 modo = ModoMarcado.Ninguno;
                 OcultarReticula();
-                hayRotacionMarcada = false;
+                CargarColocacion(tag);
             }
             AplicarVisibilidad();          // sólo el contenedor elegido queda activo
-            if (ancla != null) ColocarEnAncla();   // y vuelve a la misma ancla
+            // Re-elegir el MISMO elemento no toca nada: ni posición ni rumbo.
+            if (cambia && ancla != null) ColocarEnAncla();
             ActualizarInfo();
             ActualizarBotonesMarcado();
             if (panel2DVisible) RefrescarPanel2D();   // el panel sigue al elemento elegido
             if (cambia && datos != null)
             {
-                mensaje = InstruccionInicial();
+                mensaje = ancla != null
+                    ? string.Format("{0} {1}: en su lugar. «Quitar ancla» para marcarlo de nuevo.",
+                                    Mayuscula(Seleccionado() != null ? Seleccionado().tipo : "elemento"), tag)
+                    : InstruccionInicial();
                 RefrescarEstado();
             }
+        }
+
+        /// <summary>True si el elemento <paramref name="tag"/> ya tiene su propia ancla.</summary>
+        public bool EstaColocado(int tag)
+        {
+            if (tag == tagSeleccionado) return ancla != null;
+            Colocacion c;
+            return colocaciones.TryGetValue(tag, out c) && c != null && c.ancla != null;
+        }
+
+        /// <summary>Guarda la colocación del elemento que se deja de ver.</summary>
+        private void GuardarColocacion(int tag)
+        {
+            if (tag < 0) return;
+            if (ancla == null)
+            {
+                colocaciones.Remove(tag);
+                return;
+            }
+            colocaciones[tag] = new Colocacion
+            {
+                ancla = ancla,
+                offsetPiso = offsetPiso,
+                rotacion = rotacionFija,
+                marcadaViga = hayRotacionMarcada
+            };
+        }
+
+        /// <summary>
+        /// Recupera la colocación de <paramref name="tag"/>. Si no tiene, la raíz
+        /// de diagramas se suelta (oculta) y el elemento espera a ser marcado.
+        /// </summary>
+        private void CargarColocacion(int tag)
+        {
+            SoltarRaiz();
+            Colocacion c;
+            if (colocaciones.TryGetValue(tag, out c) && c != null && c.ancla != null)
+            {
+                ancla = c.ancla;
+                offsetPiso = c.offsetPiso;
+                rotacionFija = c.rotacion;
+                hayRotacionMarcada = c.marcadaViga;
+                rotacionMarcada = c.marcadaViga ? c.rotacion : Quaternion.identity;
+            }
+            else
+            {
+                ancla = null;
+                offsetPiso = 0f;
+                rotacionFija = Quaternion.identity;
+                hayRotacionMarcada = false;
+                rotacionMarcada = Quaternion.identity;
+            }
+        }
+
+        /// <summary>
+        /// Saca la raíz de diagramas del ancla actual SIN destruir el ancla: el
+        /// ancla sigue siendo del elemento al que pertenece.
+        /// </summary>
+        private void SoltarRaiz()
+        {
+            if (raizVisual == null) return;
+            if (sesionOrigen != null)
+                raizVisual.transform.SetParent(sesionOrigen.transform, false);
+            else
+                raizVisual.transform.SetParent(transform, false);
+            raizVisual.transform.localPosition = Vector3.zero;
+            raizVisual.transform.localScale = Vector3.one;
+            raizVisual.transform.localRotation = Quaternion.identity;
+            raizVisual.SetActive(false);
         }
 
         // --- Panel 2D (Corrección 6, parte 3d) --------------------------------
@@ -737,7 +838,8 @@ namespace MCOC.AR
         }
 
         /// <summary>
-        /// Vuelve a amplitud por defecto y a la orientación inicial. NO toca
+        /// Vuelve a la amplitud por defecto y al rumbo con que se COLOCÓ el
+        /// elemento (no al de la cámara de ahora: eso lo movía). NO toca
         /// <see cref="offsetPiso"/>: «Restablecer» es sobre el ELEMENTO
         /// (amplitud y rumbo), no sobre el cuadre del piso, que tiene sus
         /// propios botones.
@@ -749,7 +851,7 @@ namespace MCOC.AR
             if (ancla != null) ColocarEnAncla();   // ColocarEnAncla reaplica la orientación
             mensaje = hayRotacionMarcada
                 ? "Restablecido: amplitud y orientación marcada."
-                : "Restablecido: amplitud y orientación inicial.";
+                : "Restablecido: amplitud y orientación con que se colocó.";
             RefrescarEstado();
         }
 
@@ -979,13 +1081,10 @@ namespace MCOC.AR
             var contenedor = ContenedorSeleccionado();
             if (contenedor != null && ancla != null)
             {
-                // La rotación ACUMULA sobre la inicial: el gesto la añade, no la
-                // reemplaza, así que no se pierde la orientación frente a la
-                // cámara que se aplicó al colocar.
-                float delta = anguloPrevio - ang;
-                contenedor.transform.localRotation =
-                    Quaternion.Euler(0f, delta, 0f) * contenedor.transform.localRotation;
-
+                // SIN giro con dos dedos (Corrección 7, 4a): sujetando el teléfono
+                // es fácil apoyar dos dedos sin querer, y el diagrama giraba. El
+                // rumbo sale del marcado y queda fijo.
+                //
                 // El pellizco cambia SÓLO la amplitud del diagrama. El tamaño
                 // del elemento se queda en 1:1: escalar el GameObject
                 // falsearía las longitudes y las alturas sobre el piso.
@@ -1068,12 +1167,11 @@ namespace MCOC.AR
             raizVisual.transform.localScale = Vector3.one;   // 1:1, siempre
             raizVisual.SetActive(true);
 
-            var g = Seleccionado();
             var contenedor = ContenedorSeleccionado();
-            if (g != null && contenedor != null)
-                contenedor.transform.localRotation = hayRotacionMarcada
-                    ? rotacionMarcada                                  // viga marcada i → j
-                    : ARColocacion.RotacionInicial(g, FrenteCamara()); // por cámara
+            // El rumbo es el FIJADO al colocar (CrearAnclaEn / marcado de la viga):
+            // aquí ya no se lee la cámara, si no el elemento giraba cada vez.
+            if (contenedor != null)
+                contenedor.transform.localRotation = rotacionFija;
             AplicarVisibilidad();
         }
 
@@ -1084,6 +1182,9 @@ namespace MCOC.AR
             // desplazado el número de pasos que se hubieran pulsado antes.
             offsetPiso = 0f;
             hayRotacionMarcada = false;
+            rotacionFija = Quaternion.identity;
+            // Sólo el ancla del elemento ELEGIDO: los demás conservan la suya.
+            colocaciones.Remove(tagSeleccionado);
 
             // La raíz de diagramas se SACA del ancla ANTES de destruirlo: es
             // hija suya, y `Destroy` de un GameObject se lleva por delante a
@@ -1142,6 +1243,13 @@ namespace MCOC.AR
             // El ancla se deja SIN rotación a propósito: el punto es el que
             // aporta el Plan A o el Plan B, y el rumbo lo pone ColocarEnAncla
             // en el CONTENEDOR del elemento elegido.
+            //
+            // El rumbo por cámara se calcula AQUÍ, una sola vez (Corrección 7, 4a).
+            // Si el elemento es una viga marcada, MarcarPunto lo reemplaza enseguida
+            // por el de sus dos extremos.
+            var g = Seleccionado();
+            rotacionFija = g != null ? ARColocacion.RotacionInicial(g, FrenteCamara())
+                                     : Quaternion.identity;
             ColocarEnAncla();
         }
 
@@ -1295,6 +1403,7 @@ namespace MCOC.AR
                     CrearAnclaEn(c.posicion);          // QuitarAncla borra la rotación anterior
                     rotacionMarcada = c.rotacion;
                     hayRotacionMarcada = true;
+                    rotacionFija = c.rotacion;         // el rumbo de la viga es el marcado
                     ColocarEnAncla();                  // aplica la rotación marcada al contenedor
 
                     float L = (float)g.longitud;

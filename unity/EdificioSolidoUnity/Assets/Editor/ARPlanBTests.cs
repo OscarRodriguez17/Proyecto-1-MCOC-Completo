@@ -151,9 +151,10 @@ namespace MCOC.AR.Editores
         }
 
         /// <summary>
-        /// El desplazamiento se APLICA al cambiar de tag y al restablecer, no
-        /// sólo al pulsar el botón: si no, el cuadre del piso se perdería en
-        /// cuanto se eligiera otro elemento.
+        /// El desplazamiento es del ELEMENTO (Corrección 7, 4a): al ir a otro
+        /// elemento y volver, el cuadre del piso sigue ahí, y «Restablecer» no
+        /// lo toca. El otro elemento, sin colocar, no hereda ni el ancla ni el
+        /// desplazamiento.
         /// </summary>
         [Test]
         public void CambiarDeTagYRestablecer_MantienenElDesplazamientoDelPiso()
@@ -167,8 +168,11 @@ namespace MCOC.AR.Editores
             var campo = typeof(ARInspeccionApp).GetMethod("Seleccionar",
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             campo.Invoke(app, new object[] { 134 });
+            Assert.AreEqual(0f, app.OffsetPiso(), TOL,
+                            "La viga, sin colocar, no hereda el cuadre de la columna.");
+            campo.Invoke(app, new object[] { 14 });
             Assert.AreEqual(0.05f, RaizDeDiagramas(app).localPosition.y, TOL,
-                            "Elegir otro elemento no puede perder el cuadre del piso.");
+                            "Volver al elemento no puede perder su cuadre del piso.");
 
             var restablecer = typeof(ARInspeccionApp).GetMethod("Restablecer",
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);

@@ -46,10 +46,12 @@ namespace MCOC.AR.Editores
         }
 
         /// <summary>
-        /// Monta la app, apunta la cámara a <paramref name="yawGrados"/> y la
-        /// ancla. Devuelve la jerarquía real ya colocada.
+        /// Monta la app, elige <paramref name="tag"/>, apunta la cámara a
+        /// <paramref name="yawGrados"/> y lo ancla. Devuelve la jerarquía real ya
+        /// colocada. Desde la Corrección 7 (4a) cada elemento tiene su propia
+        /// ancla, así que se elige ANTES de colocar.
         /// </summary>
-        private static ARInspeccionApp ColocarMirandoA(float yawGrados)
+        private static ARInspeccionApp ColocarMirandoA(float yawGrados, int tag = 14)
         {
             var go = new GameObject("App");
             var app = go.AddComponent<ARInspeccionApp>();
@@ -60,10 +62,12 @@ namespace MCOC.AR.Editores
             Assert.IsNotNull(app.Camara, "El rig debe montar la cámara del AR.");
             app.Camara.transform.rotation = Quaternion.Euler(0f, yawGrados, 0f);
 
+            if (app.TagSeleccionado != tag) Elegir(app, tag);
+
             // Plan B: ancla sin sesión AR, que es lo que hace falta aquí.
             app.ColocarAqui();
 
-            Assert.IsNotNull(Contenedor(app), "No se ha creado el contenedor del tag 14.");
+            Assert.IsNotNull(Contenedor(app), "No se ha creado el contenedor del tag " + tag + ".");
             return app;
         }
 
@@ -151,8 +155,7 @@ namespace MCOC.AR.Editores
         {
             Vector3 frente = Quaternion.Euler(0f, yaw, 0f) * Vector3.forward;
 
-            var app = ColocarMirandoA(yaw);
-            Elegir(app, 134);
+            var app = ColocarMirandoA(yaw, 134);
 
             Vector3 i = ExtremoMundo(app, 134, false);
             Vector3 j = ExtremoMundo(app, 134, true);
