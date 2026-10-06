@@ -90,6 +90,145 @@ namespace MCOC.AR
         }
 
         // -----------------------------------------------------------------
+        //  Dibujo DENTRO del recuadro de 4 esquinas (Corrección 8, parte 5a)
+        //
+        //  Todo en coordenadas del ancla, que va al CENTRO del recuadro y no
+        //  rota: los ejes son los del mundo (u, w del recuadro).
+        //   · El elemento ocupa el lado largo: i en −u·largo/2, j en +u·largo/2,
+        //     y cada x del modelo cae en la MISMA fracción x/L del recuadro.
+        //   · El ancho se reparte en tres franjas, una por diagrama (N, V y M
+        //     del plano principal), cada una con su eje cero al centro: así no
+        //     se enciman y ninguno se sale del recuadro.
+        //   · El mayor |valor| de cada diagrama ocupa el 45 % del ancho de su
+        //     franja (por la amplitud relativa: «Amplitud ±»).
+        //   · El sentido positivo sale del exportador (lado_positivo): en vigas
+        //     el M > 0 va hacia abajo (tracción inferior).
+        // -----------------------------------------------------------------
+
+        /// <summary>Fracción del semiancho de franja que ocupa el mayor valor (amplitud relativa 1).</summary>
+        public const float LlenadoFranja = 0.90f;
+
+        public static ARGeometriaElemento ConstruirEnCuadro(ARElemento el, ARCuadroGeom q,
+                                                           ARGeometriaOpciones opt,
+                                                           float amplitudRelativa = 1f)
+        {
+            if (opt == null) opt = new ARGeometriaOpciones();
+            var g = new ARGeometriaElemento
+            {
+                tag = el.tag,
+                tipo = el.tipo,
+                seccion = el.seccion,
+                material = el.material,
+                ubicacion = el.ubicacion,
+                planoPrincipal = el.principal != null ? el.principal.plano : "-",
+                etiquetaI = el.extremos != null && el.extremos.i != null ? el.extremos.i.etiqueta : "",
+                etiquetaJ = el.extremos != null && el.extremos.j != null ? el.extremos.j.etiqueta : "",
+                longitud = el.L,
+                tienePm = el.pm != null
+            };
+
+            Vector3 u = q.u, w = q.w;
+            float L = q.largo, B = q.ancho;
+            Vector3 a = -u * (0.5f * L);
+            Vector3 b = u * (0.5f * L);
+            g.puntoI = a;
+            g.puntoJ = b;
+            g.ejeX = u;
+            g.ladoPrincipal = w;
+
+            // Recuadro marcado (se apaga con «Eje»).
+            Vector3 c00 = a - w * (0.5f * B), c01 = a + w * (0.5f * B);
+            Vector3 c10 = b - w * (0.5f * B), c11 = b + w * (0.5f * B);
+            g.trazos.Add(Trazo(new[] { c00, c10, c11, c01, c00 }, opt.colorEje,
+                               opt.anchoLinea * 0.5f, ARTipoTrazo.Eje, "recuadro"));
+            g.marcas.Add(Marca(a - u * 0.04f, opt.colorEje, g.etiquetaI));
+            g.marcas.Add(Marca(b + u * 0.04f, opt.colorEje, g.etiquetaJ));
+            foreach (var m in g.marcas) { m.radio = 0.03f; m.alturaTexto = Vector3.up * 0.04f; }
+
+            // Referencia del modelo que corresponde a +w en el recuadro.
+            Vector3 refModelo = el.tipo == "viga" ? Vector3.up : LadoPrincipal(el);
+
+            string nV = el.principal != null && !string.IsNullOrEmpty(el.principal.V) ? el.principal.V : "V_xz";
+            string nM = el.principal != null && !string.IsNullOrEmpty(el.principal.M) ? el.principal.M : "M_xz";
+            // Franjas de −w a +w. Viga (w = arriba): M abajo, V, N arriba.
+            // Columna (w = izquierda del que mira): N a la derecha, V, M a la izquierda.
+            var orden = el.tipo == "viga"
+                ? new[] { nM, nV, "N" }
+                : new[] { "N", nV, nM };
+            float bw = B / orden.Length;
+            for (int f = 0; f < orden.Length; f++)
+            {
+                float wc = -0.5f * B + bw * (f + 0.5f);
+                AgregarEnFranja(g, el, orden[f], a, u, w, L, wc, bw, refModelo, opt, amplitudRelativa);
+            }
+
+            if (el.pm != null)
+            {
+                // P–M al lado del recuadro (afuera, por −w), al pie: P a lo largo de u.
+                Vector3 origen = a - w * (0.5f * B + 0.12f);
+                AgregarPMEn(g, el, opt, origen, u, -w);
+            }
+            return g;
+        }
+
+        private static void AgregarEnFranja(ARGeometriaElemento g, ARElemento el, string nombre,
+                                            Vector3 a, Vector3 u, Vector3 w, float L,
+                                            float wc, float bw, Vector3 refModelo,
+                                            ARGeometriaOpciones opt, float amplitudRelativa)
+        {
+            ARDiagrama d;
+            if (el.diagramas == null || !el.diagramas.TryGetValue(nombre, out d)) return;
+            if (d == null || d.valores == null || el.x == null) return;
+
+            ARTipoTrazo tipo = nombre == "N" ? ARTipoTrazo.Normal
+                             : nombre.StartsWith("M") ? ARTipoTrazo.Momento : ARTipoTrazo.Cortante;
+            Color color = tipo == ARTipoTrazo.Normal ? opt.colorN
+                        : tipo == ARTipoTrazo.Momento ? opt.colorM : opt.colorV;
+
+            float signo = 1f;
+            if (d.ladoPositivo != null && d.ladoPositivo.vectorUnity != null)
+            {
+                float dot = Vector3.Dot(V3(d.ladoPositivo.vectorUnity).normalized, refModelo.normalized);
+                if (dot <= -0.5f) signo = -1f;
+            }
+
+            double mx = 0.0;
+            foreach (double v in d.valores) mx = Math.Max(mx, Math.Abs(v));
+            float esc = mx < 1e-12 ? 0f
+                      : (float)(LlenadoFranja * 0.5f * bw * Mathf.Max(0.05f, amplitudRelativa) / mx);
+            double Lm = el.L > 1e-9 ? el.L : 1.0;
+
+            Vector3 base0 = a + w * wc;
+            // Eje cero de la franja.
+            var cero = Trazo(new[] { base0, base0 + u * L }, color * 0.8f, opt.anchoLinea * 0.3f,
+                             tipo, null);
+            g.trazos.Add(cero);
+
+            var puntos = new List<Vector3>(d.valores.Length + 2);
+            puntos.Add(base0);
+            for (int k = 0; k < d.valores.Length && k < el.x.Length; k++)
+            {
+                float fx = (float)(el.x[k] / Lm);
+                puntos.Add(base0 + u * (fx * L) + w * (signo * (float)d.valores[k] * esc));
+            }
+            puntos.Add(base0 + u * L);
+            var trazo = Trazo(puntos, color, opt.anchoLinea * 0.8f, tipo, nombre);
+            trazo.principal = true;
+            g.trazos.Add(trazo);
+
+            g.marcas.Add(new ARMarca
+            {
+                posicion = base0 + u * (FraccionRotulo(tipo, true) * L),
+                radio = 0.008f,
+                color = color,
+                texto = Resumen(d, nombre),
+                alturaTexto = Vector3.up * 0.015f,
+                tipo = tipo,
+                principal = true
+            });
+        }
+
+        // -----------------------------------------------------------------
 
         /// <summary>
         /// Dirección hacia la que la app dibuja el momento PRINCIPAL &gt; 0
@@ -252,15 +391,18 @@ namespace MCOC.AR
                                       ARGeometriaOpciones opt, Vector3 a,
                                       Vector3 ex, Vector3 ey, Vector3 ez)
         {
+            // P vertical (a lo largo del elemento, eje local x) y M horizontal.
+            AgregarPMEn(g, el, opt, a + ez * (opt.carril * 2.2f), ex, ey);
+        }
+
+        /// <summary>Envolvente P–M con origen y ejes dados (P a lo largo de <paramref name="pDir"/>).</summary>
+        private static void AgregarPMEn(ARGeometriaElemento g, ARElemento el, ARGeometriaOpciones opt,
+                                        Vector3 origen, Vector3 pDir, Vector3 mDir)
+        {
             ARPm pm = el.pm;
-            if (pm.envolvente == null || pm.envolvente.P == null) return;
+            if (pm == null || pm.envolvente == null || pm.envolvente.P == null) return;
             double[] P = pm.envolvente.P;
             double[] M = pm.envolvente.M;
-
-            // P vertical (a lo largo del elemento, eje local x) y M horizontal.
-            Vector3 pDir = ex;
-            Vector3 mDir = ey;
-            Vector3 origen = a + ez * (opt.carril * 2.2f);
 
             double maxP = 1e-9, maxM = 1e-9;
             for (int k = 0; k < P.Length; k++)

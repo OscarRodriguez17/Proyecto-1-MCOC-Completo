@@ -53,25 +53,31 @@ namespace MCOC.AR.Editores
             return b != null && b.gameObject.activeSelf;
         }
 
+        // Corrección 8 (5a): el encuadre de 4 esquinas reemplaza en la interfaz a
+        // «Marcar base» y «Marcar viga: …», que quedan ocultos (pero conectados).
+
         [Test]
-        public void Viga_MuestraMarcarExtremos_YNoMarcarBase()
+        public void Viga_MuestraEncuadrar_YNoLosMarcadosAntiguos()
         {
             var app = Montar();
             var ui = app.Interfaz;
             app.ElegirElemento(134);
-            Assert.IsTrue(Visible(ui.btnMarcarViga));
+            Assert.IsTrue(Visible(ui.btnEncuadrar));
+            Assert.IsFalse(Visible(ui.btnMarcarViga));
+            Assert.IsFalse(Visible(ui.btnMarcarTecho));
             Assert.IsFalse(Visible(ui.btnMarcarBase));
             Assert.IsFalse(Visible(ui.btnCancelarMarcado));
             Limpiar(app);
         }
 
         [Test]
-        public void Columna_MuestraMarcarBase_YNoElDeLaViga()
+        public void Columna_MuestraEncuadrar_YNoLosMarcadosAntiguos()
         {
             var app = Montar();
             var ui = app.Interfaz;
             app.ElegirElemento(14);
-            Assert.IsTrue(Visible(ui.btnMarcarBase));
+            Assert.IsTrue(Visible(ui.btnEncuadrar));
+            Assert.IsFalse(Visible(ui.btnMarcarBase));
             Assert.IsFalse(Visible(ui.btnMarcarViga));
             Assert.IsFalse(Visible(ui.btnCancelarMarcado));
             Limpiar(app);
@@ -83,15 +89,15 @@ namespace MCOC.AR.Editores
             var app = Montar();
             var ui = app.Interfaz;
             app.ElegirElemento(134);
-            ui.btnMarcarViga.onClick.Invoke();          // el botón está conectado
-            Assert.AreEqual(ModoMarcado.ExtremoI, app.Modo);
+            ui.btnEncuadrar.onClick.Invoke();           // el botón está conectado
+            Assert.AreEqual(ModoMarcado.Cuadro, app.Modo);
             Assert.IsTrue(Visible(ui.btnCancelarMarcado));
+            Assert.IsFalse(Visible(ui.btnEncuadrar));
             Assert.IsFalse(Visible(ui.btnMarcarViga));
-            Assert.IsFalse(Visible(ui.btnMarcarBase));
 
             ui.btnCancelarMarcado.onClick.Invoke();
             Assert.AreEqual(ModoMarcado.Ninguno, app.Modo);
-            Assert.IsTrue(Visible(ui.btnMarcarViga));
+            Assert.IsTrue(Visible(ui.btnEncuadrar));
             Assert.IsFalse(Visible(ui.btnCancelarMarcado));
             Limpiar(app);
         }

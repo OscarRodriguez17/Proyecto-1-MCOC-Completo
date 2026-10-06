@@ -219,22 +219,23 @@ namespace MCOC.AR.Editores
             Limpiar(app);
         }
 
+        /// <summary>
+        /// Desde la Corrección 8 el botón queda OCULTO (lo reemplaza el encuadre
+        /// de 4 esquinas), pero sigue conectado y el modo funciona.
+        /// </summary>
         [Test]
-        public void Botones_LaVigaOfreceLasDosFormas_LaColumnaNinguna()
+        public void Botones_ApuntarALaViga_OcultoPeroConectado()
         {
             var app = Montar();
             var ui = app.Interfaz;
             app.ElegirElemento(134);
-            Assert.IsTrue(Visible(ui.btnMarcarTecho), "Viga: «apuntar a ella».");
-            Assert.IsTrue(Visible(ui.btnMarcarViga), "Viga: «pie de columnas» como alternativa.");
+            Assert.IsFalse(Visible(ui.btnMarcarTecho), "Reemplazado por «Encuadrar: 4 esquinas».");
             ui.btnMarcarTecho.onClick.Invoke();
             Assert.AreEqual(ModoMarcado.TechoI, app.Modo, "El botón está conectado.");
-            Assert.IsFalse(Visible(ui.btnMarcarTecho), "Mientras se marca, sólo «Cancelar».");
 
             app.ElegirElemento(14);
             Assert.AreEqual(ModoMarcado.Ninguno, app.Modo, "Cambiar de elemento cancela el marcado.");
             Assert.IsFalse(app.ProfundidadPedida);
-            Assert.IsFalse(Visible(ui.btnMarcarTecho), "Una columna no se marca apuntando al techo.");
             Limpiar(app);
         }
 

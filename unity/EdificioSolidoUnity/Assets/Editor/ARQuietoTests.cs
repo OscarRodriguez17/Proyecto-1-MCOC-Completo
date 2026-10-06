@@ -160,7 +160,7 @@ namespace MCOC.AR.Editores
             Assert.IsFalse(app.EstaColocado(26));
             var raiz = Campo<GameObject>(app, "raizVisual");
             Assert.IsFalse(raiz.activeSelf, "La columna 26 no se coloca sola en el ancla de la 14.");
-            StringAssert.Contains("Marcar base", app.Mensaje);
+            StringAssert.Contains("Encuadrar", app.Mensaje);
             Limpiar(app);
         }
 

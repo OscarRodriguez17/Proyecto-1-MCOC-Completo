@@ -57,6 +57,8 @@ namespace MCOC.AR
         public Button btnMarcarViga;
         /// <summary>Corrección 7 (4b): marcar la viga apuntando a su cara inferior.</summary>
         public Button btnMarcarTecho;
+        /// <summary>Corrección 8 (5a): encuadrar el elemento marcando las 4 esquinas de su cara.</summary>
+        public Button btnEncuadrar;
         public Button btnCancelarMarcado;
         /// <summary>Mira fija en el centro de la pantalla (Corrección 6): indica dónde se marca.</summary>
         public GameObject mira;
@@ -80,6 +82,7 @@ namespace MCOC.AR
         public event Action MarcarBase;
         public event Action MarcarViga;
         public event Action MarcarTecho;
+        public event Action Encuadrar;
         public event Action CancelarMarcado;
         public event Action Panel2D;
 
@@ -187,6 +190,13 @@ namespace MCOC.AR
             // --- Colocación marcando el elemento real (Corrección 5) ---
             // Es el modo principal: se muestra «Marcar base» para columnas y
             // muros, y «Marcar extremos i y j» para vigas (MostrarMarcado).
+            // Corrección 8 (5a): EL modo de colocar. Los marcados anteriores (base,
+            // pie de columnas, apuntar a la viga) siguen en el código pero ya no se
+            // muestran: el recuadro los reemplaza para columnas y vigas.
+            ui.btnEncuadrar = ui.CrearBoton(listaD, "Encuadrar: 4 esquinas", yd, 40f);
+            ui.btnEncuadrar.onClick.AddListener(() => ui.Encuadrar?.Invoke());
+            yd += 44f;
+
             ui.btnMarcarBase = ui.CrearBoton(listaD, "Marcar base", yd, 40f);
             ui.btnMarcarBase.onClick.AddListener(() => ui.MarcarBase?.Invoke());
             yd += 44f;
@@ -299,17 +309,18 @@ namespace MCOC.AR
         /// <summary>
         /// Qué botones de marcado se ven (Corrección 5):
         ///  · «Marcar base» sólo con una columna o muro elegido;
-        ///  · «Marcar viga: apuntar a ella» y «… pie de columnas» sólo con una viga;
+        ///  · «Encuadrar: 4 esquinas» con cualquier elemento elegido (Corrección 8);
+        ///  · «Marcar base» / «Marcar viga: …» quedan ocultos (reemplazados);
         ///  · «Cancelar marcado» sólo mientras se está marcando.
         /// </summary>
         public void MostrarMarcado(bool hayElemento, bool esViga, bool marcando)
         {
-            if (btnMarcarBase != null)
-                btnMarcarBase.gameObject.SetActive(hayElemento && !esViga && !marcando);
-            if (btnMarcarViga != null)
-                btnMarcarViga.gameObject.SetActive(hayElemento && esViga && !marcando);
-            if (btnMarcarTecho != null)
-                btnMarcarTecho.gameObject.SetActive(hayElemento && esViga && !marcando);
+            if (btnEncuadrar != null)
+                btnEncuadrar.gameObject.SetActive(hayElemento && !marcando);
+            // Reemplazados por el encuadre (Corrección 8, 5a): ocultos, pero conectados.
+            if (btnMarcarBase != null) btnMarcarBase.gameObject.SetActive(false);
+            if (btnMarcarViga != null) btnMarcarViga.gameObject.SetActive(false);
+            if (btnMarcarTecho != null) btnMarcarTecho.gameObject.SetActive(false);
             if (btnCancelarMarcado != null)
                 btnCancelarMarcado.gameObject.SetActive(marcando);
         }

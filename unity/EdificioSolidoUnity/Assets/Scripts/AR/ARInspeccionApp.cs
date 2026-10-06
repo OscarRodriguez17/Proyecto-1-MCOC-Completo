@@ -36,6 +36,7 @@ namespace MCOC.AR
     /// ExtremoI / ExtremoJ: el pie de cada columna de apoyo de una viga.
     /// TechoI / TechoJ: la cara inferior de la viga junto a cada columna de
     /// apoyo, apuntando a la viga (Corrección 7, 4b).
+    /// Cuadro: las 4 esquinas de la cara del elemento (Corrección 8, 5a).
     /// </summary>
     public enum ModoMarcado
     {
@@ -44,7 +45,8 @@ namespace MCOC.AR
         ExtremoI,
         ExtremoJ,
         TechoI,
-        TechoJ
+        TechoJ,
+        Cuadro
     }
 
     public class ARInspeccionApp : MonoBehaviour
@@ -169,6 +171,20 @@ namespace MCOC.AR
         private OrigenTecho origenTechoI = OrigenTecho.Ninguno;
         /// <summary>De dónde salió el punto de la retícula cuando se apunta al techo.</summary>
         private OrigenTecho origenReticulaTecho = OrigenTecho.Ninguno;
+
+        // --- Encuadre por 4 esquinas (Corrección 8, 5a) -------------------------
+        /// <summary>Esquinas ya marcadas del recuadro en curso.</summary>
+        private readonly List<Vector3> esquinas = new List<Vector3>();
+        private int esquinasEstimadas;
+        /// <summary>Recuadro de cada elemento encuadrado (tag → recuadro). Sin entrada: dibujo 1:1 del modelo.</summary>
+        private readonly Dictionary<int, ARCuadroGeom> cuadroPorTag = new Dictionary<int, ARCuadroGeom>();
+        private OrigenCuadro origenReticulaCuadro = OrigenCuadro.Ninguno;
+        /// <summary>Cruces y líneas de las esquinas ya marcadas.</summary>
+        private GameObject vistaPrevia;
+
+        // --- Seguimiento (Corrección 8, 5b) -------------------------------------
+        private bool ocultoPorSeguimiento;
+        private float tiempoSinSeguimiento;
 
         // =================================================================
         //  Ciclo de vida
@@ -376,6 +392,7 @@ namespace MCOC.AR
             geoPorTag.Clear();
             contenedores.Clear();
             visores.Clear();
+            cuadroPorTag.Clear();   // un contrato nuevo vuelve al dibujo del modelo
             foreach (var g in geometria)
             {
                 geoPorTag[g.tag] = g;
@@ -447,10 +464,19 @@ namespace MCOC.AR
             GameObject go;
             if (!contenedores.TryGetValue(tagSeleccionado, out go) || go == null) return;
 
-            var g = ARGeometriaBuilder.ConstruirElemento(el, Opciones());
+            ARCuadroGeom q;
+            var g = cuadroPorTag.TryGetValue(tagSeleccionado, out q)
+                ? ARGeometriaBuilder.ConstruirEnCuadro(el, q, Opciones(), AmplitudRelativa())
+                : ARGeometriaBuilder.ConstruirElemento(el, Opciones());
             geoPorTag[tagSeleccionado] = g;
             ConstruirContenedor(g, go);
             AplicarVisibilidad();
+        }
+
+        /// <summary>Amplitud de «Amplitud ±» relativa a la de partida (1 = por defecto).</summary>
+        private float AmplitudRelativa()
+        {
+            return amplitudPorDefecto > 1e-6f ? amplitudVisual / amplitudPorDefecto : 1f;
         }
 
 
@@ -559,6 +585,7 @@ namespace MCOC.AR
             ui.MarcarBase += IniciarMarcadoBase;
             ui.MarcarViga += IniciarMarcadoViga;
             ui.MarcarTecho += IniciarMarcadoTecho;
+            ui.Encuadrar += IniciarEncuadre;
             ui.CancelarMarcado += CancelarMarcado;
             ui.Panel2D += AlternarPanel2D;
             ActualizarBotonesMarcado();
@@ -718,6 +745,9 @@ namespace MCOC.AR
                 tagSeleccionado = tag;
                 // El marcado a medias era del elemento anterior.
                 modo = ModoMarcado.Ninguno;
+                esquinas.Clear();
+                esquinasEstimadas = 0;
+                LimpiarVistaPrevia();
                 OcultarReticula();
                 CargarColocacion(tag);
             }
@@ -958,6 +988,8 @@ namespace MCOC.AR
 
             // Mientras se marca, la retícula sigue al centro de la pantalla.
             if (modo != ModoMarcado.Ninguno) ActualizarReticula();
+
+            VigilarSeguimiento(Time.deltaTime);
 
             diagnosticoTimer += Time.deltaTime;
             if (diagnosticoTimer > 0.5f)
@@ -1203,6 +1235,8 @@ namespace MCOC.AR
             rotacionFija = Quaternion.identity;
             // Sólo el ancla del elemento ELEGIDO: los demás conservan la suya.
             colocaciones.Remove(tagSeleccionado);
+            // Sin ancla tampoco hay recuadro: el elemento vuelve al dibujo del modelo.
+            if (cuadroPorTag.Remove(tagSeleccionado)) ReconstruirSeleccion();
 
             // La raíz de diagramas se SACA del ancla ANTES de destruirlo: es
             // hija suya, y `Destroy` de un GameObject se lleva por delante a
@@ -1466,10 +1500,314 @@ namespace MCOC.AR
             ActualizarBotonesMarcado();
         }
 
+        // =================================================================
+        //  Encuadre por 4 esquinas (Corrección 8, parte 5a)
+        // =================================================================
+
+        /// <summary>Escala del anillo al marcar esquinas (más chico que el del piso).</summary>
+        public const float EscalaReticulaCuadro = 0.35f;
+
+        /// <summary>Cuántas esquinas lleva marcadas el encuadre en curso.</summary>
+        public int EsquinasMarcadas
+        {
+            get { return esquinas.Count; }
+        }
+
+        /// <summary>True si el elemento <paramref name="tag"/> está dibujado dentro de un recuadro.</summary>
+        public bool TieneEncuadre(int tag)
+        {
+            return cuadroPorTag.ContainsKey(tag);
+        }
+
+        /// <summary>Recuadro del elemento <paramref name="tag"/> (sólo vale si <see cref="TieneEncuadre"/>).</summary>
+        public ARCuadroGeom Encuadre(int tag)
+        {
+            ARCuadroGeom q;
+            return cuadroPorTag.TryGetValue(tag, out q) ? q : new ARCuadroGeom();
+        }
+
+        /// <summary>
+        /// Empieza a marcar las 4 esquinas de la cara del elemento elegido
+        /// (columna o viga, en cualquier orden).
+        /// </summary>
+        public void IniciarEncuadre()
+        {
+            var g = Seleccionado();
+            if (g == null)
+            {
+                mensaje = "Primero elige un elemento en la lista.";
+                RefrescarEstado();
+                return;
+            }
+            modo = ModoMarcado.Cuadro;
+            esquinas.Clear();
+            esquinasEstimadas = 0;
+            LimpiarVistaPrevia();
+            MostrarReticula();
+            mensaje = InstruccionMarcado();
+            RefrescarEstado();
+            ActualizarBotonesMarcado();
+        }
+
+        /// <summary>
+        /// Registra una esquina. Con la cuarta arma el recuadro, ancla el elemento
+        /// en su centro y lo redibuja dentro. Público para los tests.
+        /// </summary>
+        public void MarcarEsquina(Vector3 p, OrigenCuadro origen = OrigenCuadro.Profundidad)
+        {
+            var g = Seleccionado();
+            if (g == null || modo != ModoMarcado.Cuadro)
+            {
+                mensaje = "Toca «Encuadrar: 4 esquinas» antes de marcar.";
+                RefrescarEstado();
+                return;
+            }
+            esquinas.Add(p);
+            if (origen == OrigenCuadro.Estimado || origen == OrigenCuadro.PuntoCaracteristico)
+                esquinasEstimadas++;
+            ActualizarVistaPrevia();
+
+            if (esquinas.Count < ARCuadro.Esquinas)
+            {
+                mensaje = InstruccionMarcado();
+                RefrescarEstado();
+                return;
+            }
+            TerminarEncuadre(g);
+        }
+
+        private void TerminarEncuadre(ARGeometriaElemento g)
+        {
+            Vector3 frente = FrenteCamara();
+            var q = ARCuadro.Desde4Puntos(esquinas, g.esViga, ARColocacion.Derecha(frente), frente);
+            if (!q.valido)
+            {
+                esquinas.Clear();
+                esquinasEstimadas = 0;
+                LimpiarVistaPrevia();
+                mensaje = q.error + " Vuelve a marcar las 4 esquinas.";
+                RefrescarEstado();
+                return;
+            }
+
+            int tag = g.tag;
+            int estimadas = esquinasEstimadas;
+            modo = ModoMarcado.Ninguno;
+            OcultarReticula();
+            LimpiarVistaPrevia();
+            esquinas.Clear();
+            esquinasEstimadas = 0;
+
+            // Ancla en el CENTRO del recuadro (cerca de lo dibujado: menos brazo
+            // para los errores de giro) y sin rotación: el recuadro ya está en
+            // ejes del mundo.
+            CrearAnclaEn(q.centro);
+            cuadroPorTag[tag] = q;
+            rotacionFija = Quaternion.identity;
+            hayRotacionMarcada = false;
+            ReconstruirSeleccion();
+            ColocarEnAncla();
+
+            mensaje = string.Format(System.Globalization.CultureInfo.InvariantCulture,
+                "Encuadre listo: {0:0.00} m × {1:0.00} m{2}. Diagramas dentro del recuadro " +
+                "(modelo: L = {3:0.00} m).",
+                q.largo, q.ancho, q.caraInferior ? " (cara inferior)" : "", g.longitud);
+            if (estimadas > 0)
+                mensaje += string.Format(" Ojo: {0} esquina(s) sin medir; si no calza, encuadra de nuevo.", estimadas);
+            RefrescarEstado();
+            ActualizarBotonesMarcado();
+        }
+
+        private string InstruccionCuadro()
+        {
+            var g = Seleccionado();
+            int n = esquinas.Count + 1;
+            string cara = g == null ? "del elemento"
+                : g.esViga ? "del costado (o de la cara inferior) de la viga, entre las caras de " +
+                             ARApoyos.NombreApoyo(Apoyo(true)) + " y " + ARApoyos.NombreApoyo(Apoyo(false))
+                           : "de la cara de la " + g.tipo + " que ves: dos junto al piso y dos arriba";
+            return string.Format("Esquina {0} de 4 {1}. Apunta la mira y toca (en cualquier orden).", n, cara);
+        }
+
+        /// <summary>
+        /// Esquina bajo <paramref name="pantalla"/>: profundidad → plano detectado
+        /// → plano de las esquinas ya marcadas → punto de ARCore → estimado.
+        /// </summary>
+        private bool ResolverPuntoCuadro(Vector2 pantalla, out Vector3 punto, out OrigenCuadro origen)
+        {
+            punto = Vector3.zero;
+            origen = OrigenCuadro.Ninguno;
+            if (camara == null || raycastMgr == null) return false;
+            if (ARSession.state != ARSessionState.SessionTracking) return false;
+
+            if (ProfundidadPedida && PrimerImpacto(pantalla, TrackableType.Depth, out punto))
+            {
+                origen = OrigenCuadro.Profundidad;
+                return true;
+            }
+            if (PrimerImpacto(pantalla, TrackableType.PlaneWithinPolygon, out punto))
+            {
+                origen = OrigenCuadro.Plano;
+                return true;
+            }
+            Ray rayo = camara.ScreenPointToRay(pantalla);
+            Vector3 pp, n;
+            if (ARCuadro.PlanoProvisional(esquinas, FrenteCamara(), out pp, out n) &&
+                ARCuadro.InterseccionPlano(rayo.origin, rayo.direction, pp, n, out punto))
+            {
+                origen = OrigenCuadro.PlanoDelRecuadro;
+                return true;
+            }
+            if (PrimerImpacto(pantalla, TrackableType.FeaturePoint, out punto))
+            {
+                origen = OrigenCuadro.PuntoCaracteristico;
+                return true;
+            }
+            return PuntoCuadroDesdeRayo(rayo, camara.transform.position.y, out punto, out origen);
+        }
+
+        private bool PrimerImpacto(Vector2 pantalla, TrackableType tipo, out Vector3 punto)
+        {
+            punto = Vector3.zero;
+            hitsPiso.Clear();
+            if (!raycastMgr.Raycast(pantalla, hitsPiso, tipo) || hitsPiso.Count == 0) return false;
+            punto = hitsPiso[0].pose.position;
+            return true;
+        }
+
+        /// <summary>
+        /// Respaldo sin ARCore: mirando hacia abajo, el piso (conocido o 1,40 m bajo
+        /// el teléfono); mirando hacia arriba, el cielo a la altura del MODELO sobre
+        /// ese piso (cabeza de la columna, cara inferior de la viga). Público para
+        /// los tests.
+        /// </summary>
+        public bool PuntoCuadroDesdeRayo(Ray rayo, float yCamara, out Vector3 punto, out OrigenCuadro origen)
+        {
+            origen = OrigenCuadro.Ninguno;
+            punto = Vector3.zero;
+            float yPiso = ARPiso.AlturaPisoEstimada(yCamara, hayPisoConocido, yPisoConocido);
+            float y = yPiso;
+            if (rayo.direction.y > 0f)
+            {
+                ARElemento el = ElementoSeleccionado();
+                if (el == null) return false;
+                var gm = ARGeometriaBuilder.ConstruirElemento(el, new ARGeometriaOpciones());
+                float alto = gm.esViga ? ARTecho.AlturaInferiorViga(gm)
+                                       : Mathf.Max(gm.puntoI.y, gm.puntoJ.y);
+                y = yPiso + alto;
+            }
+            if (!ARPiso.InterseccionPlanoHorizontal(rayo.origin, rayo.direction, y, out punto))
+                return false;
+            origen = OrigenCuadro.Estimado;
+            return true;
+        }
+
+        /// <summary>Dibuja las esquinas ya marcadas (cruces) unidas en el orden en que se marcaron.</summary>
+        private void ActualizarVistaPrevia()
+        {
+            LimpiarVistaPrevia();
+            if (matLinea == null || esquinas.Count == 0) return;
+            vistaPrevia = new GameObject("VistaPreviaCuadro");
+            vistaPrevia.transform.SetParent(transform, false);
+            var blanco = new Color(1f, 1f, 1f, 0.95f);
+            foreach (var e in esquinas)
+            {
+                foreach (Vector3 d in new[] { Vector3.right, Vector3.up, Vector3.forward })
+                {
+                    var go = new GameObject("Esquina");
+                    go.transform.SetParent(vistaPrevia.transform, false);
+                    var lr = go.AddComponent<LineRenderer>();
+                    PrepararLineaMundo(lr, blanco, 0.012f);
+                    lr.positionCount = 2;
+                    lr.SetPositions(new[] { e - d * 0.06f, e + d * 0.06f });
+                }
+            }
+            if (esquinas.Count >= 2)
+            {
+                var go = new GameObject("Lados");
+                go.transform.SetParent(vistaPrevia.transform, false);
+                var lr = go.AddComponent<LineRenderer>();
+                PrepararLineaMundo(lr, blanco, 0.008f);
+                lr.positionCount = esquinas.Count;
+                lr.SetPositions(esquinas.ToArray());
+            }
+        }
+
+        private void PrepararLineaMundo(LineRenderer lr, Color c, float ancho)
+        {
+            lr.sharedMaterial = matLinea;
+            lr.useWorldSpace = true;
+            lr.startWidth = ancho;
+            lr.endWidth = ancho;
+            lr.startColor = c;
+            lr.endColor = c;
+            lr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        }
+
+        private void LimpiarVistaPrevia()
+        {
+            if (vistaPrevia != null) Destruir(vistaPrevia);
+            vistaPrevia = null;
+        }
+
+        // =================================================================
+        //  Seguimiento (Corrección 8, parte 5b)
+        //
+        //  Si ARCore pierde el seguimiento del ancla (cámara tapada, movimiento
+        //  brusco, pared lisa), el diagrama se queda en una pose vieja y "se
+        //  mueve" respecto de la escena. Mejor ocultarlo y avisar: cuando ARCore
+        //  se vuelve a ubicar (se apunta de nuevo a la zona marcada), el ancla
+        //  recupera su lugar y el diagrama reaparece en el recuadro.
+        // =================================================================
+
+        /// <summary>Segundos sin seguimiento antes de ocultar (evita parpadeos).</summary>
+        public const float EsperaSinSeguimiento = 0.5f;
+
+        /// <summary>True mientras el diagrama está oculto porque ARCore perdió el ancla.</summary>
+        public bool OcultoPorSeguimiento
+        {
+            get { return ocultoPorSeguimiento; }
+        }
+
+        /// <summary>
+        /// Decide si el diagrama se ve según el estado del ancla. Público (con el
+        /// estado como parámetro) para probarlo sin sesión AR.
+        /// </summary>
+        public void AplicarSeguimiento(bool anclaSeguida, float dt)
+        {
+            if (ancla == null || raizVisual == null)
+            {
+                ocultoPorSeguimiento = false;
+                tiempoSinSeguimiento = 0f;
+                return;
+            }
+            tiempoSinSeguimiento = anclaSeguida ? 0f : tiempoSinSeguimiento + dt;
+            bool ocultar = tiempoSinSeguimiento >= EsperaSinSeguimiento;
+            if (ocultar == ocultoPorSeguimiento) return;
+            ocultoPorSeguimiento = ocultar;
+            raizVisual.SetActive(!ocultar);
+            mensaje = ocultar
+                ? "Se perdió el seguimiento: apunta de nuevo a la zona donde encuadraste y el diagrama vuelve a su lugar."
+                : "Seguimiento recuperado: el diagrama está donde lo encuadraste.";
+            RefrescarEstado();
+        }
+
+        private void VigilarSeguimiento(float dt)
+        {
+            if (ancla == null) { AplicarSeguimiento(true, dt); return; }
+            // Sólo cuenta con la sesión en marcha: en el Editor sin AR no hay
+            // seguimiento y el diagrama tiene que seguir viéndose.
+            if (ARSession.state != ARSessionState.SessionTracking) { AplicarSeguimiento(true, dt); return; }
+            AplicarSeguimiento(ancla.trackingState != TrackingState.None, dt);
+        }
+
         /// <summary>Sale del modo de marcado sin tocar el ancla actual.</summary>
         public void CancelarMarcado()
         {
             modo = ModoMarcado.Ninguno;
+            esquinas.Clear();
+            esquinasEstimadas = 0;
+            LimpiarVistaPrevia();
             OcultarReticula();
             mensaje = "Marcado cancelado.";
             RefrescarEstado();
@@ -1561,6 +1899,24 @@ namespace MCOC.AR
         /// </summary>
         private void ConfirmarMarcado(Vector2 pantalla)
         {
+            if (modo == ModoMarcado.Cuadro)
+            {
+                Vector3 pc;
+                OrigenCuadro oc;
+                if (reticulaValida)
+                {
+                    pc = puntoReticula;
+                    oc = origenReticulaCuadro;
+                }
+                else if (!ResolverPuntoCuadro(pantalla, out pc, out oc))
+                {
+                    mensaje = "No encuentro esa esquina: apunta la mira al elemento y vuelve a tocar.";
+                    RefrescarEstado();
+                    return;
+                }
+                MarcarEsquina(pc, oc);
+                return;
+            }
             if (EsModoTecho(modo))
             {
                 Vector3 pt;
@@ -1828,6 +2184,12 @@ namespace MCOC.AR
         {
             var g = Seleccionado();
             if (g == null) return "Elige un elemento en la lista.";
+            if (!EstaColocado(g.tag))
+                return string.Format("{0} {1}: toca «Encuadrar: 4 esquinas» y marca las 4 esquinas " +
+                                     "de la cara que ves{2}.", Mayuscula(g.tipo), g.tag,
+                                     g.esViga ? string.Format(" (entre {0} y {1})",
+                                                              ARApoyos.NombreApoyo(Apoyo(true)),
+                                                              ARApoyos.NombreApoyo(Apoyo(false))) : "");
             return g.esViga
                 ? string.Format("Viga {0}: toca «Marcar viga: apuntar a ella» y apunta a su cara " +
                                 "inferior junto a {1} y luego junto a {2} (o, si se ven, marca el " +
@@ -1853,6 +2215,8 @@ namespace MCOC.AR
                 case ModoMarcado.ExtremoJ:
                     return "Ahora al PIE de " + ARApoyos.NombreApoyo(Apoyo(false)) +
                            " (extremo j, " + Etiqueta(g, false) + ") y toca la pantalla.";
+                case ModoMarcado.Cuadro:
+                    return InstruccionCuadro();
                 case ModoMarcado.TechoI:
                     return "Apunta la mira a la cara INFERIOR de la viga, junto a " +
                            ARApoyos.NombreApoyo(Apoyo(true)) + " (extremo i, " + Etiqueta(g, true) +
@@ -1985,6 +2349,38 @@ namespace MCOC.AR
             Vector3 p;
             OrigenPunto origen;
             Vector2 centro = new Vector2(Screen.width * 0.5f, Screen.height * 0.5f);
+            if (modo == ModoMarcado.Cuadro)
+            {
+                OrigenCuadro oc;
+                if (ResolverPuntoCuadro(centro, out p, out oc))
+                {
+                    reticulaValida = true;
+                    puntoReticula = p;
+                    origenReticulaCuadro = oc;
+                    if (reticula != null)
+                    {
+                        // Anillo chico y DE FRENTE a la cámara: la esquina puede estar
+                        // en una cara vertical (columna, costado de viga).
+                        reticula.transform.position = p;
+                        Vector3 haciaCamara = camara != null ? -camara.transform.forward : Vector3.up;
+                        reticula.transform.rotation = Quaternion.FromToRotation(Vector3.up, haciaCamara);
+                        reticula.transform.localScale = Vector3.one * EscalaReticulaCuadro;
+                        if (!reticula.activeSelf) reticula.SetActive(true);
+                        ColorearReticula(ARCuadro.EsSeguro(oc));
+                    }
+                    mensaje = InstruccionMarcado() + "  [" + ARCuadro.Describir(oc) + "]";
+                }
+                else
+                {
+                    reticulaValida = false;
+                    origenReticulaCuadro = OrigenCuadro.Ninguno;
+                    if (reticula != null && reticula.activeSelf) reticula.SetActive(false);
+                    mensaje = "Apunta la mira (centro de la pantalla) a una esquina del elemento.";
+                }
+                RefrescarEstado();
+                return;
+            }
+            if (reticula != null) reticula.transform.localScale = Vector3.one;
             if (EsModoTecho(modo))
             {
                 OrigenTecho ot;
