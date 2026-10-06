@@ -453,12 +453,14 @@ namespace MCOC.AR
             float r = gobierna ? 0.035f : 0.022f;
             Color col = gobierna ? opt.colorDemanda : new Color(1f, 1f, 1f, 0.75f);
 
+            // Corrección 9 (6e): sólo el extremo que GOBIERNA lleva rótulo; los dos
+            // rótulos (i y j) caían uno encima del otro.
             g.marcas.Add(new ARMarca
             {
                 posicion = c,
                 radio = r,
                 color = col,
-                texto = "G" + pt.P.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)
+                texto = !gobierna ? null : "G" + pt.P.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)
                       + " | M" + pt.M.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)
                       + (gobierna ? "  (gobierna)" : ""),
                 alturaTexto = Vector3.up * 0.04f,

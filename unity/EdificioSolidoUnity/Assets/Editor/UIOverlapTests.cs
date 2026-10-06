@@ -26,6 +26,9 @@ namespace MCOC.AR.Editores
                     Rect rectImg = GetScreenRect(img.rectTransform, canvas, new Vector2(2772, 1280));
                     foreach (var btn in botones)
                     {
+                        // La Image de un botón es su propio fondo: comparar un rect
+                        // consigo mismo siempre "se solapa". Sólo cuentan los demás botones.
+                        if (img.gameObject == btn.gameObject) continue;
                         Rect rectBtn = GetScreenRect(btn.GetComponent<RectTransform>(), canvas, new Vector2(2772, 1280));
                         Assert.IsFalse(rectImg.Overlaps(rectBtn));
                     }

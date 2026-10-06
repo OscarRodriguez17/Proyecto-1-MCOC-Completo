@@ -304,14 +304,133 @@ namespace MCOC.AR.Editores
         }
 
         [Test]
-        public void EsquinasMalMarcadas_PideRepetir()
+        public void EsquinasDeAbajoMuyJuntas_PideRepetirLaSegunda()
         {
             var app = Montar();
-            Encuadrar(app, 26, new[] { Vector3.zero, Vector3.zero, Vector3.zero, Vector3.zero });
+            app.ElegirElemento(26);
+            app.IniciarEncuadre();
+            app.MarcarEsquina(Vector3.zero);
+            app.MarcarEsquina(new Vector3(0.02f, 0f, 0f));
             Assert.AreEqual(ModoMarcado.Cuadro, app.Modo, "Sigue esperando esquinas.");
-            Assert.AreEqual(0, app.EsquinasMarcadas);
+            Assert.AreEqual(1, app.EsquinasMarcadas, "Se descarta sólo la segunda.");
             Assert.IsFalse(app.EstaColocado(26));
-            StringAssert.Contains("Vuelve a marcar", app.Mensaje);
+            StringAssert.Contains("Marca de nuevo la segunda", app.Mensaje);
+            Limpiar(app);
+        }
+
+        // ---------------- Corrección 9 (6a–6e) ----------------
+
+        [Test]
+        public void EsquinasDeArriba_SeProyectanEnLaCaraDeLasDeAbajo()
+        {
+            var app = Montar();
+            app.ElegirElemento(26);
+            app.IniciarEncuadre();
+            app.MarcarEsquina(new Vector3(-0.35f, 0f, 0f), OrigenCuadro.Plano);
+            app.MarcarEsquina(new Vector3(0.35f, 0f, 0f), OrigenCuadro.Plano);
+            // Arriba "medidas" 2 m detrás de la columna (lo que pasaba en terreno).
+            app.MarcarEsquina(new Vector3(0.35f, 3f, 2f), OrigenCuadro.Profundidad);
+            app.MarcarEsquina(new Vector3(-0.35f, 3f, -1.5f), OrigenCuadro.Profundidad);
+            Assert.IsTrue(app.TieneEncuadre(26));
+            var q = app.Encuadre(26);
+            Assert.AreEqual(0.70f, q.ancho, TOL, "El recuadro queda del ancho de la cara.");
+            Assert.AreEqual(3f, q.largo, TOL);
+            Assert.AreEqual(0f, q.centro.z, TOL, "Y sobre la cara, no detrás.");
+            Limpiar(app);
+        }
+
+        [Test]
+        public void RecuadroAbsurdo_PideRepetirSoloLasDeArriba()
+        {
+            var app = Montar();
+            app.ElegirElemento(26);
+            app.IniciarEncuadre();
+            app.MarcarEsquina(new Vector3(-0.35f, 0f, 0f));
+            app.MarcarEsquina(new Vector3(0.35f, 0f, 0f));
+            app.MarcarEsquina(new Vector3(0.35f, 20f, 0f));
+            app.MarcarEsquina(new Vector3(-0.35f, 20f, 0f));
+            Assert.AreEqual(ModoMarcado.Cuadro, app.Modo);
+            Assert.AreEqual(2, app.EsquinasMarcadas, "Las de abajo se conservan.");
+            StringAssert.Contains("esquinas de arriba", app.Mensaje);
+            app.MarcarEsquina(new Vector3(0.35f, 3f, 0f));
+            app.MarcarEsquina(new Vector3(-0.35f, 3f, 0f));
+            Assert.IsTrue(app.TieneEncuadre(26));
+            Limpiar(app);
+        }
+
+        [Test]
+        public void Viga_LasDeAbajoTienenQueEstarSeparadas()
+        {
+            Assert.IsNotNull(ARCuadro.ValidarBase(Vector3.zero, new Vector3(0.5f, 0f, 0f), true),
+                             "Una viga de 0,5 m entre columnas no tiene sentido.");
+            Assert.IsNull(ARCuadro.ValidarBase(Vector3.zero, new Vector3(9.3f, 0f, 0f), true));
+            Assert.IsNotNull(ARCuadro.ValidarBase(Vector3.zero, new Vector3(4f, 0f, 0f), false),
+                             "La cara de una columna no mide 4 m.");
+        }
+
+        [Test]
+        public void ElDiagrama_QuedaVertical_AunqueARCoreInclineElAncla()
+        {
+            var app = Montar();
+            Encuadrar(app, 26, CaraColumna);
+            var ancla = Campo<Object>(app, "ancla") as Component;
+            var raiz = Campo<GameObject>(app, "raizVisual").transform;
+            ancla.transform.rotation = Quaternion.Euler(6f, 30f, 2f);   // ARCore lo inclinó
+            app.NivelarRaiz();
+            Assert.Greater(Vector3.Dot(raiz.up, Vector3.up), 0.9999f, "La vertical es la de la gravedad.");
+            Vector3 f = raiz.forward; f.y = 0f;
+            Assert.Greater(Vector3.Dot(f.normalized, Quaternion.Euler(0f, 30f, 0f) * Vector3.forward), 0.9999f,
+                           "Conserva el giro en planta del ancla.");
+            Assert.Less(Vector3.Distance(raiz.position, ancla.transform.position), TOL);
+            Limpiar(app);
+        }
+
+        [Test]
+        public void ElAnillo_SeVeDelMismoTamanoCercaOLejos()
+        {
+            float r2 = ARInspeccionApp.EscalaReticula(2f) * ARInspeccionApp.RadioReticula;
+            float r10 = ARInspeccionApp.EscalaReticula(10f) * ARInspeccionApp.RadioReticula;
+            Assert.AreEqual(r2 / 2f, r10 / 10f, 1e-5f, "Radio proporcional a la distancia.");
+            Assert.AreEqual(2f * ARInspeccionApp.RadioReticulaRelativo, r2, 1e-5f);
+        }
+
+        [Test]
+        public void LosTextos_CrecenConLaDistancia()
+        {
+            Assert.AreEqual(1f, ARBillboard.EscalaPorDistancia(1.5f), 1e-5f);
+            Assert.AreEqual(4f, ARBillboard.EscalaPorDistancia(6f), 1e-5f);
+            Assert.AreEqual(0.8f, ARBillboard.EscalaPorDistancia(0.3f), 1e-5f);
+        }
+
+        [Test]
+        public void AlTerminar_ElMenuSePliega_YElBotonLoDespliega()
+        {
+            var app = Montar();
+            var ui = app.Interfaz;
+            Assert.IsTrue(ui.ControlesVisibles);
+            Encuadrar(app, 26, CaraColumna);
+            Assert.IsFalse(ui.ControlesVisibles, "Con el diagrama puesto, el menú no lo tapa.");
+            ui.btnMenu.onClick.Invoke();
+            Assert.IsTrue(ui.ControlesVisibles);
+            ui.btnMenu.onClick.Invoke();
+            Assert.IsFalse(ui.ControlesVisibles);
+            Limpiar(app);
+        }
+
+        [Test]
+        public void PM_SoloElExtremoQueGobiernaLlevaRotulo()
+        {
+            var app = Montar();
+            Encuadrar(app, 26, CaraColumna);
+            int conTexto = 0, demandas = 0;
+            foreach (var m in Geo(app, 26).marcas)
+            {
+                if (m.tipo != ARTipoTrazo.Demanda) continue;
+                demandas++;
+                if (!string.IsNullOrEmpty(m.texto)) conTexto++;
+            }
+            Assert.AreEqual(2, demandas, "Siguen las dos marcas (i y j).");
+            Assert.AreEqual(1, conTexto, "Pero un solo rótulo: no se enciman.");
             Limpiar(app);
         }
 

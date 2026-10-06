@@ -59,6 +59,9 @@ namespace MCOC.AR
         public Button btnMarcarTecho;
         /// <summary>Corrección 8 (5a): encuadrar el elemento marcando las 4 esquinas de su cara.</summary>
         public Button btnEncuadrar;
+        /// <summary>Corrección 9 (6c): pliega / despliega la columna de botones de la derecha.</summary>
+        public Button btnMenu;
+        public GameObject panelControles;
         public Button btnCancelarMarcado;
         /// <summary>Mira fija en el centro de la pantalla (Corrección 6): indica dónde se marca.</summary>
         public GameObject mira;
@@ -172,6 +175,7 @@ namespace MCOC.AR
             var der = ui.CrearPanel(ui.canvas.transform, "Controles",
                                      new Vector2(0.70f, 1f), new Vector2(1f, 1f),
                                      new Vector2(0f, -140f), new Vector2(-10f, -10f));
+            ui.panelControles = der.gameObject;
             var listaD = ui.CrearVertical(der, 4f);
             float yd = 0f;
             foreach (var t in o.conToggle)
@@ -276,6 +280,20 @@ namespace MCOC.AR
             ui.CrearPanel2D(ui.canvas.transform);
             ui.MostrarPanel2D(false);
 
+            // «Menú» abajo a la derecha, FUERA de la columna de botones: pliega y
+            // despliega los controles para que no tapen el diagrama.
+            var menuPanel = ui.CrearPanel(ui.canvas.transform, "MenuPanel",
+                                          new Vector2(1f, 0f), new Vector2(1f, 0f),
+                                          new Vector2(-190f, 10f), new Vector2(-10f, 74f));
+            menuPanel.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0f);
+            ui.btnMenu = ui.CrearBoton(menuPanel, "Menú", 0f, 64f);
+            var rtm = ui.btnMenu.GetComponent<RectTransform>();
+            rtm.anchorMin = Vector2.zero;
+            rtm.anchorMax = Vector2.one;
+            rtm.offsetMin = Vector2.zero;
+            rtm.offsetMax = Vector2.zero;
+            ui.btnMenu.onClick.AddListener(() => ui.MostrarControles(!ui.ControlesVisibles));
+
             return ui;
         }
 
@@ -323,6 +341,18 @@ namespace MCOC.AR
             if (btnMarcarTecho != null) btnMarcarTecho.gameObject.SetActive(false);
             if (btnCancelarMarcado != null)
                 btnCancelarMarcado.gameObject.SetActive(marcando);
+        }
+
+        /// <summary>True si la columna de botones de la derecha está desplegada.</summary>
+        public bool ControlesVisibles
+        {
+            get { return panelControles == null || panelControles.activeSelf; }
+        }
+
+        /// <summary>Despliega o pliega la columna de botones de la derecha (botón «Menú»).</summary>
+        public void MostrarControles(bool visible)
+        {
+            if (panelControles != null) panelControles.SetActive(visible);
         }
 
         /// <summary>Muestra u oculta el panel 2D de diagramas.</summary>

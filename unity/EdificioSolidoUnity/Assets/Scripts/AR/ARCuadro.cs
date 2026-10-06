@@ -222,6 +222,69 @@ namespace MCOC.AR
             }
         }
 
+        // -----------------------------------------------------------------
+        //  Corrección 9 (6a): sólo las 2 esquinas de ABAJO se miden. Las 2 de
+        //  arriba se toman sobre el plano VERTICAL que pasa por las de abajo,
+        //  así una esquina mal medida ya no puede irse metros al fondo.
+        // -----------------------------------------------------------------
+
+        /// <summary>Distancia entre las 2 esquinas de abajo: columna (cara) y viga (luz entre columnas).</summary>
+        public const float BaseMinColumna = 0.15f, BaseMaxColumna = 2.5f;
+        public const float BaseMinViga = 1.0f, BaseMaxViga = 25f;
+        /// <summary>Medidas aceptables del recuadro terminado (m).</summary>
+        public const float AltoMinColumna = 1.0f, AltoMaxColumna = 8f;
+        public const float AnchoMaxCara = 2.5f, AnchoMinCara = 0.15f;
+
+        /// <summary>
+        /// Plano VERTICAL que contiene las dos esquinas de abajo. Si están una
+        /// sobre otra (no debería), el plano mira hacia la cámara.
+        /// </summary>
+        public static bool PlanoVertical(Vector3 a, Vector3 b, Vector3 frenteCamara,
+                                         out Vector3 punto, out Vector3 normal)
+        {
+            punto = a;
+            Vector3 n = Vector3.Cross(b - a, Vector3.up);
+            n.y = 0f;
+            if (n.sqrMagnitude < 1e-6f)
+            {
+                n = ARColocacion.Horizontal(frenteCamara);
+                if (n.sqrMagnitude < 1e-8f) { normal = Vector3.zero; return false; }
+            }
+            normal = n.normalized;
+            return true;
+        }
+
+        /// <summary>Punto más cercano a <paramref name="p"/> sobre el plano (punto, normal).</summary>
+        public static Vector3 ProyectarEnPlano(Vector3 p, Vector3 puntoPlano, Vector3 normal)
+        {
+            return p - normal * Vector3.Dot(p - puntoPlano, normal);
+        }
+
+        /// <summary>Error para el usuario si las 2 esquinas de abajo no tienen sentido; null si están bien.</summary>
+        public static string ValidarBase(Vector3 a, Vector3 b, bool esViga)
+        {
+            float d = ARColocacion.DistanciaHorizontal(a, b);
+            float min = esViga ? BaseMinViga : BaseMinColumna;
+            float max = esViga ? BaseMaxViga : BaseMaxColumna;
+            if (d >= min && d <= max) return null;
+            return string.Format(System.Globalization.CultureInfo.InvariantCulture,
+                "Las 2 esquinas de abajo quedaron a {0:0.00} m (esperado {1:0.##}–{2:0.##} m). " +
+                "Marca de nuevo la segunda.", d, min, max);
+        }
+
+        /// <summary>Error para el usuario si el recuadro terminado es absurdo; null si está bien.</summary>
+        public static string ValidarRecuadro(ARCuadroGeom q, bool esViga)
+        {
+            if (!q.valido) return q.error;
+            if (!esViga && (q.largo < AltoMinColumna || q.largo > AltoMaxColumna))
+                return string.Format(System.Globalization.CultureInfo.InvariantCulture,
+                    "La columna quedó de {0:0.00} m de alto. Marca de nuevo las 2 esquinas de arriba.", q.largo);
+            if (q.ancho < AnchoMinCara || q.ancho > AnchoMaxCara)
+                return string.Format(System.Globalization.CultureInfo.InvariantCulture,
+                    "El recuadro quedó de {0:0.00} m de ancho. Marca de nuevo las 2 esquinas de arriba.", q.ancho);
+            return null;
+        }
+
         /// <summary>Intersección de un rayo con un plano cualquiera (a menos de 25 m, hacia adelante).</summary>
         public static bool InterseccionPlano(Vector3 origen, Vector3 direccion,
                                              Vector3 puntoPlano, Vector3 normal, out Vector3 punto)

@@ -181,6 +181,8 @@ namespace MCOC.AR
         private OrigenCuadro origenReticulaCuadro = OrigenCuadro.Ninguno;
         /// <summary>Cruces y líneas de las esquinas ya marcadas.</summary>
         private GameObject vistaPrevia;
+        /// <summary>Guía en vivo: línea / recuadro desde las esquinas marcadas hasta la mira.</summary>
+        private GameObject guia;
 
         // --- Seguimiento (Corrección 8, 5b) -------------------------------------
         private bool ocultoPorSeguimiento;
@@ -1504,8 +1506,89 @@ namespace MCOC.AR
         //  Encuadre por 4 esquinas (Corrección 8, parte 5a)
         // =================================================================
 
-        /// <summary>Escala del anillo al marcar esquinas (más chico que el del piso).</summary>
-        public const float EscalaReticulaCuadro = 0.35f;
+        /// <summary>
+        /// Radio del anillo como fracción de su distancia a la cámara (Corrección 9,
+        /// 6b): así se ve SIEMPRE del mismo tamaño en pantalla, cerca o lejos. Antes
+        /// tenía radio fijo en metros y salía enorme cerca y diminuto lejos.
+        /// </summary>
+        public const float RadioReticulaRelativo = 0.045f;
+
+        /// <summary>Escala del anillo para que su radio sea <see cref="RadioReticulaRelativo"/>·distancia.</summary>
+        public static float EscalaReticula(float distancia)
+        {
+            float r = Mathf.Clamp(distancia, 0.2f, 30f) * RadioReticulaRelativo;
+            return r / RadioReticula;
+        }
+
+        private void EscalarReticula(Vector3 p)
+        {
+            if (reticula == null || camara == null) return;
+            reticula.transform.localScale =
+                Vector3.one * EscalaReticula(Vector3.Distance(camara.transform.position, p));
+        }
+
+        /// <summary>
+        /// Guía mientras se marca: con 1 esquina, la línea hasta la mira; con 2 o más,
+        /// el recuadro que va a quedar (base marcada + altura de la mira).
+        /// </summary>
+        private void ActualizarGuia(Vector3? actual)
+        {
+            if (matLinea == null) return;
+            if (guia == null)
+            {
+                guia = new GameObject("GuiaCuadro");
+                guia.transform.SetParent(transform, false);
+                var lr0 = guia.AddComponent<LineRenderer>();
+                PrepararLineaMundo(lr0, new Color(1f, 0.85f, 0.10f, 0.9f), 0.01f);
+            }
+            var lr = guia.GetComponent<LineRenderer>();
+            if (!actual.HasValue || esquinas.Count == 0 || modo != ModoMarcado.Cuadro)
+            {
+                lr.positionCount = 0;
+                return;
+            }
+            Vector3 p = actual.Value;
+            if (esquinas.Count == 1)
+            {
+                lr.positionCount = 2;
+                lr.SetPositions(new[] { esquinas[0], p });
+                return;
+            }
+            Vector3 a = esquinas[0], b = esquinas[1];
+            float alto = p.y - 0.5f * (a.y + b.y);
+            Vector3 up = Vector3.up * alto;
+            lr.positionCount = 5;
+            lr.SetPositions(new[] { a, b, b + up, a + up, a });
+        }
+
+        // =================================================================
+        //  Diagrama SIEMPRE vertical (Corrección 9, 6d)
+        //
+        //  ARCore corrige la pose de las anclas mientras mapea; con poca luz esa
+        //  corrección puede inclinar el ancla unos grados y el diagrama se ve
+        //  torcido respecto de la columna. La raíz de diagramas conserva SOLO el
+        //  giro en planta del ancla: la vertical es siempre la de la gravedad, y
+        //  el «Piso ±5 cm» se aplica en vertical verdadera.
+        // =================================================================
+
+        private void LateUpdate()
+        {
+            NivelarRaiz();
+        }
+
+        /// <summary>Quita a la raíz de diagramas la inclinación del ancla (deja el giro en planta).</summary>
+        public void NivelarRaiz()
+        {
+            if (ancla == null || raizVisual == null || raizVisual.transform.parent != ancla.transform) return;
+            Quaternion qa = ancla.transform.rotation;
+            Vector3 f = qa * Vector3.forward;
+            f.y = 0f;
+            Quaternion soloPlanta = f.sqrMagnitude > 1e-6f
+                ? Quaternion.LookRotation(f.normalized, Vector3.up)
+                : Quaternion.identity;
+            raizVisual.transform.localRotation = Quaternion.Inverse(qa) * soloPlanta;
+            raizVisual.transform.position = ancla.transform.position + Vector3.up * offsetPiso;
+        }
 
         /// <summary>Cuántas esquinas lleva marcadas el encuadre en curso.</summary>
         public int EsquinasMarcadas
@@ -1562,9 +1645,31 @@ namespace MCOC.AR
                 RefrescarEstado();
                 return;
             }
+            // Las 2 de arriba van SIEMPRE sobre el plano vertical de las de abajo
+            // (Corrección 9, 6a): aunque el punto venga de otro lado, se proyecta.
+            if (esquinas.Count >= 2)
+            {
+                Vector3 pp, n;
+                if (ARCuadro.PlanoVertical(esquinas[0], esquinas[1], FrenteCamara(), out pp, out n))
+                    p = ARCuadro.ProyectarEnPlano(p, pp, n);
+            }
             esquinas.Add(p);
-            if (origen == OrigenCuadro.Estimado || origen == OrigenCuadro.PuntoCaracteristico)
+            if (esquinas.Count <= 2 &&
+                (origen == OrigenCuadro.Estimado || origen == OrigenCuadro.PuntoCaracteristico))
                 esquinasEstimadas++;
+
+            if (esquinas.Count == 2)
+            {
+                string err = ARCuadro.ValidarBase(esquinas[0], esquinas[1], g.esViga);
+                if (err != null)
+                {
+                    esquinas.RemoveAt(1);
+                    ActualizarVistaPrevia();
+                    mensaje = err;
+                    RefrescarEstado();
+                    return;
+                }
+            }
             ActualizarVistaPrevia();
 
             if (esquinas.Count < ARCuadro.Esquinas)
@@ -1580,12 +1685,13 @@ namespace MCOC.AR
         {
             Vector3 frente = FrenteCamara();
             var q = ARCuadro.Desde4Puntos(esquinas, g.esViga, ARColocacion.Derecha(frente), frente);
-            if (!q.valido)
+            string error = ARCuadro.ValidarRecuadro(q, g.esViga);
+            if (error != null)
             {
-                esquinas.Clear();
-                esquinasEstimadas = 0;
-                LimpiarVistaPrevia();
-                mensaje = q.error + " Vuelve a marcar las 4 esquinas.";
+                // Las 2 de abajo estaban bien (se validaron): se repiten sólo las de arriba.
+                esquinas.RemoveRange(2, esquinas.Count - 2);
+                ActualizarVistaPrevia();
+                mensaje = error;
                 RefrescarEstado();
                 return;
             }
@@ -1614,6 +1720,12 @@ namespace MCOC.AR
                 q.largo, q.ancho, q.caraInferior ? " (cara inferior)" : "", g.longitud);
             if (estimadas > 0)
                 mensaje += string.Format(" Ojo: {0} esquina(s) sin medir; si no calza, encuadra de nuevo.", estimadas);
+            // Con el diagrama puesto, el menú se pliega para no taparlo (Corrección 9, 6c).
+            if (ui != null)
+            {
+                ui.MostrarControles(false);
+                mensaje += " Toca «Menú» para ver los botones.";
+            }
             RefrescarEstado();
             ActualizarBotonesMarcado();
         }
@@ -1622,11 +1734,18 @@ namespace MCOC.AR
         {
             var g = Seleccionado();
             int n = esquinas.Count + 1;
-            string cara = g == null ? "del elemento"
-                : g.esViga ? "del costado (o de la cara inferior) de la viga, entre las caras de " +
-                             ARApoyos.NombreApoyo(Apoyo(true)) + " y " + ARApoyos.NombreApoyo(Apoyo(false))
-                           : "de la cara de la " + g.tipo + " que ves: dos junto al piso y dos arriba";
-            return string.Format("Esquina {0} de 4 {1}. Apunta la mira y toca (en cualquier orden).", n, cara);
+            bool viga = g != null && g.esViga;
+            string que;
+            if (n <= 2)
+                que = viga
+                    ? (n == 1 ? "abajo de la viga, junto a " + ARApoyos.NombreApoyo(Apoyo(true))
+                              : "abajo de la viga, junto a " + ARApoyos.NombreApoyo(Apoyo(false)))
+                    : (n == 1 ? "al PIE de la columna, en una arista de la cara que ves"
+                              : "al PIE de la otra arista de la misma cara");
+            else
+                que = viga ? "ARRIBA del costado de la viga (donde se junta con la losa), en un extremo"
+                           : "ARRIBA de la columna (donde llega al cielo o a la viga)";
+            return string.Format("Esquina {0} de 4: {1}. Apunta la mira y toca.", n, que);
         }
 
         /// <summary>
@@ -1640,30 +1759,56 @@ namespace MCOC.AR
             if (camara == null || raycastMgr == null) return false;
             if (ARSession.state != ARSessionState.SessionTracking) return false;
 
-            if (ProfundidadPedida && PrimerImpacto(pantalla, TrackableType.Depth, out punto))
-            {
-                origen = OrigenCuadro.Profundidad;
-                return true;
-            }
-            if (PrimerImpacto(pantalla, TrackableType.PlaneWithinPolygon, out punto))
-            {
-                origen = OrigenCuadro.Plano;
-                return true;
-            }
+            var g = Seleccionado();
+            if (g == null) return false;
             Ray rayo = camara.ScreenPointToRay(pantalla);
-            Vector3 pp, n;
-            if (ARCuadro.PlanoProvisional(esquinas, FrenteCamara(), out pp, out n) &&
-                ARCuadro.InterseccionPlano(rayo.origin, rayo.direction, pp, n, out punto))
+
+            // Esquinas 3 y 4: SOLO el plano vertical de las 2 de abajo. Nada de
+            // raycast: así no pueden caer en el piso detrás del elemento.
+            if (esquinas.Count >= 2)
             {
+                Vector3 pp, n;
+                if (!ARCuadro.PlanoVertical(esquinas[0], esquinas[1], FrenteCamara(), out pp, out n)) return false;
+                if (!ARCuadro.InterseccionPlano(rayo.origin, rayo.direction, pp, n, out punto)) return false;
                 origen = OrigenCuadro.PlanoDelRecuadro;
                 return true;
             }
-            if (PrimerImpacto(pantalla, TrackableType.FeaturePoint, out punto))
+
+            // Esquinas 1 y 2 de una VIGA: su cara inferior, con la cadena de la 4b.
+            if (g.esViga)
             {
-                origen = OrigenCuadro.PuntoCaracteristico;
+                OrigenTecho ot;
+                if (!ResolverPuntoTecho(pantalla, out punto, out ot)) return false;
+                origen = ot == OrigenTecho.Profundidad ? OrigenCuadro.Profundidad
+                       : ot == OrigenTecho.Plano ? OrigenCuadro.Plano
+                       : ot == OrigenTecho.PuntoCaracteristico ? OrigenCuadro.PuntoCaracteristico
+                       : OrigenCuadro.Estimado;
                 return true;
             }
-            return PuntoCuadroDesdeRayo(rayo, camara.transform.position.y, out punto, out origen);
+
+            // Esquinas 1 y 2 de una COLUMNA: su pie, en el PISO.
+            OrigenPunto op;
+            if (!ResolverPuntoPiso(pantalla, out punto, out op)) return false;
+            origen = op == OrigenPunto.Profundidad ? OrigenCuadro.Profundidad
+                   : op == OrigenPunto.PisoDetectado || op == OrigenPunto.PisoExtendido ? OrigenCuadro.Plano
+                   : op == OrigenPunto.PuntoCaracteristico ? OrigenCuadro.PuntoCaracteristico
+                   : OrigenCuadro.Estimado;
+
+            // Si la mira está sobre la COLUMNA (un poco arriba del pie), el rayo pasa
+            // de largo y el piso cae DETRÁS de ella. La profundidad ve la cara más
+            // cerca: el pie es el punto del piso justo bajo ella.
+            Vector3 d;
+            if (ProfundidadPedida && PrimerImpacto(pantalla, TrackableType.Depth, out d))
+            {
+                Vector3 c = camara.transform.position;
+                bool masCerca = Vector3.Distance(c, d) < Vector3.Distance(c, punto) - 0.25f;
+                if (masCerca && !ARPiso.CercaDelPiso(d.y, c.y, true, punto.y))
+                {
+                    punto = new Vector3(d.x, punto.y, d.z);
+                    origen = OrigenCuadro.Profundidad;
+                }
+            }
+            return true;
         }
 
         private bool PrimerImpacto(Vector2 pantalla, TrackableType tipo, out Vector3 punto)
@@ -1748,6 +1893,8 @@ namespace MCOC.AR
         {
             if (vistaPrevia != null) Destruir(vistaPrevia);
             vistaPrevia = null;
+            if (guia != null) Destruir(guia);
+            guia = null;
         }
 
         // =================================================================
@@ -2359,15 +2506,18 @@ namespace MCOC.AR
                     origenReticulaCuadro = oc;
                     if (reticula != null)
                     {
-                        // Anillo chico y DE FRENTE a la cámara: la esquina puede estar
-                        // en una cara vertical (columna, costado de viga).
                         reticula.transform.position = p;
+                        // Esquinas de abajo: plano (piso / cara inferior). De arriba: de
+                        // frente a la cámara, porque están en una cara vertical.
                         Vector3 haciaCamara = camara != null ? -camara.transform.forward : Vector3.up;
-                        reticula.transform.rotation = Quaternion.FromToRotation(Vector3.up, haciaCamara);
-                        reticula.transform.localScale = Vector3.one * EscalaReticulaCuadro;
+                        reticula.transform.rotation = esquinas.Count >= 2
+                            ? Quaternion.FromToRotation(Vector3.up, haciaCamara)
+                            : Quaternion.identity;
+                        EscalarReticula(p);
                         if (!reticula.activeSelf) reticula.SetActive(true);
                         ColorearReticula(ARCuadro.EsSeguro(oc));
                     }
+                    ActualizarGuia(p);
                     mensaje = InstruccionMarcado() + "  [" + ARCuadro.Describir(oc) + "]";
                 }
                 else
@@ -2375,12 +2525,14 @@ namespace MCOC.AR
                     reticulaValida = false;
                     origenReticulaCuadro = OrigenCuadro.Ninguno;
                     if (reticula != null && reticula.activeSelf) reticula.SetActive(false);
-                    mensaje = "Apunta la mira (centro de la pantalla) a una esquina del elemento.";
+                    ActualizarGuia(null);
+                    mensaje = esquinas.Count >= 2
+                        ? "Apunta la mira ARRIBA del elemento, sobre la misma cara."
+                        : InstruccionMarcado();
                 }
                 RefrescarEstado();
                 return;
             }
-            if (reticula != null) reticula.transform.localScale = Vector3.one;
             if (EsModoTecho(modo))
             {
                 OrigenTecho ot;
@@ -2394,6 +2546,7 @@ namespace MCOC.AR
                         // 5 mm BAJO la cara inferior, para que se vea desde abajo.
                         reticula.transform.position = p - Vector3.up * 0.005f;
                         reticula.transform.rotation = Quaternion.identity;
+                        EscalarReticula(p);
                         if (!reticula.activeSelf) reticula.SetActive(true);
                         ColorearReticula(ARTecho.EsSeguro(ot));
                     }
@@ -2419,6 +2572,7 @@ namespace MCOC.AR
                     // 5 mm sobre el piso para que no parpadee contra el plano.
                     reticula.transform.position = p + Vector3.up * 0.005f;
                     reticula.transform.rotation = Quaternion.identity;
+                    EscalarReticula(p);
                     if (!reticula.activeSelf) reticula.SetActive(true);
                     ColorearReticula(origen);
                 }
@@ -2461,6 +2615,20 @@ namespace MCOC.AR
         {
             if (cam == null) cam = Camera.main;
             Orientar(cam);
+            // Corrección 9 (6e): el texto crece con la distancia para leerse siempre
+            // del mismo tamaño en pantalla (antes, a 3–4 m era ilegible).
+            if (cam != null)
+                transform.localScale = Vector3.one *
+                    EscalaPorDistancia(Vector3.Distance(transform.position, cam.transform.position));
+        }
+
+        /// <summary>Distancia (m) a la que el texto se ve con su tamaño de base.</summary>
+        public const float DistanciaReferencia = 1.5f;
+
+        /// <summary>Escala del texto a <paramref name="distancia"/> m: proporcional, entre 0,8 y 6.</summary>
+        public static float EscalaPorDistancia(float distancia)
+        {
+            return Mathf.Clamp(distancia / DistanciaReferencia, 0.8f, 6f);
         }
 
         /// Un TextMesh se lee al derecho cuando su +Z apunta en dirección CONTRARIA a la cámara.
