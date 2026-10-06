@@ -55,6 +55,8 @@ namespace MCOC.AR
         // Corrección 5: colocar marcando el elemento real.
         public Button btnMarcarBase;
         public Button btnMarcarViga;
+        /// <summary>Corrección 7 (4b): marcar la viga apuntando a su cara inferior.</summary>
+        public Button btnMarcarTecho;
         public Button btnCancelarMarcado;
         /// <summary>Mira fija en el centro de la pantalla (Corrección 6): indica dónde se marca.</summary>
         public GameObject mira;
@@ -77,6 +79,7 @@ namespace MCOC.AR
         public event Action AmplitudMenos;
         public event Action MarcarBase;
         public event Action MarcarViga;
+        public event Action MarcarTecho;
         public event Action CancelarMarcado;
         public event Action Panel2D;
 
@@ -188,7 +191,13 @@ namespace MCOC.AR
             ui.btnMarcarBase.onClick.AddListener(() => ui.MarcarBase?.Invoke());
             yd += 44f;
 
-            ui.btnMarcarViga = ui.CrearBoton(listaD, "Marcar extremos i y j", yd, 40f);
+            // Viga: lo principal es apuntar a ELLA (Corrección 7, 4b); el pie de
+            // sus columnas queda como alternativa cuando no se ve bien la viga.
+            ui.btnMarcarTecho = ui.CrearBoton(listaD, "Marcar viga: apuntar a ella", yd, 40f);
+            ui.btnMarcarTecho.onClick.AddListener(() => ui.MarcarTecho?.Invoke());
+            yd += 44f;
+
+            ui.btnMarcarViga = ui.CrearBoton(listaD, "Marcar viga: pie de columnas", yd, 40f);
             ui.btnMarcarViga.onClick.AddListener(() => ui.MarcarViga?.Invoke());
             yd += 44f;
 
@@ -290,7 +299,7 @@ namespace MCOC.AR
         /// <summary>
         /// Qué botones de marcado se ven (Corrección 5):
         ///  · «Marcar base» sólo con una columna o muro elegido;
-        ///  · «Marcar extremos i y j» sólo con una viga elegida;
+        ///  · «Marcar viga: apuntar a ella» y «… pie de columnas» sólo con una viga;
         ///  · «Cancelar marcado» sólo mientras se está marcando.
         /// </summary>
         public void MostrarMarcado(bool hayElemento, bool esViga, bool marcando)
@@ -299,6 +308,8 @@ namespace MCOC.AR
                 btnMarcarBase.gameObject.SetActive(hayElemento && !esViga && !marcando);
             if (btnMarcarViga != null)
                 btnMarcarViga.gameObject.SetActive(hayElemento && esViga && !marcando);
+            if (btnMarcarTecho != null)
+                btnMarcarTecho.gameObject.SetActive(hayElemento && esViga && !marcando);
             if (btnCancelarMarcado != null)
                 btnCancelarMarcado.gameObject.SetActive(marcando);
         }

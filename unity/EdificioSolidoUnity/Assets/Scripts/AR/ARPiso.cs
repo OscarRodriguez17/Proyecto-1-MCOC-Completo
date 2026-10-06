@@ -27,7 +27,8 @@ namespace MCOC.AR
         PisoDetectado,      // plano de ARCore bajo el teléfono
         PisoExtendido,      // último piso conocido, prolongado como plano infinito
         PuntoCaracteristico,// punto de ARCore cercano a la altura del piso
-        PisoEstimado        // 1,40 m bajo el teléfono
+        PisoEstimado,       // 1,40 m bajo el teléfono
+        Profundidad         // ARCore Depth: distancia medida al piso bajo la mira (Corrección 7, 4b)
     }
 
     public static class ARPiso
@@ -96,6 +97,7 @@ namespace MCOC.AR
                 case OrigenPunto.PisoExtendido: return "piso detectado (extendido)";
                 case OrigenPunto.PuntoCaracteristico: return "punto de referencia";
                 case OrigenPunto.PisoEstimado: return "piso ESTIMADO (1,40 m bajo el teléfono)";
+                case OrigenPunto.Profundidad: return "piso medido (profundidad)";
                 default: return "sin piso";
             }
         }

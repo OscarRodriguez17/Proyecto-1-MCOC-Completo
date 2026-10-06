@@ -33,14 +33,18 @@ namespace MCOC.AR
     /// <summary>
     /// Qué está esperando la app del próximo toque en pantalla (Corrección 5).
     /// Ninguno: el toque no marca nada. Base: el pie de una columna/muro.
-    /// ExtremoI / ExtremoJ: el piso bajo cada extremo de una viga.
+    /// ExtremoI / ExtremoJ: el pie de cada columna de apoyo de una viga.
+    /// TechoI / TechoJ: la cara inferior de la viga junto a cada columna de
+    /// apoyo, apuntando a la viga (Corrección 7, 4b).
     /// </summary>
     public enum ModoMarcado
     {
         Ninguno,
         Base,
         ExtremoI,
-        ExtremoJ
+        ExtremoJ,
+        TechoI,
+        TechoJ
     }
 
     public class ARInspeccionApp : MonoBehaviour
@@ -67,6 +71,7 @@ namespace MCOC.AR
         private ARSession arSession;
         private ARAnchorManager anchorMgr;
         private ARPlaneManager planeMgr;
+        private AROcclusionManager oclusion;
 
         private Font fuente;
         private Material matLinea;
@@ -157,6 +162,13 @@ namespace MCOC.AR
         private float yPisoConocido;
         /// <summary>De dónde salió el punto actual de la retícula.</summary>
         private OrigenPunto origenReticula = OrigenPunto.Ninguno;
+
+        // --- Viga apuntando a ella (Corrección 7, 4b) ------------------------
+        /// <summary>Punto de la cara inferior marcado junto a la columna del extremo i.</summary>
+        private Vector3 caraTechoI;
+        private OrigenTecho origenTechoI = OrigenTecho.Ninguno;
+        /// <summary>De dónde salió el punto de la retícula cuando se apunta al techo.</summary>
+        private OrigenTecho origenReticulaTecho = OrigenTecho.Ninguno;
 
         // =================================================================
         //  Ciclo de vida
@@ -292,6 +304,7 @@ namespace MCOC.AR
             raycastMgr = rig.raycastMgr;
             anchorMgr = rig.anchorMgr;
             planeMgr = rig.planeMgr;
+            oclusion = rig.oclusion;
         }
 
         /// <summary>
@@ -545,6 +558,7 @@ namespace MCOC.AR
             ui.AmplitudMenos += () => CambiarAmplitud(1f / 1.25f);
             ui.MarcarBase += IniciarMarcadoBase;
             ui.MarcarViga += IniciarMarcadoViga;
+            ui.MarcarTecho += IniciarMarcadoTecho;
             ui.CancelarMarcado += CancelarMarcado;
             ui.Panel2D += AlternarPanel2D;
             ActualizarBotonesMarcado();
@@ -1004,6 +1018,10 @@ namespace MCOC.AR
                 }
 
                 string anclaStr = ancla != null ? "si" : "no";
+                anclaStr += " · profundidad: " + (oclusion == null ? "sin gestor"
+                    : oclusion.currentEnvironmentDepthMode == EnvironmentDepthMode.Disabled
+                        ? (ProfundidadPedida ? "pedida, no disponible aún" : "apagada")
+                        : "activa (" + oclusion.currentEnvironmentDepthMode + ")");
                 string diagText = "ARSession: " + estado + " · planos: " + planos + " · camara: " + permiso + "\n"
                     + ARFramesCamara.Texto() + "\n"
                     + "Camaras: " + camCount + " (" + camNames.ToString() + ")\n" + fondo + " / material=" + fondoMat + "\n" + "Pose camara: " + pose + "\n" + "Planos detectados: " + planos + "\n" + "Ancla: " + anclaStr;
@@ -1260,9 +1278,11 @@ namespace MCOC.AR
         //   · Columna / muro: «Marcar base» → apuntar el centro de la pantalla
         //     al pie de la columna → tocar. El ancla queda en el centro de su
         //     base (media sección hacia adentro de la cara que se ve).
-        //   · Viga: «Marcar extremos i y j» → tocar el piso bajo el extremo i
-        //     → tocar el piso bajo el extremo j. El ancla va al punto medio y el
-        //     eje i→j del elemento queda sobre la línea marcada.
+        //   · Viga: «Marcar viga: pie de columnas» → tocar el pie de la columna
+        //     del extremo i → el de la del extremo j. El ancla va al punto medio
+        //     y el eje i→j del elemento queda sobre la línea marcada.
+        //   · Viga, sin bajar al piso (Corrección 7, 4b): «Marcar viga: apuntar
+        //     a ella» → la cara inferior junto a cada columna (MarcarPuntoTecho).
         //
         //  Así la posición y el rumbo salen del EDIFICIO, no de dónde está
         //  parado el usuario ni de hacia dónde apunta la cámara: el diagrama
@@ -1333,6 +1353,115 @@ namespace MCOC.AR
             modo = ModoMarcado.ExtremoI;
             MostrarReticula();
             mensaje = InstruccionMarcado();
+            RefrescarEstado();
+            ActualizarBotonesMarcado();
+        }
+
+        /// <summary>
+        /// Empieza a marcar la viga APUNTANDO A ELLA (Corrección 7, 4b): la mira
+        /// a su cara inferior junto a la columna del extremo i, tocar; luego
+        /// junto a la del extremo j, tocar. No hace falta ver el piso.
+        /// </summary>
+        public void IniciarMarcadoTecho()
+        {
+            var g = Seleccionado();
+            if (g == null)
+            {
+                mensaje = "Primero elige un elemento en la lista.";
+                RefrescarEstado();
+                return;
+            }
+            if (!g.esViga)
+            {
+                IniciarMarcadoBase();
+                return;
+            }
+            modo = ModoMarcado.TechoI;
+            MostrarReticula();
+            mensaje = InstruccionMarcado();
+            RefrescarEstado();
+            ActualizarBotonesMarcado();
+        }
+
+        /// <summary>
+        /// Registra un punto de la cara inferior de la viga (modo TechoI / TechoJ).
+        /// <paramref name="origen"/> dice si se midió (profundidad, plano, punto
+        /// de ARCore) o se estimó con la altura del modelo. Público para que los
+        /// tests recorran el mismo camino sin sesión AR.
+        /// </summary>
+        public void MarcarPuntoTecho(Vector3 p, OrigenTecho origen)
+        {
+            var g = Seleccionado();
+            if (g == null || !g.esViga)
+            {
+                mensaje = "Elige una viga para marcarla apuntando a ella.";
+                RefrescarEstado();
+                return;
+            }
+
+            if (modo == ModoMarcado.TechoI)
+            {
+                caraTechoI = p;
+                origenTechoI = origen;
+                modo = ModoMarcado.TechoJ;
+                mensaje = InstruccionMarcado();
+                RefrescarEstado();
+                ActualizarBotonesMarcado();
+                return;
+            }
+            if (modo != ModoMarcado.TechoJ)
+            {
+                mensaje = "Toca «Marcar viga: apuntar a ella» antes de marcar.";
+                RefrescarEstado();
+                return;
+            }
+
+            // Los dos puntos tienen que estar separados: si no, el rumbo no se
+            // puede leer (se mide ENTRE CARAS, antes de correrlos a los ejes).
+            float entreCaras = ARColocacion.DistanciaHorizontal(caraTechoI, p);
+            if (entreCaras < ARColocacion.DistanciaMinimaPuntos)
+            {
+                modo = ModoMarcado.TechoI;
+                mensaje = string.Format(
+                    "Los dos puntos quedaron a {0:F2} m. Marca de nuevo, primero junto a {1}.",
+                    entreCaras, ARApoyos.NombreApoyo(Apoyo(true)));
+                RefrescarEstado();
+                return;
+            }
+
+            // Ejes de las columnas de apoyo: media sección más allá de cada cara.
+            Vector3 ejeI, ejeJ;
+            ARTecho.EjesDesdeCaras(caraTechoI, p,
+                                   ARApoyos.MitadApoyo(Apoyo(true)), ARApoyos.MitadApoyo(Apoyo(false)),
+                                   out ejeI, out ejeJ);
+
+            // Piso: el conocido; si no hay, el que corresponde a la cara inferior.
+            float hInf = ARTecho.AlturaInferiorViga(g);
+            float yInf = 0.5f * (caraTechoI.y + p.y);
+            bool medidos = ARTecho.EsMedido(origenTechoI) && ARTecho.EsMedido(origen);
+            float yPiso = hayPisoConocido ? yPisoConocido : ARTecho.PisoDesdeInferior(yInf, hInf);
+
+            var c = ARColocacion.PorDosPuntos(new Vector3(ejeI.x, yPiso, ejeI.z),
+                                              new Vector3(ejeJ.x, yPiso, ejeJ.z), g);
+
+            modo = ModoMarcado.Ninguno;
+            OcultarReticula();
+            CrearAnclaEn(c.posicion);
+            rotacionMarcada = c.rotacion;
+            hayRotacionMarcada = true;
+            rotacionFija = c.rotacion;
+            ColocarEnAncla();
+
+            float L = (float)g.longitud;
+            mensaje = string.Format(
+                "Viga por su cara inferior. Medido {0:F2} m entre ejes · modelo {1:F2} m ({2:+0.0;-0.0;0.0} %)",
+                c.distancia, L, ARColocacion.DiferenciaPorcentual(c.distancia, L));
+            if (ARColocacion.FueraDeTolerancia(c.distancia, L))
+                mensaje += " — revisa los puntos: no coincide con L";
+            if (hayPisoConocido && medidos)
+                mensaje += string.Format(" · bajo viga {0:F2} m (modelo {1:F2} m)", yInf - yPiso, hInf);
+            if (!medidos)
+                mensaje += " · punto ESTIMADO: si no calza la altura, usa «Piso ±5 cm»";
             RefrescarEstado();
             ActualizarBotonesMarcado();
         }
@@ -1417,7 +1546,7 @@ namespace MCOC.AR
 
                 default:
                     mensaje = g.esViga
-                        ? "Toca «Marcar extremos i y j» antes de marcar en el piso."
+                        ? "Toca «Marcar viga: pie de columnas» antes de marcar en el piso."
                         : "Toca «Marcar base» antes de marcar en el piso.";
                     break;
             }
@@ -1432,6 +1561,25 @@ namespace MCOC.AR
         /// </summary>
         private void ConfirmarMarcado(Vector2 pantalla)
         {
+            if (EsModoTecho(modo))
+            {
+                Vector3 pt;
+                OrigenTecho ot;
+                if (reticulaValida)
+                {
+                    pt = puntoReticula;
+                    ot = origenReticulaTecho;
+                }
+                else if (!ResolverPuntoTecho(pantalla, out pt, out ot))
+                {
+                    mensaje = "No encuentro la viga ahí: apunta la mira a su cara INFERIOR y vuelve a tocar.";
+                    RefrescarEstado();
+                    return;
+                }
+                MarcarPuntoTecho(pt, ot);
+                return;
+            }
+
             Vector3 p;
             bool porPunto;
             if (reticulaValida)
@@ -1493,6 +1641,24 @@ namespace MCOC.AR
                 }
             }
 
+            // 1b) Profundidad de ARCore (Corrección 7, 4b): la distancia REAL al
+            //     piso bajo la mira, aunque ARCore no haya armado un plano ahí.
+            if (ProfundidadPedida)
+            {
+                hitsPiso.Clear();
+                if (raycastMgr.Raycast(pantalla, hitsPiso, TrackableType.Depth))
+                {
+                    foreach (var h in hitsPiso)
+                    {
+                        if (!ARPiso.CercaDelPiso(h.pose.position.y, yCam, hayPisoConocido, yPisoConocido))
+                            continue;
+                        punto = h.pose.position;
+                        origen = OrigenPunto.Profundidad;
+                        return true;
+                    }
+                }
+            }
+
             Ray rayo = camara.ScreenPointToRay(pantalla);
 
             // 2) Último piso conocido, prolongado como plano infinito.
@@ -1544,6 +1710,95 @@ namespace MCOC.AR
             return false;
         }
 
+        /// <summary>
+        /// Punto de la cara inferior de la viga bajo <paramref name="pantalla"/>
+        /// (Corrección 7, 4b): profundidad → plano arriba del teléfono → punto
+        /// de ARCore arriba del teléfono → altura estimada del modelo.
+        /// </summary>
+        private bool ResolverPuntoTecho(Vector2 pantalla, out Vector3 punto, out OrigenTecho origen)
+        {
+            punto = Vector3.zero;
+            origen = OrigenTecho.Ninguno;
+            if (camara == null || raycastMgr == null) return false;
+            if (ARSession.state != ARSessionState.SessionTracking) return false;
+            float yCam = camara.transform.position.y;
+
+            if (ProfundidadPedida && RaycastSobreCamara(pantalla, TrackableType.Depth, yCam, out punto))
+            {
+                origen = OrigenTecho.Profundidad;
+                return true;
+            }
+            if (RaycastSobreCamara(pantalla, TrackableType.PlaneWithinPolygon, yCam, out punto))
+            {
+                origen = OrigenTecho.Plano;
+                return true;
+            }
+            if (RaycastSobreCamara(pantalla, TrackableType.FeaturePoint, yCam, out punto))
+            {
+                origen = OrigenTecho.PuntoCaracteristico;
+                return true;
+            }
+            return PuntoTechoDesdeRayo(camara.ScreenPointToRay(pantalla), yCam, out punto, out origen);
+        }
+
+        /// <summary>Primer impacto del tipo dado que esté sobre el teléfono (descarta piso y mesas).</summary>
+        private bool RaycastSobreCamara(Vector2 pantalla, TrackableType tipo, float yCam, out Vector3 punto)
+        {
+            punto = Vector3.zero;
+            hitsPiso.Clear();
+            if (!raycastMgr.Raycast(pantalla, hitsPiso, tipo)) return false;
+            foreach (var h in hitsPiso)
+            {
+                if (!ARTecho.EsTecho(h.pose.position.y, yCam)) continue;
+                punto = h.pose.position;
+                return true;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Respaldo sin ARCore: el rayo cortado con el plano horizontal de la
+        /// cara inferior de la viga elegida, a su altura del MODELO sobre el piso
+        /// (el conocido o, si no hay, 1,40 m bajo el teléfono). Público para los
+        /// tests de EditMode.
+        /// </summary>
+        public bool PuntoTechoDesdeRayo(Ray rayo, float yCamara, out Vector3 punto, out OrigenTecho origen)
+        {
+            origen = OrigenTecho.Ninguno;
+            punto = Vector3.zero;
+            var g = Seleccionado();
+            if (g == null || !g.esViga) return false;
+            float yPiso = ARPiso.AlturaPisoEstimada(yCamara, hayPisoConocido, yPisoConocido);
+            float yInf = yPiso + ARTecho.AlturaInferiorViga(g);
+            if (!ARTecho.EsTecho(yInf, yCamara)) return false;
+            if (!ARPiso.InterseccionPlanoHorizontal(rayo.origin, rayo.direction, yInf, out punto))
+                return false;
+            origen = OrigenTecho.Estimado;
+            return true;
+        }
+
+        private static bool EsModoTecho(ModoMarcado m)
+        {
+            return m == ModoMarcado.TechoI || m == ModoMarcado.TechoJ;
+        }
+
+        /// <summary>True mientras la app le pide profundidad a ARCore (sólo al marcar).</summary>
+        public bool ProfundidadPedida
+        {
+            get { return oclusion != null && oclusion.requestedEnvironmentDepthMode != EnvironmentDepthMode.Disabled; }
+        }
+
+        /// <summary>
+        /// Enciende/apaga la profundidad de ARCore. Sólo se usa mientras se marca:
+        /// gasta cámara y batería, y fuera del marcado no hace falta.
+        /// </summary>
+        private void PedirProfundidad(bool si)
+        {
+            if (oclusion == null) return;
+            oclusion.requestedEnvironmentDepthMode = si ? EnvironmentDepthMode.Medium
+                                                        : EnvironmentDepthMode.Disabled;
+        }
+
         /// <summary>Recuerda la altura del piso detectado (la usa el respaldo 2).</summary>
         public void RegistrarAlturaPiso(float y)
         {
@@ -1574,8 +1829,9 @@ namespace MCOC.AR
             var g = Seleccionado();
             if (g == null) return "Elige un elemento en la lista.";
             return g.esViga
-                ? string.Format("Viga {0}: toca «Marcar extremos i y j» y marca el pie de " +
-                                "{1} y luego el de {2}.", g.tag,
+                ? string.Format("Viga {0}: toca «Marcar viga: apuntar a ella» y apunta a su cara " +
+                                "inferior junto a {1} y luego junto a {2} (o, si se ven, marca el " +
+                                "pie de esas columnas).", g.tag,
                                 ARApoyos.NombreApoyo(Apoyo(true)), ARApoyos.NombreApoyo(Apoyo(false)))
                 : string.Format("{0} {1}: toca «Marcar base» y marca su pie en el piso.",
                                 Mayuscula(g.tipo), g.tag);
@@ -1596,6 +1852,13 @@ namespace MCOC.AR
                            " (extremo i, " + Etiqueta(g, true) + "), en la cara que ves, y toca la pantalla.";
                 case ModoMarcado.ExtremoJ:
                     return "Ahora al PIE de " + ARApoyos.NombreApoyo(Apoyo(false)) +
+                           " (extremo j, " + Etiqueta(g, false) + ") y toca la pantalla.";
+                case ModoMarcado.TechoI:
+                    return "Apunta la mira a la cara INFERIOR de la viga, junto a " +
+                           ARApoyos.NombreApoyo(Apoyo(true)) + " (extremo i, " + Etiqueta(g, true) +
+                           "), y toca la pantalla.";
+                case ModoMarcado.TechoJ:
+                    return "Ahora a la cara inferior junto a " + ARApoyos.NombreApoyo(Apoyo(false)) +
                            " (extremo j, " + Etiqueta(g, false) + ") y toca la pantalla.";
                 default:
                     return InstruccionInicial();
@@ -1658,6 +1921,7 @@ namespace MCOC.AR
         {
             if (reticula == null) reticula = CrearReticula();
             reticulaValida = false;
+            PedirProfundidad(true);      // la profundidad, sólo mientras se marca
             // Se enciende cuando el raycast encuentra piso (ActualizarReticula).
             if (reticula != null) reticula.SetActive(false);
         }
@@ -1665,6 +1929,7 @@ namespace MCOC.AR
         private void OcultarReticula()
         {
             reticulaValida = false;
+            PedirProfundidad(false);
             if (reticula != null) reticula.SetActive(false);
         }
 
@@ -1720,6 +1985,34 @@ namespace MCOC.AR
             Vector3 p;
             OrigenPunto origen;
             Vector2 centro = new Vector2(Screen.width * 0.5f, Screen.height * 0.5f);
+            if (EsModoTecho(modo))
+            {
+                OrigenTecho ot;
+                if (ResolverPuntoTecho(centro, out p, out ot))
+                {
+                    reticulaValida = true;
+                    puntoReticula = p;
+                    origenReticulaTecho = ot;
+                    if (reticula != null)
+                    {
+                        // 5 mm BAJO la cara inferior, para que se vea desde abajo.
+                        reticula.transform.position = p - Vector3.up * 0.005f;
+                        reticula.transform.rotation = Quaternion.identity;
+                        if (!reticula.activeSelf) reticula.SetActive(true);
+                        ColorearReticula(ARTecho.EsSeguro(ot));
+                    }
+                    mensaje = InstruccionMarcado() + "  [" + ARTecho.Describir(ot) + "]";
+                }
+                else
+                {
+                    reticulaValida = false;
+                    origenReticulaTecho = OrigenTecho.Ninguno;
+                    if (reticula != null && reticula.activeSelf) reticula.SetActive(false);
+                    mensaje = "Apunta la mira (centro de la pantalla) a la cara INFERIOR de la viga.";
+                }
+                RefrescarEstado();
+                return;
+            }
             if (ResolverPuntoPiso(centro, out p, out origen))
             {
                 reticulaValida = true;
@@ -1748,7 +2041,12 @@ namespace MCOC.AR
         /// <summary>Amarillo: piso detectado. Naranjo: piso estimado o punto suelto (revisar).</summary>
         private void ColorearReticula(OrigenPunto origen)
         {
-            bool seguro = origen == OrigenPunto.PisoDetectado || origen == OrigenPunto.PisoExtendido;
+            ColorearReticula(origen == OrigenPunto.PisoDetectado || origen == OrigenPunto.PisoExtendido ||
+                             origen == OrigenPunto.Profundidad);
+        }
+
+        private void ColorearReticula(bool seguro)
+        {
             Color c = seguro ? new Color(1f, 0.85f, 0.10f, 1f) : new Color(1f, 0.45f, 0.05f, 1f);
             foreach (var lr in reticula.GetComponentsInChildren<LineRenderer>(true))
             {

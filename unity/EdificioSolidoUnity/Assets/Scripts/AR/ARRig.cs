@@ -41,6 +41,8 @@ namespace MCOC.AR
             public ARAnchorManager anchorMgr;
             public ARPlaneManager planeMgr;
             public TrackedPoseDriver pose;
+            /// <summary>Profundidad de ARCore (Corrección 7, 4b). Va en el ORIGEN, no en la cámara.</summary>
+            public AROcclusionManager oclusion;
         }
 
         /// <summary>
@@ -79,6 +81,20 @@ namespace MCOC.AR
             rig.planeMgr.requestedDetectionMode = PlaneDetectionMode.Horizontal;
             rig.raycastMgr = origenGO.AddComponent<ARRaycastManager>();
             rig.anchorMgr = origenGO.AddComponent<ARAnchorManager>();
+
+            // Profundidad (Corrección 7, 4b). Con ella ARCore responde el raycast
+            // TrackableType.Depth: la distancia REAL a lo que hay bajo la mira
+            // (piso, cara inferior de una viga), aunque no haya plano detectado.
+            //
+            // Va en el ORIGEN y no en la cámara a propósito: ARCameraBackground
+            // sólo toma el AROcclusionManager de SU GameObject para ocultar lo
+            // virtual detrás de lo real. Aquí no queremos eso (el eje de una
+            // columna está DENTRO de la columna real y desaparecería). Así ARCore
+            // calcula la profundidad para el raycast, pero no tapa los diagramas.
+            //
+            // Parte apagada: la app la enciende sólo mientras se marca.
+            rig.oclusion = origenGO.AddComponent<AROcclusionManager>();
+            rig.oclusion.requestedEnvironmentDepthMode = EnvironmentDepthMode.Disabled;
 
             GameObject camaraGO = new GameObject("AR Camera");
             camaraGO.transform.SetParent(origenGO.transform, false);
