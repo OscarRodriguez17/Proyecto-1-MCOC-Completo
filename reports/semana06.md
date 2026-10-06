@@ -1,522 +1,267 @@
-# Reporte — Semana 06: Corrección del signo de Mz(x) + aplicación AR de inspección en obra
+# Reporte — Semana 06: Validación AR y cierre técnico
 
-**Proyecto:** Laboratorio estructural digital 3D — Complejo de Ingeniería
-(Edificios A y B).
-**Edificios:** A (3D, G35) y B (3D, H30, planos 2024_22).
-**Fecha:** Miércoles 30 de septiembre de 2026 — Sesiones 19 y 20.
-**Alcance:** capa **ADITIVA**, salvo la corrección de la Parte 0, que es una
-corrección de **convención de signo** en tres líneas del visor, en el cierre de
-la verificación y —con autorización explícita— en el evaluador de
-`src/secciones/diagramas.py`. No se tocan los motores de análisis (lineal
-elástico A/B, IDs, casos G/Q/GQ/EX/EY, sismo, tributario) ni el motor de
-secciones.
-**Estado de esta entrega:** **COMPLETA.** Partes 0, 1 y 2 cerradas: corrección de
-`Mz(x)`, integración del parche de datos AR, app + escena AR y configuración de
-Android. El APK **no se puede compilar en esta máquina** por falta del módulo
-Android Build Support — ver §8.3.
+**Proyecto:** Laboratorio estructural digital 3D — Complejo de Ingeniería (Edificios A y B).
+**Grupo:** Nicolás Letelier · Oscar Rodríguez · Pablo Arancibia.
+**Rama:** `semana06-ar` — https://github.com/OscarRodriguez17/Proyecto-1-MCOC-Completo/tree/semana06-ar
+**Elementos AR:** Edificio A, caso **GQ** (servicio, sin mayorar) — columna **14** (Eje F/A3),
+columna **26** (Eje G/A3) y viga **134** (F–G/A3, cielo del 1er piso).
+**Unidades:** m, kN, kN·m.
+
+> El registro técnico de las sesiones 19–20 (corrección del signo de `Mz(x)`,
+> diseño inicial de la app, build Android y versiones de paquetes) está en
+> [`semana06_anexo_sesiones19_20.md`](semana06_anexo_sesiones19_20.md).
 
 ---
 
-## 1. Parte 0 — La corrección de Mz(x)
-
-### 1.1 El bug
-
-El visor evaluaba el momento flector alrededor del eje local z con la misma
-fórmula que el momento alrededor de y:
+## 1. Flujo AR
 
 ```
-INCORRECTO (lo que había)      CORRECTO (lo que hay ahora)
-Mz(x) = Mz + Vy·x + Wy·x²/2   Mz(x) = Mz - Vy·x - Wy·x²/2
+marker ──► pose ──► anchor ──► transform ──► elemento ──► resultado
 ```
 
-**No son análogos.** En los ejes locales de OpenSees, con los momentos tomados
-de `localForce` en el nodo i, las relaciones diferenciales son:
+La app **no usa marcador impreso**. El «marker» es el **propio elemento real**:
+el usuario toca en la pantalla el pie de la columna (o el pie de las dos
+columnas que sostienen la viga). Así el registro no depende de dónde esté
+parado el usuario ni de imprimir y pegar nada en obra.
 
-| conjugado | relación |
-|---|---|
-| `dVz/dx = +Wz` | y `dMy/dx = **+**Vz` |
-| `dVy/dx = +Wy` | y `dMz/dx = **−**Vy` |
+| Paso | Qué ocurre | Dónde está en el código |
+|---|---|---|
+| **1. Marker** | El usuario elige el tag y pulsa **«Marcar base»** (columna) o **«Marcar extremos i y j»** (viga). Toca el **pie de la cara visible** de cada columna. La mira fija del centro y el anillo (amarillo = piso detectado, naranja = piso estimado) muestran dónde caerá el punto. | `ARInspeccionApp.IniciarMarcadoBase / IniciarMarcadoViga / MarcarPunto` |
+| **2. Pose** | ARCore entrega la pose 6-DOF de la cámara en cada cuadro (`TrackedPoseDriver`). El toque se convierte en un rayo de cámara y se intersecta con el piso: plano detectado → piso ya conocido → *feature point* cercano al piso → piso estimado 1,40 m bajo la cámara. | `ARPiso`, `ResolverPuntoPiso`, `PuntoPisoDesdeRayo` |
+| **3. Anchor** | Se crea un `ARAnchor` **sólo con posición** (sin rotación) en el punto de base. Columna: el punto tocado se lleva media sección (0,35 m) hacia adentro, al eje. Viga: cada toque se lleva al eje de su columna de apoyo y el ancla queda en el punto medio. ARCore mantiene el ancla pegada al mundo real mientras el usuario camina. | `ARColocacion.BaseDesdeCara`, `ARApoyos.ColumnaBajoExtremo`, `ARColocacion.PorDosPuntos` |
+| **4. Transform** | Cadena de transforms ancla → raíz visual (ajuste de piso ±5 cm) → contenedor (giro en planta) → geometría del elemento en coordenadas Unity, ya restado su punto de anclaje. Escala 1:1. Detalle en §2. | `ColocarEnAncla`, `AplicarOffsetPiso` |
+| **5. Elemento** | Se dibujan el eje, N, V y M del **plano principal**, los rótulos de los extremos i/j y, en columnas, el panel P–M al pie. Los textos giran siempre hacia la cámara (`ARBillboard`). | `ARGeometriaBuilder`, `ARBillboard` |
+| **6. Resultado** | Los valores **no se calculan en el teléfono**: son los valores muestreados que exporta `src/ar/exportar_ar.py` desde OpenSees a `StreamingAssets/ar_elementos.json`. El botón **«Panel 2D»** muestra los mismos N/V/M en un recuadro fijo, legible aunque el AR no calce perfecto. | `ARCargador`, `ARGrafico` |
 
-El signo de My sale de que el corte vertical va antes que el momento; el de Mz
-sale de que el corte en local y se lleva su propio momento con signo invertido.
-Por eso el término `Vy·x` va **restando** en Mz y **sumando** en My.
+---
 
-### 1.2 La evidencia numérica (reproducible hoy)
+## 2. Transformación
 
-Con `results/edificio_solido.json` tal como está en el repo, Edificio **A**,
-columna `elementTag = 14`, caso **GQ** (L = 3,960 m, Wy = 0):
+### 2.1 Sistemas involucrados
 
-| | Vy [kN] | Mz_i [kN·m] | **Mz(L) [kN·m]** |
+| Sistema | Ejes | Origen |
+|---|---|---|
+| **OpenSees (SI)** | x, y en planta; **z vertical** | origen del modelo del Edificio A |
+| **Unity** | X, Z en planta; **Y vertical** | mismo origen, ejes permutados |
+| **Local del elemento** | igual que Unity | **punto de anclaje** del elemento (su base a nivel de piso) |
+| **Mundo AR** | Y vertical alineado con la **gravedad** (ARCore); X, Z arbitrarios | definido por la sesión ARCore al arrancar |
+
+### 2.2 Composición
+
+Para un punto `p` del modelo en coordenadas OpenSees:
+
+```
+p_mundo = t_A + Δh·ŷ + R_y(θ) · ( C·p − a )
+```
+
+| Símbolo | Significado | Valor |
+|---|---|---|
+| `C` | permutación OpenSees → Unity: `(x, y, z) ↦ (x, z, y)` | matriz `[[1,0,0],[0,0,1],[0,1,0]]` |
+| `a` | `anclaje.punto_unity` del elemento (base del elemento a nivel de piso) | col 26: `(20, −0,05, 0)`; viga 134: `(15, −0,05, 0)` |
+| `R_y(θ)` | giro **sólo en planta** (yaw) del contenedor | ver §2.3 |
+| `Δh` | ajuste de piso acumulado con «Piso ±5 cm», aplicado a la raíz visual (nunca al ancla, porque ARCore reescribe la pose del `ARAnchor`) | múltiplos de 0,05 m |
+| `t_A` | posición del `ARAnchor` en el mundo AR | punto marcado en terreno |
+| escala | **1:1** en toda la cadena: 1 m del modelo = 1 m real | `localScale = (1,1,1)` |
+
+Como jerarquía de Unity:
+`ARSessionOrigin ▸ ARAnchor (t_A, sin giro) ▸ raizVisual (Δh) ▸ contenedor (R_y(θ)) ▸ geometría (C·p − a)`.
+
+`C` cambia la mano del sistema (`det C = −1`). Es justo lo que hace falta,
+porque OpenSees usa ejes derechos y Unity izquierdos. Por eso la geometría sale
+sin espejo y los rótulos i/j quedan en su lugar.
+
+### 2.3 Cómo se obtiene θ
+
+- **Viga (dos puntos):** con los ejes de las columnas de apoyo `P_i`, `P_j`
+  proyectados a la horizontal,
+  `θ = atan2( (ê_x × d̂)·ŷ , ê_x·d̂ )`, con `ê_x` el eje local x de la viga en
+  Unity y `d̂ = (P_j − P_i)/|P_j − P_i|`. El ancla queda en el punto medio:
+  `t_A = (P_i + P_j)/2`, a la cota del punto más bajo. La app compara
+  `|P_j − P_i|` con `L` y avisa si la diferencia supera el 10 %.
+- **Columna (un punto):** la columna es vertical por construcción, porque el
+  eje Y del mundo AR es la gravedad. θ sólo decide hacia dónde se abre el
+  diagrama, y se elige para que su plano quede de frente a la cámara.
+
+### 2.4 Comprobación numérica (viga 134)
+
+Marcando el pie de las columnas 14 y 26 en `(10, 0, −0,35)` y `(20, 0, −0,35)`
+(caras visibles), los apoyos se corrigen a `(10, 0, 0)` y `(20, 0, 0)`, de
+donde salen `t_A = (15, 0, 0)` y `θ = 0`. Para el extremo i:
+
+```
+C·(10, 0, 3,91) − a = (10, 3,91, 0) − (15, −0,05, 0) = (−5, 3,96, 0)
+p_mundo = (15, 0, 0) + (−5, 3,96, 0) = (10, 3,96, 0)
+```
+
+El extremo i queda sobre el eje de la columna 14, a 3,96 m sobre el piso marcado.
+El test `ARApoyosTests.Viga134_MarcadaPorElPieDeSusColumnas_QuedaSobreSusEjes`
+comprueba exactamente esto.
+
+---
+
+## 3. Precisión
+
+### 3.1 Medición sobre la foto de terreno (columna 26)
+
+![Medición de alineamiento](fig/semana06_ar_alineacion_col26.png)
+
+Método: se toma como escala el ancho de la cara frontal de la columna en la foto
+(116 px ≙ 0,70 m, es decir 6 mm/px). Se compara el eje que dibuja la app con el
+centro proyectado de la columna real, que es el centro de la cara frontal
+corrido medio ancho de la cara lateral visible.
+
+| Altura | Centro real [px] | Eje dibujado [px] | Error |
 |---|---|---|---|
-| fórmula con `+Vy·x` (la que había) | −112,59 | −226,47 | **−672,32** |
-| fórmula con `−Vy·x` (la correcta) | −112,59 | −226,47 | **+219,38** |
-| OpenSees (`localForce`, extremo j) | | | **+219** |
+| pie | ≈ 685 | 684 | ≈ 1 px ≈ **1 cm** |
+| cabeza | ≈ 686 | 683 | ≈ 3 px ≈ **2 cm** |
 
-Los tres coinciden: la corrección reproduce el valor de OpenSees.
+**Error lateral ≈ 1–2 cm**, el mismo en el pie y en la cabeza, así que no se ve
+inclinación. Es menos de 1/30 de la sección (0,70 m). La escala supone una cara
+de 0,70 m; si la columna real tuviera otra sección, el error cambia en la misma
+proporción.
 
-### 1.3 Dónde se corrigió
+### 3.2 Presupuesto de error (estimación simple)
 
-| Archivo | Cambio |
-|---|---|
-| `unity/EdificioSolidoUnity/Assets/Scripts/UnityStickModel.cs:2600` | `Mzx` del panel de consulta (valores `N(x)`, `V(x)`, `M(x)`) |
-| `…/UnityStickModel.cs:2639` | `ValorDiagramaD()` — la ventana 2D arrastrable de diagramas |
-| `…/UnityStickModel.cs:2936` | `ReconstruirDiagramas3D()` — la curva Mz roja en el mundo |
-| `…/UnityStickModel.cs:2629` | comentario de convención, que decía `M(x) = M + V·x + W·x²/2` para los dos planos |
-| `…/Assets/Scripts/ModeloComplejo.cs:236` | docstring de `EsfuerzosVigaModelo`, que decía *"Vy/Mz análogos"* |
-| `src/benchmark_3d/esfuerzos.py` | docstring (fórmulas + bloque de cierre) y `_cierre_por_viga()` |
-| `src/edificio_b/esfuerzos.py` | idem |
-| `tests/test_esfuerzos_a.py`, `tests/test_edificio_b/test_esfuerzos.py` | 4 tests nuevos del cierre de Mz |
-
-**My no se tocó**, ni las demandas P–M: son correctas y su verificación ya
-cerraba.
-
-### 1.4 El cierre que faltaba
-
-Hasta ahora `_cierre_por_viga` solo comprobaba el corte y `My`. Por eso el
-error de Mz pasó inadvertido: nadie lo comparaba contra el extremo j. Ahora
-comprueba los tres:
-
-```
-Vz(L) = Vz + Wz·L              = -Vz_j
-My(L) = My + Vz·L + Wz·L²/2    = -My_j
-Mz(L) = Mz - Vy·L - Wy·L²/2    = -Mz_j     <- nuevo (semana 06)
-```
-
-y `dMz` entra en `vigas_sin_cierre`, así que `cierre_ok` de los cinco casos ya
-exige los tres.
-
-### 1.5 Por qué el cierre sí detecta el error — y dónde no puede
-
-Una viga solo discrimina el signo si tiene `Vy ≠ 0`. Medido sobre las dos
-pasadas completas:
-
-| | vigas | vigas con `Vy ≠ 0` | cierre con el signo **correcto** | cierre con el signo **viejo** |
-|---|---|---|---|---|
-| **A**, caso GQ | 228 | **14** | 6,8e-10 × tol ✅ | **6,3 × tol** ❌ |
-| **A**, caso EX | 228 | **14** | 4,9e-10 × tol ✅ | **66,8 × tol** ❌ |
-| **A**, caso EY | 228 | **14** | 3,7e-10 × tol ✅ | **113 × tol** ❌ |
-| **B**, 5 casos | 215 | **0** | 4,0e-22 × tol ✅ | 6,1e-12 × tol ✅ |
-
-- En **A** las 14 vigas con `Vy ≠ 0` son las que la torsión del diafragma rígido
-  reparte; ahí el cierre es una guarda de regresión real del signo.
-- En **B** las vigas no tienen carga en local y (`Wy = 0`) ni torsión que les
-  reparta `Vy`, así que `Vy = 0` en las 215 y en los 5 casos: el diagrama de Mz
-  es **constante** y el cierre se reduce a `Mz_i = -Mz_j`. Es una comprobación
-  válida, pero **no puede distinguir los dos signos** — por eso la guarda de
-  signo vive en el test de A, y el de B lo documenta explícitamente en vez de
-  fingir que discrimina.
-
-**Prueba de que las guards muerden:** revirtiendo el signo a `+` en
-`_cierre_por_viga` de A, fallan `test_cierre_diagrama_por_viga_y_caso` (el
-preexistente, porque ahora `cierre_ok` cubre Mz) y
-`test_semana06_cierre_mz_por_viga_y_caso`. Verificado en esta sesión.
-
-### 1.6 Verificación de la Parte 0
-
-| Comprobación | Resultado |
-|---|---|
-| `python -m pytest tests -q` | **150 passed** en 5,5 s (134 base + 4 de Mz + 12 de AR) |
-| Compilación `Assembly-CSharp` (con AR Foundation) | **exit 0** |
-| Compilación `Assembly-CSharp-Editor` | **exit 0** |
-| Codificación de los `.cs` nuevos | UTF-8 estricto, 0 caracteres de reemplazo, 0 CJK |
-| Escena `Main.unity` | **sin cambios** (`git diff` no la toca) |
-| JSON canónicos de análisis | **sin cambios** (`edificio_completo.json`, `edificio_solido.json`) |
-
-Detalle de la compilación: el editor de Unity está abierto sobre este proyecto,
-así que `-batchmode` no puede tomar el cerrojo del proyecto. La compilación se
-hizo con **el mismo compilador y el mismo conjunto de referencias que usa
-Unity**: su Roslyn (`Editor/Data/DotNetSdkRoslyn/csc.dll`, invocado con el host
-`Editor/Data/NetCoreRuntime/dotnet.exe`) alimentado con el archivo de respuesta
-que Unity dejó en
-`Library/Bee/artifacts/1900b0aE.dag/Assembly-CSharp.rsp`, con la salida
-redirigida a un temporal para no pisar los artefactos del editor.
-
-Como AR Foundation no venía instalado, sus cinco ensamblados de runtime se
-compilaron también desde las fuentes reales de los paquetes, con el mismo
-Roslyn y **sin** definir `MODULE_URP_ENABLED` ni `MODULE_LWRP_ENABLED`: así el
-código de render de URP/LWRP queda excluido por `versionDefines` y el proyecto
-sigue con el render pipeline incorporado, sin arrastrar URP. Ver §8.4.
-
----
-
-## 2. Sistema de coordenadas: OpenSees → Unity → AR
-
-### 2.1 OpenSees (SI) — la fuente
-
-Todo se modela y se exporta en el sistema SI del análisis:
-- `x`, `y` horizontales, `z` vertical **hacia arriba**;
-- unidades m, kN, kN·m, kN/m²;
-- los coeficientes de cada elemento están en **ejes locales**, con `x̂` de I→J,
-  y los momentos en el nudo **i** (de `localForce`).
-
-### 2.2 OpenSees → Unity (lo que ya hace el visor, sin cambios)
-
-Mapeo aplicado en `UnityStickModel.cs:1825` (`Posicion`):
-
-```
-(x, y, z)_SI  ──►  (x + offset.x,  z,  y + offset.y)_Unity
-```
-
-Es decir: **el plano SI xy se vuelve el plano Unity XZ y la vertical SI z pasa
-a ser la vertical Unity Y**. Los ejes locales se pasan con el mismo canje:
-`(vx, vy, vz)_SI → (vx, vz, vy)_Unity` (`UnityStickModel.cs:2909-2913`).
-
-`offset` es el desplazamiento en planta del Edificio B respecto del A
-(`--offset-b`, 60 m por defecto), de modo que ambos edificios salen lado a lado
-en el mismo espacio.
-
-### 2.3 Unity → AR
-
-- **Escala: 1:1.** No hay conversión de unidades: 1 m de la estructura son
-  1 m en el mundo de Unity y, por tanto, 1 m en el mundo real de ARCore. La
-  única escala que aparece en pantalla es la **amplitud del diagrama**, que es
-  una fracción de `L` elegida por el usuario (§5).
-- **Marco:** AR Foundation coloca el contenido en un espacio de **metros** con
-  origen y orientación definidos por la sesión de ARCore. El objeto se ancla con
-  un `ARAnchor`, y a partir de ahí sus coordenadas son locales al anchor.
-- **Rotación:** la del elemento NO se hereda de la geometría del edificio: el
-  diagrama se orienta según la regla de lectura del elemento (viga horizontal
-  con i a la izquierda, columna vertical con i abajo, §5), y luego se compone
-  con la rotación libre del usuario.
-- **Traslación:** la del edificio tampoco — el anchor fija el origen; el usuario
-  desplaza el conjunto con el gesto de arrastre.
-
----
-
-## 3. Escala, rotación, traslación y anchor (resumen de defensa)
-
-| Concepto | Definición | Dónde se decide |
+| Fuente | Magnitud | Efecto |
 |---|---|---|
-| **Escala** | 1 m SI = 1 m Unity = 1 m real. La longitud del diagrama es `L` en metros. | dato `L` de `ar_elementos.json` |
-| **Amplitud** | El máximo del diagrama se lleva a una fracción de `L` (ajustable por el usuario). No altera la escala del elemento: solo how high se dibuja la curva. | app AR |
-| **Rotación (lectura)** | Viga: horizontal, `i` a la izquierda. Columna/muro: vertical, `i` abajo. | app AR |
-| **Rotación (usuario)** | Dos dedos para girar el conjunto alrededor de su centro. | gesto en la app |
-| **Traslación** | El elemento se coloca **frente a la cámara** y se fija al anchor; después el usuario lo arrastra. | botón "Colocar" + gesto |
-| **Anchor** | Punto del mundo real al que queda pegado el diagrama, de modo que sigue a la cámara cuando el usuario se mueve. Sin reconocimiento de planos: el punto lo elige el usuario. | `ARAnchor` |
-| **Gestos** | Arrastrar = mover. Pellizcar = escalar. Dos dedos = girar. Botón "Recolocar" = vuelve a ponerlo frente a la cámara con la escala real. | app AR |
+| Toque sobre el pie (`e_t`) | ±2–5 cm | traslada el ancla `e_t` |
+| Piso estimado / plano | ±5 cm (se corrige con «Piso ±5 cm») | sube o baja todo el elemento |
+| Giro de la viga | `δθ ≈ √2·e_t / d` → 0,4° para `e_t = 5 cm`, `d = 10 m` | el error en los extremos sigue siendo `e_t`, porque ahí se marcó |
+| Verticalidad (gravedad ARCore) | ≈ 0,2–0,5° | 1–3 cm en la cabeza de una columna de 3,96 m |
+| Deriva de ARCore al caminar | ≈ 1–2 % de lo caminado | se corrige volviendo a marcar |
+
+**Error esperado de alineamiento: 2–5 cm.** Basta para identificar el
+elemento, la cara y el extremo i/j, que es lo que exige la inspección. No sirve
+para medir deformaciones, que son de orden milimétrico (la deriva del techo en EX
+es 9 mm).
 
 ---
 
-## 4. Qué corre en el teléfono y qué está precalculado
+## 4. Resultados
 
-Esta es la separación que hay que defender.
+### 4.1 Elemento real: columna 26 (Eje G / A3)
 
-### 4.1 Precalculado en la máquina de diseño (Python + OpenSees)
+![Columna 26 en AR](fig/semana06_ar_columna26.jpg)
 
-- El **análisis lineal** de los dos edificios, casos G/Q/GQ/EX/EY.
-- Los **9 coeficientes por elemento y caso** (`L, N, Vy, Vz, T, My, Mz, Wy, Wz`),
-  extraídos de `localForce`.
-- Los **metadatos**: tipo de visor, sección, material, `L`, nodos i/j, ejes
-  locales, rótulos de los extremos.
-- Los **valores muestreados** de los diagramas contra `x`, con sus rótulos de
-  `i`, `j`, máximo positivo y máximo negativo — **ya evaluados**.
-- La **envolvente P–M**, el punto balanceado y las demandas de los extremos.
-
-### 4.2 En el teléfono (Unity, en tiempo de ejecución)
-
-- Leer `ar_elementos.json` (por `persistentDataPath` → `StreamingAssets`).
-- **No evalúa ninguna fórmula estructural.** No hay análisis, no hay resolución,
-  no hay álgebra de momentos: dibuja los valores muestreados contra `x`.
-- Menú, selección, dibujo de la línea del elemento y de la curva del diagrama,
-  rótulos, colocación/anchor y gestos.
-
-### 4.3 Por qué el teléfono no evalúa fórmulas
-
-Es una decisión de alcance, y conviene enunciarla: la app de inspección **no es
-un mini OpenSees**. Reproducir en un teléfono un análisis lineal elástico con
-diafragmas rígidos, resolución de banda y 5 casos no aporta nada a una
-inspección en obra y multiplicaría los puntos de falla. El teléfono es un
-**visor de resultados verificados**: todo lo que se ve salió de un análisis
-cuya equilibrio y cuyos cierres están en la suite de tests.
-
-Consecuencia práctica (y ya lograda en la semana 05): los **datos** se pueden
-actualizar en un teléfono ya instalado con `adb push`, **sin recompilar el
-APK**; solo el diseño y la UI obligan a recompilar.
-
----
-
-## 5. App AR — diseño e implementación
-
-> **Estado: IMPLEMENTADO.** La escena, los cinco guiones, el shader y el menú de
-> build existen y compilan. Correspondencia diseño → código al final de la sección.
-
-### 5.1 Escena
-
-`Assets/Scenes/AR_Inspeccion.unity`, con AR Foundation + Google ARCore XR
-Plugin (versiones compatibles con Unity 2022.3), ARCore activado en XR
-Plug-in Management. Build Android: **Min API 24**, IL2CPP ARM64, OpenGLES3,
-permiso de cámara. En el build, **la escena AR va primero**.
-
-### 5.2 Datos
-
-Un solo archivo: `ar_elementos.json`, leído con el cargador existente
-(`persistentDataPath` → `StreamingAssets`, en ese orden). El teléfono no evalúa
-fórmulas: dibuja los valores muestreados contra `x`.
-
-### 5.3 Menú y cabecera
-
-- Lista de los elementos del JSON: `tag`, `tipo`, `ubicacion`.
-- Al elegir uno, cabecera con `tag`, sección, material, `L`, **"Caso GQ"** y los
-  rótulos de los extremos i/j (p. ej. `"i = Eje F / A3"`).
-
-### 5.4 Selector de esfuerzo
-
-Botones **N / V / M**, que usan el plano principal del JSON, con un toggle para
-ver el otro plano. En columnas y muros, además, el botón **P–M**.
-
-### 5.5 Colocación
-
-Botón **"Colocar"** que pone el diagrama frente a la cámara y lo fija con un
-`ARAnchor`. La viga va horizontal con `i` a la izquierda; la columna, vertical
-con `i` abajo. Largo a escala real (`L` en metros). El usuario ajusta con
-gestos —arrastrar para mover, pellizcar para escalar, girar con dos dedos— y
-tiene el botón **"Recolocar"**.
-
-### 5.6 Dibujo
-
-Línea del elemento más la curva del diagrama (`LineRenderer`) desplazada
-perpendicularmente.
-
-- **Viga:** `M > 0` se dibuja hacia **abajo** (`lado_positivo` = fibra inferior);
-  `V > 0` hacia el lado opuesto.
-- **Columna:** se dibuja en el plano de la pantalla, rotulando el lado de
-  tracción con `lado_positivo.texto`.
-- **Amplitud ajustable:** el máximo `|valor|` se lleva a una fracción de `L`.
-- **Rótulos** con valor y unidad en `i`, `j`, `max_pos` y `max_neg`.
-
-### 5.7 P–M
-
-Panel 2D en pantalla con la envolvente, el punto balanceado, la demanda en `i`
-y en `j` (el extremo que gobierna, destacado) y el D/C, con la nota
-**"servicio, sin mayorar"**.
-
-### 5.8 Correspondencia diseño → código
-
-| Diseño | Archivo | Qué hace |
+| Campo | En pantalla | En el contrato (`ar_elementos.json`, GQ) |
 |---|---|---|
-| Modelo + carga | `Assets/Scripts/AR/ARDatos.cs` | mapea el JSON a `ARPrincipal`/`ARConvenciones` con `Json.NET`, valida rangos y **no** evalúa fórmulas |
-| Dibujo | `Assets/Scripts/AR/ARGeometriaBuilder.cs` | eje, N/V/M, marcas, rótulos, flecha del lado de tracción, panel P–M |
-| Menú, cabecera, N/V/M, P–M | `Assets/Scripts/AR/ARInterfaz.cs` | Canvas, lista de elementos, toggles, botones |
-| Escena, colocación, gestos | `Assets/Scripts/AR/ARInspeccionApp.cs` | construye **todo el rig AR por código**, raycast, `ARAnchor`, arrastrar/pellizcar/girar |
-| Líneas visibles | `Assets/Shaders/LineaAR.shader` + `Assets/Resources/MCOC_LineaAR.mat` | `LineRenderer` por vertex color, en `Resources` para que el stripping no lo elimine |
-| Build Android | `Assets/Editor/MCOCXRSetup.cs` + `MCOCBuildAndroid.cs` | loader ARCore, API 24, IL2CPP ARM64, GLES3, cámara |
+| **ID** | `Tag 26 · columna`, `col_A_0.70x0.70` | `elementTag 26`, nodos 47 → 83 |
+| **N** | `N i −2104 · j −2104 · máx 2104 kN` | `−2103,96 kN` |
+| **M plano principal** | `M_xy i −234.8 · j 233.1 · máx 234.8 kN·m` | `−234,77 / +233,10` |
+| **V plano principal** | `V_xy i 118.1 · j 118.1` | `118,15 kN` |
+| **P–M** | `DC = 0.189`, `M(P) = 1243.28 kN·m`, demandas `2104 \| M235.2` (i, gobierna) y `M233.4` (j) | `DC 0,189`, `M_cap(P) 1243,28`, demanda i `(2103,96; 235,23)` |
 
-Puntos de implementación que merecen mención:
+**Evidencia de correspondencia:**
 
-- **El rig se crea en código, no en la escena.** `AR_Inspeccion.unity` tiene un
-  único GameObject con `ARInspeccionApp`; en `Start()` se crean `ARSession`,
-  cámara, `ARPlaneManager`, `ARAnchorManager` y `ARRaycastManager`. Así la
-  escena es un archivo de 175 líneas auditable y no depende de la
-  serialización interna de AR Foundation.
-- **No se usa `ARSessionManager`.** En AR Foundation 4.2.0 ese componente no
-  existe; el estado de sesión se lee de `ARSession.state`
-  (`ARSessionState.SessionTracking` es el valor correcto, no
-  `ARSessionState.Tracking`) y el loader se configura en el editor.
-- **Android:** `Application.streamingAssetsPath` devuelve un `jar:` en Android,
-  así que la carga va por `UnityWebRequest` en vez de `File.ReadAllText`.
-- **Sin URP:** el shader es propio y trivial (vertex color → color) para no
-  depender de un pipeline que el proyecto no usa.
+1. **Geometría:** el eje dibujado cae sobre el eje de la columna real, con error
+   de 1–2 cm (§3.1), y el P–M aparece al pie, en el extremo i.
+2. **Números:** los rótulos son los del contrato. El momento del P–M es la
+   resultante de los dos planos:
+   `√(234,77² + 14,66²) = 235,23 kN·m`. Por eso el P–M muestra 235,2 y el
+   diagrama M_xy muestra 234,8, y ambos son correctos.
+3. **Cadena hasta OpenSees:** `test_diagramas_reproducen_localforce_en_ambos_extremos`
+   compara los diagramas con `localForce` en los dos extremos, y
+   `test_columnas_demanda_coincide_con_motor_de_secciones` compara el D/C con el
+   motor P–M.
+
+### 4.2 Viga 134 (F–G / A3, cielo del 1er piso)
+
+![Viga 134 en AR](fig/semana06_ar_viga134.jpg)
+
+`M_xz i −114,3 · j −159,6 kN·m`, máximo positivo `+77,2 kN·m` en `x = 4,74 m`,
+donde `V = 0`. Además `V_xz i 80,9 · j −89,9 kN` y `N ≈ 0`. El cierre de la
+viga continua da `(|M_i| + |M_j|)/2 + M⁺ = 137,0 + 77,2 = 214,1 kN·m = w·L²/8`
+(test `test_viga_134_valores_de_referencia`). En pantalla los valores coinciden
+con el contrato. La geometría **no** coincide con el lugar de la prueba
+(errores conocidos, §6).
+
+### 4.3 Columna 14 (Eje F / A3)
+
+`N −1870,9 kN`, `M_xy i −226,5 · j +219,4 kN·m` y `D/C 0,191`. El valor
+`+219,4` en la cabeza es el que dejó la corrección del signo de `Mz(x)`
+(anexo, §1).
 
 ---
 
-## 6. Estado de esta entrega
+## 5. QA final estructural
 
-### 6.1 El parche de datos: recibido e integrado
-
-`parche_datos_AR.zip` **no existe** en el repositorio ni en el perfil de usuario
-(el único comprimido en la raíz, `para_entrega.zip`, es de la semana 03). En vez
-de inventar un esquema que luego no calzaría con el `exportar_ar` del parche, el
-pipeline AR se escribió **contra los datos reales ya verificados** del proyecto:
-se genera desde `src/complejo.py`, que ya tenía `esfuerzos_completos` con
-momentos evaluados en los dos extremos de cada elemento.
-
-Resultado: **12 tests propios** en `tests/test_ar_elementos.py`, que son la
-red de seguridad que el parche habría traído, y ahora son **150 en total**.
-
-### 6.2 El bug de signo en `src/secciones/diagramas.py`: decidido y corregido
-
-El error estaba en cuatro sitios y **sí se corrigió**, con autorización explícita
-en la sesión 20:
-
-| Ubicación | Antes | Ahora |
+| Prueba | Estado | Evidencia |
 |---|---|---|
-| `src/secciones/diagramas.py` evaluador | `"Mz": coef["Mz"] + coef["Vy"]*x + coef["Wy"]*x*x/2` | `coef["Mz"] − coef["Vy"]*x − coef["Wy"]*x*x/2` |
-| `src/secciones/diagramas.py` docstring | `Mz(x) = Mz + Vy·x + Wy·x²/2` | `Mz(x) = Mz − Vy·x − Wy·x²/2` |
-| `tests/test_secciones.py` | `assert d["Mz"] == approx(Mz + Vy·x)` | pasa a fijar `Mz − Vy·x` **con** el término cuadrático |
-| `_cierre_verticales()` | solo `dN`, `dVz`, `dMy` | añade **`dMz`** al cuadre |
+| **Equilibrio G** | ✅ | A: ΣF_z aplicada 45 236,479 kN = ΣR_z 45 236,479 kN. B: 48 171,114 = 48 171,115 |
+| **Equilibrio Q** | ✅ | A: 7 671,25 = 7 671,25 kN. B: 11 029,564 = 11 029,564 kN |
+| **Corte basal EX** | ✅ | A: V = 4 523,648 kN = ΣR_x (0,10·G). B: 4 817,111 kN. Momento volcante A 61 009 kN·m |
+| **Corte basal EY** | ✅ | A: 4 523,648 kN = ΣR_y. B: 4 817,111 kN |
+| **Superposición** | ✅ | G+Q ≡ GQ, G+EX, G+Q+EX: max ΔR ≤ 6,0e-11 kN, max ΔP = 2,0e-11 kN (A, 111 elementos), max ΔD ≤ 1,8e-16 m |
+| **M–φ** | ✅ (*) | col 0,70×0,70, P = 0: EI₀ = 1,458e5 kN·m² frente al analítico agrietado 1,470e5 (−0,8 %). M_max 766 kN·m. Malla 6/12/20 dentro del 10 % |
+| **P–M columna** | ✅ | A col 0,70×0,70: balanceado (4 370 kN; 1 158 kN·m). Col 14 D/C 0,191, col 26 D/C 0,189 (GQ) |
+| **P–M muro** | ✅ | B tag 41 `muro0.60x2.91`: GQ D/C 0,74 (M_cap 5 270,9). EY D/C **1,78: excede**, se marca en rojo y se informa (§6) |
+| **IDs Unity** | ✅ | El `elementTag` de OpenSees es el mismo en el JSON, el visor y la app AR (14, 26, 134). `test_json_contrato.py`: tags → nodos existentes, conectividad, apoyos |
+| **AR** | ✅ con observaciones | 110/110 tests EditMode. APK probado en Android. Alineamiento 1–2 cm en la columna 26 (§3). Pendientes visuales en §6 |
 
-Justificación del alcance: los **datos** siempre fueron correctos (el JSON
-exporta coeficientes de `localForce`, no diagramas evaluados); el error estaba
-solo en el evaluador, y ese evaluador genera `esfuerzos_completos` de columnas y
-muros. Como la app AR muestrea diagramas desde ese mismo JSON, dejarlo sin
-corregir habría propagado el signo equivocado al teléfono.
+**Suites:** `python -m pytest tests -q` → **155 tests** (154 + 1 dependiente de la
+versión de OpenSees, ver (*)). Unity Test Runner (EditMode) → **110/110**.
 
-### 6.3 Qué queda pendiente
-
-Nada dentro del alcance de código. Queda **solo** una limitación de la máquina y
-una de hardware:
-
-- [x] Pipeline AR integrado en `src/complejo.py` + copia a `StreamingAssets`.
-- [x] `tests/test_ar_elementos.py` con 12 tests → suite **150 passed**.
-- [x] `reports/fig/ar_ref_*.png` generadas y referenciadas (§9).
-- [x] Escena `AR_Inspeccion.unity` + app AR compilando.
-- [x] Configuración Android (API 24, IL2CPP ARM64, GLES3, ARCore, cámara).
-- [ ] **Instalar Android Build Support** para producir el APK (§8.3).
-- [ ] Probar la colocación sobre un teléfono real con ARCore.
+(*) `test_mfi_p0_elastico_agrietado` pasa con openseespy 3.7.1.2 y falla con
+3.8.0.0 (la versión fijada en `requirements.txt`). El cambio de versión mueve
+el resultado de la curva, no el modelo. Ver §6.
 
 ---
 
-## 7. Trazabilidad de la corrección (ejemplo completo, de punta a punta)
+## 6. Errores conocidos
 
-Para que la defensa pueda recorrerse sin el código:
+Sin ocultar:
 
-1. **OpenSees** resuelve el Edificio A, caso `GQ`. Para la columna
-   `elementTag = 14`: `Mz_i = -226,47 kN·m`, `Vy = -112,59 kN`, `Wy = 0`,
-   `L = 3,960 m`, y `Mz_j = -219,38 kN·m` (extremo j de `localForce`).
-2. **Exportación** → `results/edificio_solido.json` →
-   `edificios[0].esfuerzos_completos.GQ.14` (y `.metadatos.14`).
-3. **Convención** `dMz/dx = -Vy` ⇒ `Mz(L) = Mz - Vy·L - Wy·L²/2`
-   = `-226,47 - (-112,59)(3,960) - 0` = **`+219,38 kN·m`** = `-Mz_j`. ✓
-4. **Visor** (`UnityStickModel.cs:2600`, `:2639`, `:2936`) muestra `+219,4` en
-   `Mz(x)` y dibuja la curva con esa convención.
-5. **Prueba** `tests/test_esfuerzos_a.py::test_semana06_cierre_mz_por_viga_y_caso`
-   (228 vigas × 5 casos, tol `1e-6·max(1,|valor|)`) y
-   `test_semana06_signo_de_mz_es_menos` (la guarda del signo).
-
-Con la fórmula anterior, el paso 3 daba `-672,32` — el valor que rompía el
-cuadre y que se vio en la cabeza de la columna.
-
----
-
-## 8. Cómo generar el APK
-
-### 8.1 Menú `Build Android AR` — el APK de la app
-
-1. En `unity/EdificioSolidoUnity`, con el módulo **Android Build Support**
-   (SDK/NDK/JDK) instalado.
-2. Abrir `unity/EdificioSolidoUnity` y dejar que Unity resuelva los paquetes XR.
-3. Menú **`Tools/MCOC/Build Android AR`** → `build/EdificioComplejo_MCOC_AR.apk`,
-   package `com.mcoc.edificiocomplejo.ar`.
-
-El script `MCOCBuildAndroid.cs` hace todo esto solo:
-
-| Ajuste | Valor | Por qué |
-|---|---|---|
-| Escenas | `AR_Inspeccion.unity` (índice 0) + `Main.unity` | la app AR debe abrirse al arrancar |
-| Min SDK | **24** | ARCore lo exige; antes era 22 |
-| IL2CPP | ARM64 + ARMv7 | ARCore no soporta Mono |
-| Gráficos | **OpenGLES3** | única API garantizada por ARCore |
-| Loader XR | `ARCoreLoader` en `BuildTargetGroup.Android` | `MCOCXRSetup.ConfigurarAndroid()` |
-| Permiso | `android.permission.CAMERA` | required por ARCore |
-| Orientación | landscape izq./der., portrait desactivado | el móvil se usa en la mano |
-
-`MCOCXRSetup.cs` es **editor-only** (`Assets/Editor/`): configura *XR Plug-in
-Management* al vuelo y no arrastra referencias del runtime al APK del visor, que
-sigue siendo un proyecto Windows limpio.
-
-### 8.2 Menú `Build Android visor` — el APK clásico, sin AR
-
-**`Tools/MCOC/Build Android visor`** → `build/EdificioComplejo_MCOC.apk`, package
-`com.mcoc.edificiocomplejo`, **solo** `Main.unity`. Es el visor de la semana 05,
-sin AR: sirve para instalar las dos APKs en paralelo sin que AR Foundation entre
-en el build del visor.
-
-### 8.3 Lo que impide cerrar el APK aquí
-
-`Editor/Data/PlaybackEngines/` contiene únicamente `windowsstandalonesupport`.
-Falta **Android Build Support** (SDK/NDK/JDK), así que en esta máquina **no se
-puede generar el APK ni probarlo**. Se puede instalar desde *Unity Hub → Edit →
-Installs → Android Build Support* (con SDK & NDK Tools y OpenJDK).
-
-Lo que sí queda verificado sin el módulo: el código compila contra los
-ensamblados reales de AR Foundation (§1.6) y `MCOCXRSetup.cs` +
-`MCOCBuildAndroid.cs` compilan en `Assembly-CSharp-Editor` (**exit 0**).
-
-### 8.4 Versiones de los paquetes XR
-
-`Packages/manifest.json` fija:
-
-```json
-"com.unity.xr.arcore": "4.2.0",
-"com.unity.xr.arfoundation": "4.2.0",
-"com.unity.xr.arsubsystems": "4.2.0",
-"com.unity.xr.management": "4.4.0"
-```
-
-Se eligió la línea **4.2.0** y no la 5.x porque el proyecto usa el render
-pipeline **incorporado** y los asmdef de AR Foundation 5.x referencian
-`Unity.RenderPipelines.Universal.Runtime` de forma no opcional, lo que arrastraría
-URP y SRP por el grafo de dependencias. En 4.2.0 esas referencias están
-protegidas por `versionDefines` sobre `MODULE_URP_ENABLED` /
-`MODULE_LWRP_ENABLED`, de modo que sin URP instalado el código de URP no entra en
-la compilación.
-
-### 8.5 Datos actualizables sin recompilar
-
-Como en la semana 05 (`scripts/subir_json_telefono.ps1`), los **datos**_AR_
-también se pueden subir por `adb push` a
-`/sdcard/Android/data/com.mcoc.edificiocomplejo.ar/files/ar_elementos.json` sin
-recompilar el APK. El cargador usa `UnityWebRequest` sobre
-`Application.streamingAssetsPath`, que en Android es un `jar:`, así que **no**
-sirve `File.ReadAllText`.
+1. **La prueba AR no se hizo en el Edificio A.** Se probó en un
+   estacionamiento. La columna calza (§3), pero la viga 134 mide 10 m entre los
+   ejes F y G, y allí la luz y la altura libre son otras. Por eso el diagrama de
+   la viga no coincide con una viga real y las columnas dibujadas (3,96 m)
+   atraviesan un cielo más bajo. **Falta la prueba en el Edificio A real.**
+2. **El menú derecho tapa ~30 % de la pantalla.** El extremo j de la viga y sus
+   rótulos quedan debajo de los botones.
+3. **Diagramas en cero.** Con «No principal: sí» se dibujan `M_xy` y `V_xy`
+   de la viga, que valen 0. Son líneas sin información. Por defecto el toggle
+   parte en «no», pero conviene no dibujar nunca un diagrama nulo.
+4. **Rótulos chicos o encimados.** A 3–4 m casi no se leen en el teléfono, y
+   las demandas i/j del P–M quedan una sobre otra al pie de la columna. El
+   Panel 2D es el respaldo legible.
+5. **La viga se coloca bien sólo si sus columnas están a la vista.** Si un pie
+   está tapado (por ejemplo, un auto), el punto cae en el piso estimado
+   (anillo naranja) y el error crece a ±5–10 cm.
+6. **`test_mfi_p0_elastico_agrietado` depende de la versión de openseespy**
+   (§5).
+7. **Muro B tag 41 en EY: D/C = 1,78.** Es un resultado, no un error de
+   software: con el armado del catálogo de muros del Edificio B la demanda sísmica de servicio excede la envolvente.
+8. **La superposición interactiva (toggle) del visor no está implementada.** Se
+   verifica numéricamente y con un indicador (semana 05, §3).
+9. **El commit `1c6e43d`** quedó en otra copia local y falta recuperarlo en
+   la rama.
 
 ---
 
-## 9. Figuras de referencia
+## 7. Plan final
 
-Generadas por el propio exportador (`src/ar`), una por elemento con diagramas:
+### Núcleo (lo mínimo para cerrar el proyecto)
 
-| Figura | Contenido |
-|---|---|
-| `reports/fig/ar_ref_tag14.png` | columna 14, caso GQ: `M_xy` + panel P–M (con demanda `pm`) |
-| `reports/fig/ar_ref_tag26.png` | columna 26, caso GQ: `M_xy` + panel P–M (con demanda `pm`) |
-| `reports/fig/ar_ref_tag134.png` | viga 134, caso GQ: `M_xz` (sin panel P–M, es una viga) |
+- [ ] Prueba AR en el **Edificio A**, sobre las columnas 14/26 y la viga 134.
+      Fotos con medición de alineamiento como en §3.1.
+- [ ] Merge de `semana06-ar` a `master` (*fast-forward*, sin conflictos).
+- [ ] Recuperar el commit `1c6e43d`.
+- [ ] Informe final y guion de defensa: flujo §1, transform §2, precisión §3,
+      QA §5.
 
-Las tres comparten el mismo contrato visual que la app: `M > 0` en **tracción**,
-flecha hacia el lado de tracción, relleno del lado positivo, y el panel P–M con
-envolvente y marcas D/C. Son la referencia para comparar contra el móvil.
+### Polish
 
----
+- [ ] Menú plegable (botón «Menú»), que se pliega solo al terminar de colocar.
+- [ ] No dibujar diagramas nulos y quitar el toggle «No principal» de la vista
+      normal.
+- [ ] Rótulos más grandes, con tamaño según la distancia a la cámara.
+- [ ] Fijar openseespy en una sola versión y ajustar el rango del test M–φ.
 
-## 10. Cómo correr
+### Honors
 
-### 10.1 Datos y tests (Python)
-
-```powershell
-python -m pytest tests -q                              # 150 passed
-python -m pytest tests/test_ar_elementos.py -q         # 12 passed  (solo AR)
-python src\complejo.py --sin-visualizar               # regenera y sincroniza StreamingAssets
-```
-
-`src/complejo.py` deja el resultado en tres sitios a la vez:
-`results/ar_elementos.json`, `Assets/StreamingAssets/ar_elementos.json` y
-`reports/fig/ar_ref_tag*.png`.
-
-### 10.2 La app AR
-
-1. Unity Hub → abrir `unity/EdificioSolidoUnity`. En el primer arranque, *Package
-   Manager* resuelve AR Foundation, ARCore, AR Subsystems y XR Management; si no
-   tiene red, los paquetes ya están en `Library/PackageCache`.
-2. Abrir `Assets/Scenes/AR_Inspeccion.unity` y pulsar *Play* (funciona sin ARCore:
-   avisa de que la sesión AR no está soportada y deja la interfaz usable).
-3. Menú **`Tools/MCOC/Build Android AR`** para el APK con AR, o
-   **`Tools/MCOC/Build Android visor`** para el visor clásico.
-
-### 10.3 Compilación sin abrir Unity
-
-Misma comprobación que en §1.6, útil para verificar el código en CI o con el
-editor abierto:
-
-```powershell
-$proj = "unity\EdificioSolidoUnity"
-$rsp  = "$proj\Library\Bee\artifacts\1900b0aE.dag\Assembly-CSharp.rsp"
-& "C:\Program Files\Unity\Hub\Editor\2022.3.62f3\Editor\Data\NetCoreRuntime\dotnet.exe" `
-    "C:\Program Files\Unity\Hub\Editor\2022.3.62f3\Editor\Data\DotNetSdkRoslyn\csc.dll" "@$rsp"
-```
-
-Resultado verificado en esta entrega:
-
-```
-=== Assembly-CSharp ===       EXIT 0   (con AR Foundation 4.2.0)
-=== Assembly-CSharp-Editor === EXIT 0   (MCOCXRSetup + MCOCBuildAndroid)
-```
+- [ ] Más elementos en el contrato AR (un muro del Edificio B con su P–M y su
+      D/C en EY).
+- [ ] Selector de caso (G/Q/GQ/EX/EY) dentro de la app AR.
+- [ ] Superposición interactiva G+Q / G+EX en el visor.
+- [ ] Registro automático con un marcador de imagen (ARCore Augmented Images)
+      como alternativa al marcado manual.
