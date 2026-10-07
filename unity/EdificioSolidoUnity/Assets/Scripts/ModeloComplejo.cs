@@ -136,6 +136,16 @@ namespace MCOC.Unity
         /// <summary>Etiqueta de seccion RC (p.ej. "col0.70x0.70", "muro0.60x2.91").
         /// La añade el overlay aditivo `secciones/exportar_unity.py`.</summary>
         public string seccion;
+
+        /// <summary>Material real del elemento: "concreto" o "acero" (Edificio A,
+        /// `analizar.exportar_json`). Null en contratos antiguos = hormigon.</summary>
+        public string material;
+
+        /// <summary>Perfil metalico real (p.ej. "P.M. 300x300x20", "V.M. 300x300x5").</summary>
+        public string perfil;
+
+        /// <summary>"diagonal" para las aspas de arriostramiento (se dibujan como viga).</summary>
+        public string rol;
     }
 
     public class ApoyoModelo
@@ -306,7 +316,8 @@ namespace MCOC.Unity
     {
         public string tipo;                 // visor: column / wall / vigas_x / vigas_y
         public string seccion;              // catalogo P–M (p.ej. "col0.70x0.70") o null
-        public string material;             // "H30" / "G35"
+        public string material;             // "H30" / "G35" / "Acero"
+        public string rol;                  // "diagonal" en aspas (opcional)
         public double L;
         public NodosMetadato nodos;
         public EjesLocalesModal ejes_locales;
@@ -346,4 +357,4 @@ namespace MCOC.Unity
         public double max_dMz;
         public double max_dM;
     }
-}
+}

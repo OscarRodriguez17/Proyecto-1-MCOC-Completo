@@ -46,8 +46,11 @@ namespace MCOC.AR.Editores
             var s = ARGrafico.Series(Raiz().elementos["134"]);
             string m = ARGrafico.Leyenda(s[2]);
             StringAssert.StartsWith("M_xz [kN", m);
-            StringAssert.Contains("i -114.3", m);
-            StringAssert.Contains("j -159.6", m);
+            // Sesion 29: la 134 recibe a mitad de vano la viga secundaria F-G del
+            // cielo piso 2 (la app la muestra como viga fisica F-G = tramos 134+350).
+            // Antes: i -114.3 / j -159.6.
+            StringAssert.Contains("i -220 ", m);
+            StringAssert.Contains("j -265.3", m);
         }
 
         [Test]

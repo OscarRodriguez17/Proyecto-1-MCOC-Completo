@@ -21,6 +21,8 @@ import cargas
 from voladizos import (agregar_voladizos_y_cubierta,
                        agregar_arriostramiento_voladizo,
                        agregar_voladizo_piso1_ejeF, integrar_voladizo)
+from vigas_secundarias import agregar_viga_secundaria_FG_piso1
+from pilares_metalicos import agregar_pilar_raiz_vol_f
 
 OUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..",
                        "results")
@@ -51,7 +53,16 @@ def construir_con_voladizo(dat=d, offset=(0.0, 0.0)):
     completo = dict(extra)
     completo["aspas"] = extra_er.get("aspas", [])
     completo["vol_f"] = extra_f
-    return integrar_voladizo(modelo, completo, dat=dat, offset=offset)
+    modelo = integrar_voladizo(modelo, completo, dat=dat, offset=offset)
+    # Viga secundaria F-G / 3-2 de la planta 101 (nivel 1). Ver
+    # vigas_secundarias.py: parte las 3 vigas F-G del nivel 1 en x = 15.
+    modelo = agregar_viga_secundaria_FG_piso1(modelo, dat=dat, offset=offset)
+    # Pilar metalico P.M.I. faltante en la raiz del voladizo (17.5, 0), piso 1.
+    modelo = agregar_pilar_raiz_vol_f(modelo, dat=dat, offset=offset)
+    # Misma viga secundaria en el cielo piso 2 (lamina 102, nivel 2, z = 3.91).
+    # Va DESPUES del pilar para no renumerar el tag 349.
+    return agregar_viga_secundaria_FG_piso1(modelo, dat=dat, offset=offset,
+                                            cfg={"nivel": 2})
 
 
 def reacciones_base():
@@ -174,6 +185,28 @@ def _exportar_cargas(dat, modelo, resultados):
     }
 
 
+def material_elemento(el):
+    """{"material": "concreto"|"acero"[, "perfil": ...]} de un elemento del
+    dict `modelo`. Los elementos de acero (pilares P.M., vigas V.M., aspas)
+    llevan su perfil real para que el visor los dibuje con su seccion."""
+    if el.get("material") == "acero":
+        perfil = str(el.get("seccion", "")).replace(" (aspa)", "")
+        return {"material": "acero", "perfil": perfil}
+    return {"material": "concreto"}
+
+
+def tabla_materiales(modelo):
+    """tag -> material_elemento() para todos los elementos del modelo."""
+    out = {}
+    for cat in ("columns", "walls", "vigas_x", "vigas_y", "aspas"):
+        for el in modelo.get(cat, []):
+            info = material_elemento(el)
+            if cat == "aspas":
+                info["rol"] = "diagonal"
+            out[el["tag"]] = info
+    return out
+
+
 def exportar_json(dat, modelo, resultados, out_name, nombre_proyecto,
                   offset=(0.0, 0.0), esfuerzos=None, out_dir=None):
     ox, oy = offset
@@ -244,10 +277,11 @@ def exportar_json(dat, modelo, resultados, out_name, nombre_proyecto,
         for el in modelo[cat]:
             data["elementos"].append({
                 "tag": el["tag"], "tipo": cat.rstrip("s"),
-                "ni": el["ni"], "nj": el["nj"]})
+                "ni": el["ni"], "nj": el["nj"], **material_elemento(el)})
     for el in modelo.get("aspas", []):
         data["elementos"].append({
-            "tag": el["tag"], "tipo": "aspa", "ni": el["ni"], "nj": el["nj"]})
+            "tag": el["tag"], "tipo": "aspa", "ni": el["ni"], "nj": el["nj"],
+            **material_elemento(el)})
     data["cargas"] = _exportar_cargas(dat, modelo, resultados)
     for caso, res in resultados.items():
         data["resultados"][caso] = {

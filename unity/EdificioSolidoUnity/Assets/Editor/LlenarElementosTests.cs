@@ -34,6 +34,19 @@ namespace MCOC.AR.Editores
             return _raiz;
         }
 
+        /// <summary>
+        /// Tags en el orden que debe dejar la interfaz: el del contrato, de
+        /// menor a mayor. Los tests NUNCA hardcodean {14, 26, 134}: así la
+        /// suite no vuelve a romperse si el contrato crece.
+        /// </summary>
+        private static List<int> TagsEnOrdenDelContrato()
+        {
+            var tags = new List<int>();
+            foreach (var e in Raiz().elementos) tags.Add(e.tag);
+            tags.Sort();
+            return tags;
+        }
+
         [Test]
         public void LlenarElementosCreaBotonesConTags()
         {
@@ -63,7 +76,7 @@ namespace MCOC.AR.Editores
             Object.DestroyImmediate(ui.root);
         }
 
-        /// <summary>La lista va en orden ascendente de tag: 14, 26, 134.</summary>
+        /// <summary>La lista va en orden ascendente de tag según el contrato.</summary>
         [Test]
         public void LaListaVaOrdenadaYElPrimeroEsElTagMenor()
         {
@@ -71,11 +84,12 @@ namespace MCOC.AR.Editores
             ui.LlenarElementos(Raiz());
 
             List<int> tags = ui.tagsElemento;
-            Assert.AreEqual(3, tags.Count);
-            Assert.AreEqual(14, tags[0], "El primer elemento debe ser el tag 14.");
-            Assert.AreEqual(26, tags[1]);
-            Assert.AreEqual(134, tags[2]);
-            Assert.AreEqual(14, ui.PrimerTag());
+            List<int> esperados = TagsEnOrdenDelContrato();
+
+            Assert.AreEqual(esperados.Count, tags.Count);
+            for (int i = 0; i < tags.Count; i++)
+                Assert.AreEqual(esperados[i], tags[i], "La lista debe seguir el orden del contrato.");
+            Assert.AreEqual(esperados[0], ui.PrimerTag());
 
             for (int i = 1; i < tags.Count; i++)
                 Assert.Greater(tags[i], tags[i - 1], "La lista debe ir de menor a mayor.");
@@ -99,7 +113,7 @@ namespace MCOC.AR.Editores
             for (int i = 0; i < ui.botonesElemento.Count; i++)
                 ui.botonesElemento[i].onClick.Invoke();
 
-            CollectionAssert.AreEqual(new[] { 14, 26, 134 }, emitidos);
+            CollectionAssert.AreEqual(TagsEnOrdenDelContrato(), emitidos);
 
             Object.DestroyImmediate(ui.root);
         }
@@ -149,10 +163,10 @@ namespace MCOC.AR.Editores
 
             Assert.AreEqual(Raiz().elementos.Count, creados,
                             "El callback OK debe dejar un botón por elemento.");
-            CollectionAssert.AreEqual(new[] { 14, 26, 134 }, app.TagsEnLista());
+            CollectionAssert.AreEqual(TagsEnOrdenDelContrato(), app.TagsEnLista());
 
-            // Y el 14 queda visible, que es el primero en orden ascendente.
-            Assert.AreEqual(14, app.TagSeleccionado);
+            // Y queda visible el primero en orden ascendente del contrato.
+            Assert.AreEqual(TagsEnOrdenDelContrato()[0], app.TagSeleccionado);
 
             Limpiar(app, go);
         }

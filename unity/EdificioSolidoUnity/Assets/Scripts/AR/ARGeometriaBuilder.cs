@@ -141,9 +141,11 @@ namespace MCOC.AR
             Vector3 c10 = b - w * (0.5f * B), c11 = b + w * (0.5f * B);
             g.trazos.Add(Trazo(new[] { c00, c10, c11, c01, c00 }, opt.colorEje,
                                opt.anchoLinea * 0.5f, ARTipoTrazo.Eje, "recuadro"));
-            g.marcas.Add(Marca(a - u * 0.04f, opt.colorEje, g.etiquetaI));
-            g.marcas.Add(Marca(b + u * 0.04f, opt.colorEje, g.etiquetaJ));
-            foreach (var m in g.marcas) { m.radio = 0.03f; m.alturaTexto = Vector3.up * 0.04f; }
+            // Cambio 01: rótulos cortos e IMPRESOS en el plano del recuadro.
+            Vector3 nPlano = q.n.sqrMagnitude > 1e-6f ? q.n : Vector3.back;
+            float hEje = Mathf.Clamp(0.06f * Mathf.Min(L, 4f * B), 0.03f, 0.08f);
+            g.marcas.Add(MarcaPlana(a - u * (0.6f * hEje), opt.colorEje, "i", hEje, nPlano));
+            g.marcas.Add(MarcaPlana(b + u * (0.6f * hEje), opt.colorEje, "j", hEje, nPlano));
 
             // Referencia del modelo que corresponde a +w en el recuadro.
             Vector3 refModelo = el.tipo == "viga" ? Vector3.up : LadoPrincipal(el);
@@ -159,14 +161,21 @@ namespace MCOC.AR
             for (int f = 0; f < orden.Length; f++)
             {
                 float wc = -0.5f * B + bw * (f + 0.5f);
-                AgregarEnFranja(g, el, orden[f], a, u, w, L, wc, bw, refModelo, opt, amplitudRelativa);
+                AgregarEnFranja(g, el, orden[f], a, u, w, L, wc, bw, refModelo, opt, amplitudRelativa, nPlano);
             }
 
             if (el.pm != null)
             {
                 // P–M al lado del recuadro (afuera, por −w), al pie: P a lo largo de u.
                 Vector3 origen = a - w * (0.5f * B + 0.12f);
+                int desde = g.marcas.Count;
                 AgregarPMEn(g, el, opt, origen, u, -w);
+                // Sus rótulos también impresos y chicos (no tapan el recuadro).
+                for (int k = desde; k < g.marcas.Count; k++)
+                {
+                    g.marcas[k].normalPlano = nPlano;
+                    g.marcas[k].alturaLetra = 0.035f;
+                }
             }
             return g;
         }
@@ -174,7 +183,8 @@ namespace MCOC.AR
         private static void AgregarEnFranja(ARGeometriaElemento g, ARElemento el, string nombre,
                                             Vector3 a, Vector3 u, Vector3 w, float L,
                                             float wc, float bw, Vector3 refModelo,
-                                            ARGeometriaOpciones opt, float amplitudRelativa)
+                                            ARGeometriaOpciones opt, float amplitudRelativa,
+                                            Vector3 refNormal = default(Vector3))
         {
             ARDiagrama d;
             if (el.diagramas == null || !el.diagramas.TryGetValue(nombre, out d)) return;
@@ -216,15 +226,27 @@ namespace MCOC.AR
             trazo.principal = true;
             g.trazos.Add(trazo);
 
+            // Cambio 01: rótulo IMPRESO, centrado en su franja y del tamaño justo
+            // para caber: en columnas, a lo ancho del recuadro; en vigas, en un
+            // 30 % de su largo. No gira ni cambia de tamaño con la cámara.
+            string texto = Resumen(d, nombre);
+            bool vertical = Mathf.Abs(Vector3.Dot(u, Vector3.up)) > 0.7f;
+            float disponible = vertical ? bw * 3f : 0.30f * L;   // bw·3 = ancho total
+            float h = Mathf.Min(0.8f * bw, disponible / (0.55f * Mathf.Max(8, texto.Length)));
+            h = Mathf.Clamp(h, 0.02f, 0.12f);
+            Vector3 nPl = Vector3.Cross(u, w).normalized;
             g.marcas.Add(new ARMarca
             {
-                posicion = base0 + u * (FraccionRotulo(tipo, true) * L),
-                radio = 0.008f,
+                posicion = (vertical ? a + w * 0f : base0) + u * (FraccionRotulo(tipo, true) * L),
+                radio = 0.004f,
                 color = color,
-                texto = Resumen(d, nombre),
-                alturaTexto = Vector3.up * 0.015f,
+                texto = texto,
+                alturaTexto = Vector3.zero,
                 tipo = tipo,
-                principal = true
+                principal = true,
+                normalPlano = refNormal.sqrMagnitude > 1e-6f ? refNormal : nPl,
+                alturaLetra = h,
+                centrado = true
             });
         }
 
@@ -487,6 +509,20 @@ namespace MCOC.AR
                                      ARTipoTrazo tipo, string etiqueta)
         {
             return Trazo(new List<Vector3>(pts), c, ancho, tipo, etiqueta);
+        }
+
+        private static ARMarca MarcaPlana(Vector3 p, Color c, string texto, float h, Vector3 n)
+        {
+            return new ARMarca
+            {
+                posicion = p,
+                radio = 0.004f,
+                color = c,
+                texto = texto,
+                normalPlano = n,
+                alturaLetra = h,
+                centrado = true
+            };
         }
 
         private static ARMarca Marca(Vector3 p, Color c, string texto)

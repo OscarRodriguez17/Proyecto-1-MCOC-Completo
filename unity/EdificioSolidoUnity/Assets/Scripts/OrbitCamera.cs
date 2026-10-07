@@ -6,7 +6,13 @@ namespace MCOC.Unity
     {
         public Transform objetivo;
         public float distancia = 190f;
-        public float rotVel = 0.25f;
+        /// <summary>Grados por unidad de "Mouse X/Y" al rotar con el boton derecho.
+        /// Sesion 28: 0.25 -> 3 (12 veces mas sensible; 0.25 obligaba a arrastrar
+        /// casi toda la pantalla para girar unos pocos grados). Ajustable en vivo
+        /// con el slider "Sensibilidad" del panel Camara.</summary>
+        public float rotVel = 3f;
+        public float rotVelMin = 0.5f;
+        public float rotVelMax = 12f;
         public float panVel = 0.35f;
         public float zoomVel = 60f;
         public float minDist = 2f;
@@ -16,12 +22,15 @@ namespace MCOC.Unity
         public bool mostrarPanel = true;
 
         [Header("Presets")]
-        public float pitchPerspectiva = 30f;
-        public float yawPerspectiva = 45f;
+        /// <summary>Vista inicial (Sesion 28): DE FRENTE al eje J del Edificio A
+        /// (anexo metalico I'-J, voladizo superior), con la camara en +X mirando
+        /// hacia -X; el Edificio B queda a la izquierda (ver UnityStickModel.ladoALado).</summary>
+        public float pitchPerspectiva = 20f;
+        public float yawPerspectiva = -90f;
         public float pitchPlanta = 89.5f;
         public float pitchFrente = 6f;
 
-        private Vector3 angulos = new Vector3(30f, 45f, 0f);
+        private Vector3 angulos = new Vector3(20f, -90f, 0f);
         private Vector3 centro = Vector3.zero;
         private UnityStickModel modelo;
         private bool inicio = true;
@@ -41,6 +50,7 @@ namespace MCOC.Unity
 
         private void ProcesarEntrada()
         {
+            if (Input.GetKeyDown(KeyCode.Alpha0)) EnfocarTodo();
             if (Input.GetKeyDown(KeyCode.Alpha1)) EnfocarBloque(0);
             if (Input.GetKeyDown(KeyCode.Alpha2)) EnfocarBloque(1);
             if (Input.GetKeyDown(KeyCode.V)) VistaPlanta();
@@ -113,6 +123,17 @@ namespace MCOC.Unity
             Snap();
         }
 
+        /// <summary>Vista inicial: de frente al eje J con ambos edificios a la vista.</summary>
+        public void EnfocarTodo()
+        {
+            if (modelo == null) modelo = Object.FindObjectOfType<UnityStickModel>();
+            if (modelo == null) return;
+            angulos.Set(pitchPerspectiva, yawPerspectiva, 0f);
+            centro = modelo.CentroTodos();
+            distancia = Mathf.Clamp(modelo.SpanTodos() * 1.6f, minDist, maxDist);
+            Snap();
+        }
+
         public void VistaPlanta()
         {
             angulos.x = pitchPlanta;
@@ -133,13 +154,15 @@ namespace MCOC.Unity
 
         public void Reset()
         {
+            if (modelo == null) modelo = Object.FindObjectOfType<UnityStickModel>();
+            if (modelo != null) { EnfocarTodo(); return; }
             angulos.Set(pitchPerspectiva, yawPerspectiva, 0f);
             distancia = Mathf.Max(distancia, 190f);
             centro = Vector3.zero;
             Snap();
         }
 
-        private Rect rectPanel = new Rect(Screen.width - 250, 16, 230, 150);
+        private Rect rectPanel = new Rect(Screen.width - 250, 16, 230, 190);
 
         private void OnGUI()
         {
@@ -153,12 +176,18 @@ namespace MCOC.Unity
             GUILayout.Label("Bot. derecho: rotar | rueda: zoom");
             GUILayout.Label("Medio: pan | W/S/A/D: avanzar");
             GUILayout.Label("Q/E: subir/bajar | V: arriba | F: frente");
-            GUILayout.Label("1/2: enfocar bloque 1/2");
+            GUILayout.Label("1/2: enfocar bloque 1/2 | 0/R: inicio");
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("Sensibilidad", GUILayout.Width(78));
+            rotVel = GUILayout.HorizontalSlider(rotVel, rotVelMin, rotVelMax);
+            GUILayout.Label(rotVel.ToString("F1"), GUILayout.Width(30));
+            GUILayout.EndHorizontal();
             GUILayout.BeginHorizontal();
             if (GUILayout.Button("Arriba")) VistaPlanta();
             if (GUILayout.Button("Frente")) VistaFrente();
             GUILayout.EndHorizontal();
             GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Inicio")) EnfocarTodo();
             if (GUILayout.Button("Enfocar B1")) EnfocarBloque(0);
             if (GUILayout.Button("Enfocar B2")) EnfocarBloque(1);
             GUILayout.EndHorizontal();

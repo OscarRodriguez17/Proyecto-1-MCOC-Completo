@@ -98,6 +98,14 @@ def curvas_edificio_A(verbose=True):
             print(f"  {sec.nombre:18s} As={sec.As:.6f} "
                   f"P0_aci={sec.p0_aci():8.1f} P0_fibra={sec.p0_fibra():8.1f} "
                   f"({time.time() - t0:.1f} s)")
+    # Pilares METALICOS P.M. 300x300x20 (Sesion 29): interaccion P-M plastica
+    # del cajon de acero A270ES (ver src/secciones/acero.py).
+    from secciones import acero
+    out[acero.NOMBRE] = acero.entrada_catalogo()
+    if verbose:
+        e = out[acero.NOMBRE]
+        print(f"  {acero.NOMBRE:18s} acero {e['acero']}: P0={e['P0_aci']:8.1f} "
+              f"Mp={e['Mp']:6.1f} Pn(AISC, L=3.96)={e['Pn_pandeo_AISC']:7.1f}")
     return out
 
 

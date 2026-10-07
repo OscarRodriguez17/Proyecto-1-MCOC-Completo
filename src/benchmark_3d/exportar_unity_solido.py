@@ -77,8 +77,15 @@ def adaptar_a(data_a, offset=(0.0, 0.0)):
             ni = nodos[str(el["ni"])]
             nj = nodos[str(el["nj"])]
             tipo = _orient(ni, nj)      # aspa diagonal -> viga (se ve inclinada)
-        elems.append({"tag": el["tag"], "tipo": tipo,
-                      "ni": el["ni"], "nj": el["nj"]})
+        reg = {"tag": el["tag"], "tipo": tipo, "ni": el["ni"], "nj": el["nj"]}
+        # material/perfil reales (acero: P.M./V.M.) para que el visor dibuje
+        # los elementos metalicos con su seccion y color propios.
+        for k in ("material", "perfil"):
+            if k in el:
+                reg[k] = el[k]
+        if el["tipo"] == "aspa":
+            reg["rol"] = "diagonal"
+        elems.append(reg)
     return {
         "proyecto": data_a.get("proyecto", "Edificio A"),
         "bloque": "Edificio A - Ingenieria (2017_67)",

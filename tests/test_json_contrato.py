@@ -81,6 +81,10 @@ class TestColumnasEnMalla:
         grid_y = set(data["geometria"]["grid_y"].values())
         fuera = {int(k) for k, v in data["nodos"].items()
                  if v.get("rol") in ("punta_voladizo", "punta_vol_f")}
+        # Pilar P.M.I. de la raiz del voladizo de piso 1 (pilares_metalicos.py):
+        # sobre el eje 3 (y = 0) pero en x = 17.5, borde del voladizo.
+        raiz = {int(k) for k, v in data["nodos"].items()
+                if v.get("rol") == "raiz_vol_f"}
         voladizos = 0
         for el in data["elementos"]:
             if el["tipo"] != "column":
@@ -92,6 +96,10 @@ class TestColumnasEnMalla:
             if el["ni"] in fuera or el["nj"] in fuera:
                 voladizos += 1
                 assert ni["y"] < 0.0
+                continue
+            if el["ni"] in raiz and el["nj"] in raiz:
+                assert (ni["x"], ni["y"]) == (17.5, 0.0)
+                assert el.get("material") == "acero"
                 continue
             assert ni["x"] in grid_x
             assert ni["y"] in grid_y

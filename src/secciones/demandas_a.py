@@ -79,11 +79,29 @@ def per_elemento(verbose=True):
     `muro_A_{e:.2f}x{L:.2f}`) mediante su centroides y los pilares con
     `col_A_0.70x0.70`. Corre un único modelo (caso G) para leer la geometría.
     """
+    # Pilares METALICOS (P.M. 300x300x20: anexo J, voladizos, raiz): se
+    # etiquetan con su propia curva P-M de acero (`secciones.acero`, Sesion 29)
+    # en vez de la envolvente de la columna de hormigon 0.70x0.70.
+    import analizar as analizar_A
+    from secciones import acero as acero_pm
+    acero = {t for t, info in analizar_A.tabla_materiales(
+        analizar_A.construir_con_voladizo(D)).items()
+        if info["material"] == "acero"}
     tipo, _a, _w = esfuerzos_A._correr_caso("G")
     out = {}
     for e in sorted(tipo):
         t = tipo[e]
         if t not in ("pilar", "muro"):
+            continue
+        if e in acero:
+            if t == "pilar":
+                n1, n2 = ops.eleNodes(e)
+                (x1, y1, _z1) = ops.nodeCoord(n1)
+                (x2, y2, _z2) = ops.nodeCoord(n2)
+                out[str(e)] = {"tipo": t, "seccion": acero_pm.NOMBRE,
+                               "material": "acero",
+                               "cx": round(0.5 * (x1 + x2), 3),
+                               "cy": round(0.5 * (y1 + y2), 3)}
             continue
         n1, n2 = ops.eleNodes(e)
         (x1, y1, _z1) = ops.nodeCoord(n1)

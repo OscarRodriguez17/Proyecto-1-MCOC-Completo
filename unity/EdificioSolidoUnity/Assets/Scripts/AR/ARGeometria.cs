@@ -45,6 +45,17 @@ namespace MCOC.AR
         public ARTipoTrazo tipo = ARTipoTrazo.Eje;
         /// <summary>True si es del plano principal (ver ARTrazo.principal).</summary>
         public bool principal = true;
+
+        // --- Cambio 01: rótulos "impresos" sobre el recuadro ---
+        /// <summary>
+        /// Si no es cero, el rótulo va FIJO sobre el plano cuya normal (hacia el que
+        /// mira) es ésta: no gira con la cámara ni cambia de tamaño.
+        /// </summary>
+        public Vector3 normalPlano = Vector3.zero;
+        /// <summary>Alto de la letra en metros (0 = el de siempre).</summary>
+        public float alturaLetra = 0f;
+        /// <summary>True: el texto se centra en su posición (si no, empieza ahí).</summary>
+        public bool centrado = false;
     }
 
     /// <summary>Todo lo dibujable de un elemento.</summary>

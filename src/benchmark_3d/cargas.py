@@ -23,6 +23,51 @@ def _buscar_viga(lista, coord_fija, a, b):
     return None
 
 
+def _buscar_cadena(lista, coord_fija, a, b, tol=1e-9):
+    """Tags de tramos colineales que cubren [a, b] en cadena contigua y sin
+    solapes (p. ej. una viga de reticula partida por una viga secundaria).
+    Retorna [] si no hay cobertura completa."""
+    tramos = {}
+    for v in lista:
+        c = v.get("y", v.get("x"))
+        ai = v.get("x_i", v.get("y_i"))
+        bj = v.get("x_j", v.get("y_j"))
+        if abs(c - coord_fija) > tol:
+            continue
+        lo, hi = min(ai, bj), max(ai, bj)
+        if lo < a - tol or hi > b + tol or hi - lo < tol:
+            continue
+        tramos.setdefault(round(lo, 9), []).append((hi, v["tag"]))
+    def _dfs(pos):
+        if pos >= b - tol:
+            return []
+        for hi, tag in sorted(tramos.get(round(pos, 9), []), reverse=True):
+            resto = _dfs(hi)
+            if resto is not None:
+                return [tag] + resto
+        return None
+
+    return _dfs(a) or []
+
+
+def _paneles(xs, ys, vigas_y, tol=1e-9):
+    """Paneles (x0, x1, y0, y1) de la reticula; un panel atravesado por una
+    viga secundaria con "divide_panel" (x interior, cubre todo el vano en Y)
+    se reemplaza por dos subpaneles a cada lado de la viga."""
+    divisoras = [v for v in vigas_y if v.get("divide_panel")]
+    out = []
+    for i in range(len(xs) - 1):
+        for j in range(len(ys) - 1):
+            cortes = sorted({v["x"] for v in divisoras
+                             if xs[i] + tol < v["x"] < xs[i + 1] - tol
+                             and abs(v["y_i"] - ys[j]) < tol
+                             and abs(v["y_j"] - ys[j + 1]) < tol})
+            bordes_x = [xs[i]] + cortes + [xs[i + 1]]
+            for k in range(len(bordes_x) - 1):
+                out.append((bordes_x[k], bordes_x[k + 1], ys[j], ys[j + 1]))
+    return out
+
+
 def distribuir_nivel(q, vigas_x, vigas_y, dat=d, lvl=None):
     """Reparte q por areas tributarias entre las vigas de UN nivel.
 
@@ -43,25 +88,25 @@ def distribuir_nivel(q, vigas_x, vigas_y, dat=d, lvl=None):
                 if anexo or k != dat.ANEXO["x1"])
     ys = sorted(set(dat.GRID_Y.values()))
     area_total = 0.0
-    for i in range(len(xs) - 1):
-        for j in range(len(ys) - 1):
-            dx = xs[i + 1] - xs[i]
-            dy = ys[j + 1] - ys[j]
-            area_total += dx * dy
-            cuarto = q * dx * dy / 4.0
-            bordes = [("x", ys[j], xs[i], xs[i + 1]),
-                      ("x", ys[j + 1], xs[i], xs[i + 1]),
-                      ("y", xs[i], ys[j], ys[j + 1]),
-                      ("y", xs[i + 1], ys[j], ys[j + 1])]
-            for orient, fija, a, b in bordes:
-                largo = b - a
-                if orient == "x":
-                    tag = _buscar_viga(vigas_x, fija, a, b)
-                else:
-                    tag = _buscar_viga(vigas_y, fija, a, b)
-                if tag is None:
-                    raise RuntimeError("panel sin viga de borde")
-                w_losa[tag] += cuarto / largo
+    for x0, x1, y0, y1 in _paneles(xs, ys, vigas_y):
+        dx = x1 - x0
+        dy = y1 - y0
+        area_total += dx * dy
+        cuarto = q * dx * dy / 4.0
+        bordes = [("x", y0, x0, x1),
+                  ("x", y1, x0, x1),
+                  ("y", x0, y0, y1),
+                  ("y", x1, y0, y1)]
+        for orient, fija, a, b in bordes:
+            largo = b - a
+            lista = vigas_x if orient == "x" else vigas_y
+            tag = _buscar_viga(lista, fija, a, b)
+            tags = [tag] if tag is not None else _buscar_cadena(lista, fija, a, b)
+            if not tags:
+                raise RuntimeError("panel sin viga de borde")
+            # carga uniforme a lo largo del borde: mismo w en cada tramo
+            for t in tags:
+                w_losa[t] += cuarto / largo
 
     transferido = sum(w_losa[t] * longitudes[t] for t in w_losa)
     return w_losa, longitudes, area_total, transferido

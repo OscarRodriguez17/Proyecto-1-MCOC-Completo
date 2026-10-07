@@ -303,22 +303,33 @@ namespace MCOC.AR.Editores
             Limpiar(app);
         }
 
+        // ---------------- Cambio 01: recuadro plano y de frente ----------------
+
         [Test]
-        public void EsquinasDeAbajoMuyJuntas_PideRepetirLaSegunda()
+        public void LasEsquinas_QuedanEnUnPlanoDeFrenteALaCamara()
         {
             var app = Montar();
+            // Cámara mirando 30° a la derecha de +Z.
+            app.Camara.transform.rotation = Quaternion.Euler(0f, 30f, 0f);
+            Vector3 f = Quaternion.Euler(0f, 30f, 0f) * Vector3.forward;
             app.ElegirElemento(26);
             app.IniciarEncuadre();
-            app.MarcarEsquina(Vector3.zero);
-            app.MarcarEsquina(new Vector3(0.02f, 0f, 0f));
-            Assert.AreEqual(ModoMarcado.Cuadro, app.Modo, "Sigue esperando esquinas.");
-            Assert.AreEqual(1, app.EsquinasMarcadas, "Se descarta sólo la segunda.");
-            Assert.IsFalse(app.EstaColocado(26));
-            StringAssert.Contains("Marca de nuevo la segunda", app.Mensaje);
+            Vector3 p0 = new Vector3(1f, 0f, 4f);
+            app.MarcarEsquina(p0, OrigenCuadro.Profundidad);
+            // Las otras tres "medidas" a distintas profundidades: deben ir al mismo plano.
+            Vector3 r = Vector3.Cross(Vector3.up, f).normalized;
+            app.MarcarEsquina(p0 + r * 0.7f + f * 1.5f);
+            app.MarcarEsquina(p0 + r * 0.7f + Vector3.up * 3f - f * 2f);
+            app.MarcarEsquina(p0 + Vector3.up * 3f + f * 0.8f);
+            Assert.IsTrue(app.TieneEncuadre(26));
+            var q = app.Encuadre(26);
+            Assert.AreEqual(0.70f, q.ancho, TOL);
+            Assert.AreEqual(3f, q.largo, TOL);
+            Assert.AreEqual(0f, Vector3.Dot(q.centro - p0, f), TOL,
+                            "Todo el recuadro a la misma distancia que la 1ª esquina.");
+            Assert.Greater(Vector3.Dot(q.n, -f), 0.999f, "El recuadro mira hacia la cámara.");
             Limpiar(app);
         }
-
-        // ---------------- Corrección 9 (6a–6e) ----------------
 
         [Test]
         public void EsquinasDeArriba_SeProyectanEnLaCaraDeLasDeAbajo()
@@ -340,32 +351,24 @@ namespace MCOC.AR.Editores
         }
 
         [Test]
-        public void RecuadroAbsurdo_PideRepetirSoloLasDeArriba()
+        public void RecuadroAbsurdo_PideRepetir()
         {
             var app = Montar();
             app.ElegirElemento(26);
             app.IniciarEncuadre();
             app.MarcarEsquina(new Vector3(-0.35f, 0f, 0f));
             app.MarcarEsquina(new Vector3(0.35f, 0f, 0f));
-            app.MarcarEsquina(new Vector3(0.35f, 20f, 0f));
-            app.MarcarEsquina(new Vector3(-0.35f, 20f, 0f));
+            app.MarcarEsquina(new Vector3(0.35f, 50f, 0f));
+            app.MarcarEsquina(new Vector3(-0.35f, 50f, 0f));
             Assert.AreEqual(ModoMarcado.Cuadro, app.Modo);
-            Assert.AreEqual(2, app.EsquinasMarcadas, "Las de abajo se conservan.");
-            StringAssert.Contains("esquinas de arriba", app.Mensaje);
-            app.MarcarEsquina(new Vector3(0.35f, 3f, 0f));
-            app.MarcarEsquina(new Vector3(-0.35f, 3f, 0f));
+            Assert.AreEqual(0, app.EsquinasMarcadas, "Se vuelve a empezar.");
+            StringAssert.Contains("se perdió", app.Mensaje);
+            app.MarcarEsquina(CaraColumna[0]);
+            app.MarcarEsquina(CaraColumna[1]);
+            app.MarcarEsquina(CaraColumna[2]);
+            app.MarcarEsquina(CaraColumna[3]);
             Assert.IsTrue(app.TieneEncuadre(26));
             Limpiar(app);
-        }
-
-        [Test]
-        public void Viga_LasDeAbajoTienenQueEstarSeparadas()
-        {
-            Assert.IsNotNull(ARCuadro.ValidarBase(Vector3.zero, new Vector3(0.5f, 0f, 0f), true),
-                             "Una viga de 0,5 m entre columnas no tiene sentido.");
-            Assert.IsNull(ARCuadro.ValidarBase(Vector3.zero, new Vector3(9.3f, 0f, 0f), true));
-            Assert.IsNotNull(ARCuadro.ValidarBase(Vector3.zero, new Vector3(4f, 0f, 0f), false),
-                             "La cara de una columna no mide 4 m.");
         }
 
         [Test]
@@ -395,12 +398,52 @@ namespace MCOC.AR.Editores
         }
 
         [Test]
-        public void LosTextos_CrecenConLaDistancia()
+        public void LosRotulos_DelRecuadro_EstanImpresosYCaben()
         {
-            Assert.AreEqual(1f, ARBillboard.EscalaPorDistancia(3f), 1e-5f);
-            Assert.AreEqual(1.5f, ARBillboard.EscalaPorDistancia(4.5f), 1e-5f);
-            Assert.AreEqual(2f, ARBillboard.EscalaPorDistancia(20f), 1e-5f, "Con tope: no tapan la pantalla.");
-            Assert.AreEqual(0.6f, ARBillboard.EscalaPorDistancia(0.3f), 1e-5f);
+            var app = Montar();
+            Encuadrar(app, 26, CaraColumna);
+            var q = app.Encuadre(26);
+            foreach (var m in Geo(app, 26).marcas)
+            {
+                if (string.IsNullOrEmpty(m.texto)) continue;
+                Assert.Greater(m.normalPlano.sqrMagnitude, 0.5f, "Rótulo sin plano: " + m.texto);
+                Assert.Greater(Vector3.Dot(m.normalPlano, q.n), 0.999f, "En el plano del recuadro.");
+                if (m.tipo == ARTipoTrazo.Normal || m.tipo == ARTipoTrazo.Cortante || m.tipo == ARTipoTrazo.Momento)
+                    Assert.LessOrEqual(0.55f * m.alturaLetra * m.texto.Length, q.ancho + 1e-3f,
+                                       "No cabe en el ancho: " + m.texto);
+            }
+            Limpiar(app);
+        }
+
+        [Test]
+        public void LosRotulos_NoGiranNiCambianDeTamanoConLaCamara()
+        {
+            var app = Montar();
+            app.ElegirElemento(14);
+            app.Camara.transform.rotation = Quaternion.Euler(20f, 0f, 0f);
+            app.IniciarMarcadoBase();
+            app.MarcarPunto(new Vector3(3f, 0f, -1f));      // dibujo 1:1 con rótulos
+            var c = Campo<Dictionary<int, GameObject>>(app, "contenedores")[14].transform;
+            var bbs = c.GetComponentsInChildren<ARBillboard>(true);
+            if (bbs.Length == 0) Assert.Pass("Sin fuente en este Editor: no hay rótulos 3D.");
+            var antes = new Quaternion[bbs.Length];
+            for (int k = 0; k < bbs.Length; k++)
+            {
+                Assert.IsTrue(bbs[k].congelado, "Al colocar, el rótulo queda fijo.");
+                antes[k] = bbs[k].transform.rotation;
+            }
+            // El usuario se mueve y gira: los rótulos no.
+            app.Camara.transform.position = new Vector3(8f, 1.4f, 5f);
+            app.Camara.transform.rotation = Quaternion.Euler(0f, 200f, 0f);
+            var lu = typeof(ARBillboard).GetMethod("LateUpdate",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            for (int k = 0; k < bbs.Length; k++)
+            {
+                lu.Invoke(bbs[k], null);
+                Assert.Less(Quaternion.Angle(antes[k], bbs[k].transform.rotation), 1e-3f);
+                Assert.AreEqual(1f, bbs[k].transform.localScale.x, 1e-5f);
+            }
+            Limpiar(app);
         }
 
         [Test]

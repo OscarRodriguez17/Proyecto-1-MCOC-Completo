@@ -12,6 +12,15 @@ namespace MCOC.Unity
         public string jsonFileName = "edificio_completo.json";
         public float amplificacion = 400f;
         public float separarBloquesY = 0f;
+        /// <summary>Disposicion LADO A LADO (Sesion 28): el Edificio B se dibuja a la
+        /// IZQUIERDA de A mirando de frente al eje J (desde +X), con su frente
+        /// alineado al de A. Solo cambia el DIBUJO (bv.offset); el contrato JSON,
+        /// el analisis y la app AR mantienen sus coordenadas.</summary>
+        public bool ladoALado = true;
+        private ModeloComplejo modeloCargado;
+        /// <summary>Holgura [m] entre A y B en la disposicion lado a lado
+        /// (el slider "Sep bloques" la aumenta).</summary>
+        public float holguraLadoALado = 10f;
         public bool mostrarColumnas = true;
         public bool mostrarVigasX = true;
         public bool mostrarVigasY = true;
@@ -208,6 +217,7 @@ namespace MCOC.Unity
         private static Mesh coneCargaMesh;
         private static Mesh meshCilindroFino;
         private static Material matColumna;
+        private static Material matAcero;
         private static Material matViga;
         private static Material matMuro;
         private static Material matBrazo;
@@ -250,6 +260,86 @@ namespace MCOC.Unity
             if (Application.isPlaying && casoActivo != CasoDeformacion.Ninguno) ReconstruirPanelesDeformados();
             ApuntarEtiquetas();
             ProcesarSeleccionViga();
+        }
+
+        /// <summary>Extension en planta (coordenadas del contrato, sin offset) de
+        /// los nodos del edificio, sin el nodo maestro del diafragma.</summary>
+        private static bool ExtensionPlanta(ModeloEdificio ed, out float xmin, out float xmax,
+                                            out float ymin, out float ymax)
+        {
+            xmin = ymin = float.MaxValue;
+            xmax = ymax = float.MinValue;
+            if (ed == null || ed.nodos == null) return false;
+            foreach (NodoModelo n in ed.nodos.Values)
+            {
+                if (n == null || n.rol == "maestro_diafragma") continue;
+                xmin = Mathf.Min(xmin, (float)n.x); xmax = Mathf.Max(xmax, (float)n.x);
+                ymin = Mathf.Min(ymin, (float)n.y); ymax = Mathf.Max(ymax, (float)n.y);
+            }
+            return xmin <= xmax;
+        }
+
+        /// <summary>Offset de DIBUJO del bloque `idx` (x, y del contrato -> X, Z de Unity).
+        /// Lado a lado: el bloque 0 (Edificio A) queda donde dice el contrato; cada
+        /// bloque siguiente se alinea por el FRENTE (+X, eje J de A) y se coloca a la
+        /// IZQUIERDA del anterior mirando desde +X (hacia -Y del contrato), con
+        /// `holguraLadoALado + separarBloquesY` de separacion. Sin lado a lado se
+        /// conserva el comportamiento original (offset del contrato + slider en Y).</summary>
+        public Vector2 OffsetVisual(int idx)
+        {
+            if (modeloCargado == null || modeloCargado.edificios == null
+                || idx < 0 || idx >= modeloCargado.edificios.Count) return Vector2.zero;
+            ModeloEdificio ed = modeloCargado.edificios[idx];
+            Vector2 offContrato = ed.offset != null
+                ? new Vector2((float)ed.offset.x, (float)ed.offset.y) : Vector2.zero;
+            if (idx == 0) return offContrato;
+            if (!ladoALado)
+                return separarBloquesY > 0f
+                    ? offContrato + new Vector2(0f, separarBloquesY) : offContrato;
+
+            Vector2 offPrev = OffsetVisual(idx - 1);
+            float pxmin, pxmax, pymin, pymax, xmin, xmax, ymin, ymax;
+            if (!ExtensionPlanta(modeloCargado.edificios[idx - 1], out pxmin, out pxmax, out pymin, out pymax)
+                || !ExtensionPlanta(ed, out xmin, out xmax, out ymin, out ymax))
+                return offContrato;
+            float frente = pxmax + offPrev.x;                       // frente comun (+X)
+            float borde = pymin + offPrev.y - holguraLadoALado - separarBloquesY;
+            return new Vector2(frente - xmax, borde - ymax);
+        }
+
+        /// <summary>Centro de TODOS los bloques (para la vista inicial).</summary>
+        public Vector3 CentroTodos()
+        {
+            if (bloques == null || bloques.Count == 0) return Vector3.zero;
+            float xmin = float.MaxValue, xmax = float.MinValue;
+            float zmin = float.MaxValue, zmax = float.MinValue;
+            float hmin = float.MaxValue, hmax = float.MinValue;
+            foreach (BloqueVisual bv in bloques)
+            {
+                float a, b, c, d;
+                if (!ExtensionPlanta(bv.datos, out a, out b, out c, out d)) continue;
+                xmin = Mathf.Min(xmin, a + bv.offset.x); xmax = Mathf.Max(xmax, b + bv.offset.x);
+                zmin = Mathf.Min(zmin, c + bv.offset.y); zmax = Mathf.Max(zmax, d + bv.offset.y);
+                hmin = Mathf.Min(hmin, bv.zMin); hmax = Mathf.Max(hmax, bv.zMax);
+            }
+            if (xmin > xmax) return Vector3.zero;
+            return new Vector3((xmin + xmax) * 0.5f, (hmin + hmax) * 0.5f, (zmin + zmax) * 0.5f);
+        }
+
+        /// <summary>Mayor dimension en planta del conjunto de bloques.</summary>
+        public float SpanTodos()
+        {
+            if (bloques == null || bloques.Count == 0) return 20f;
+            float xmin = float.MaxValue, xmax = float.MinValue;
+            float zmin = float.MaxValue, zmax = float.MinValue;
+            foreach (BloqueVisual bv in bloques)
+            {
+                float a, b, c, d;
+                if (!ExtensionPlanta(bv.datos, out a, out b, out c, out d)) continue;
+                xmin = Mathf.Min(xmin, a + bv.offset.x); xmax = Mathf.Max(xmax, b + bv.offset.x);
+                zmin = Mathf.Min(zmin, c + bv.offset.y); zmax = Mathf.Max(zmax, d + bv.offset.y);
+            }
+            return xmin > xmax ? 20f : Mathf.Max(xmax - xmin, zmax - zmin);
         }
 
         public Vector3 CentroBloque(int idx)
@@ -461,6 +551,7 @@ namespace MCOC.Unity
 
         private void ConstruirEscena(ModeloComplejo modelo)
         {
+            modeloCargado = modelo;            // para OffsetVisual (lado a lado)
             foreach (Transform hijo in transform)
             {
                 if (hijo.name != "Main Camera") Destruir(hijo.gameObject);
@@ -483,9 +574,7 @@ namespace MCOC.Unity
                 BloqueVisual bv = new BloqueVisual();
                 bv.indice = i;
                 bv.datos = ed;
-                bv.offset = new Vector2((float)ed.offset.x, (float)ed.offset.y);
-
-                if (i > 0 && separarBloquesY > 0f) bv.offset.y += separarBloquesY;
+                bv.offset = OffsetVisual(i);
 
                 GameObject root = new GameObject(ed.bloque);
                 root.transform.SetParent(transform, false);
@@ -583,7 +672,7 @@ namespace MCOC.Unity
                     GameObject elemObj;
                     if (el.tipo == "column")
                     {
-                        elemObj = CrearColumna3D(bv.contenedor[el.tipo], ni, nj, bv);
+                        elemObj = CrearColumna3D(bv.contenedor[el.tipo], ni, nj, bv, el);
                     }
                     else if (el.tipo == "brazo")
                     {
@@ -592,7 +681,7 @@ namespace MCOC.Unity
                     else
                     {
                         bool esVigaX = el.tipo == "vigas_x";
-                        elemObj = CrearViga3D(bv.contenedor[el.tipo], ni, nj, bv, esVigaX, ed);
+                        elemObj = CrearViga3D(bv.contenedor[el.tipo], ni, nj, bv, esVigaX, ed, el);
                     }
 
                     ElementoVisual3D ev = new ElementoVisual3D();
@@ -664,7 +753,7 @@ namespace MCOC.Unity
             }
 
             var __orbit = Object.FindObjectOfType<OrbitCamera>();
-            if (__orbit != null) __orbit.EnfocarBloque(0);
+            if (__orbit != null) __orbit.EnfocarTodo();
         }
 
         private NodoModelo ObtenerNodo(ModeloEdificio ed, int tag)
@@ -834,29 +923,92 @@ namespace MCOC.Unity
             return meshVigaL;
         }
 
-        private GameObject CrearColumna3D(GameObject padre, NodoModelo ni, NodoModelo nj, BloqueVisual bv)
+        private GameObject CrearColumna3D(GameObject padre, NodoModelo ni, NodoModelo nj, BloqueVisual bv, ElementoModelo el = null)
         {
             GameObject go = GameObject.CreatePrimitive(PrimitiveType.Cube);
             // Se CONSERVA el collider para poder consultar el pilar por raycast
             // (la barra de vigas ya tiene su propio collider).
-            go.name = "columna";
             go.transform.SetParent(padre.transform, false);
-            go.transform.localScale = new Vector3(0.7f, 1f, 0.7f);
-            go.GetComponent<Renderer>().sharedMaterial = MaterialColumna();
+            if (EsAcero(el))
+            {
+                // Pilar metalico P.M. (tubo 300x300): seccion y color propios.
+                float b = LadoPerfil(el, 0.30f);
+                go.name = "columna_acero";
+                go.transform.localScale = new Vector3(b, 1f, b);
+            }
+            else
+            {
+                go.name = "columna";
+                go.transform.localScale = new Vector3(0.7f, 1f, 0.7f);
+            }
+            go.GetComponent<Renderer>().sharedMaterial = MaterialPara(el, true);
             return go;
         }
 
-        private GameObject CrearViga3D(GameObject padre, NodoModelo ni, NodoModelo nj, BloqueVisual bv, bool esVigaX, ModeloEdificio ed)
+        private GameObject CrearViga3D(GameObject padre, NodoModelo ni, NodoModelo nj, BloqueVisual bv, bool esVigaX, ModeloEdificio ed, ElementoModelo el = null)
         {
             bool esBorde = EsVigaBorde(ni, nj, esVigaX, ed);
             string sufijo = esBorde ? "_L" : "_T";
 
             GameObject go = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            go.name = "viga" + sufijo;
             go.transform.SetParent(padre.transform, false);
-            go.transform.localScale = new Vector3(0.6f, 1f, 0.8f);
-            go.GetComponent<Renderer>().sharedMaterial = MaterialViga();
+            if (EsAcero(el))
+            {
+                // Viga metalica V.M. o diagonal (aspa) 300x300x5.
+                float b = LadoPerfil(el, 0.30f);
+                go.name = el.rol == "diagonal" ? "diagonal_acero" : "viga_acero";
+                go.transform.localScale = new Vector3(b, 1f, b);
+            }
+            else
+            {
+                go.name = "viga" + sufijo;
+                go.transform.localScale = new Vector3(0.6f, 1f, 0.8f);
+            }
+            go.GetComponent<Renderer>().sharedMaterial = MaterialPara(el, false);
             return go;
+        }
+
+        /// <summary>True si el elemento es metalico (JSON: "material": "acero").</summary>
+        private static bool EsAcero(ElementoModelo el)
+        {
+            return el != null && el.material == "acero";
+        }
+
+        /// <summary>Lado [m] del tubo cuadrado a partir del perfil
+        /// ("P.M. 300x300x20" -> 0.30). Si no se puede leer, `porDefecto`.</summary>
+        private static float LadoPerfil(ElementoModelo el, float porDefecto)
+        {
+            if (el == null || string.IsNullOrEmpty(el.perfil)) return porDefecto;
+            System.Text.RegularExpressions.Match m =
+                System.Text.RegularExpressions.Regex.Match(el.perfil, @"(\d+)\s*x");
+            float mm;
+            if (m.Success && float.TryParse(m.Groups[1].Value,
+                    System.Globalization.NumberStyles.Float,
+                    System.Globalization.CultureInfo.InvariantCulture, out mm)
+                && mm > 0f)
+                return mm / 1000f;
+            return porDefecto;
+        }
+
+        /// <summary>Material de dibujo segun el material real del elemento:
+        /// acero -> gris azulado metalico; hormigon -> el de columna o viga.</summary>
+        private static Material MaterialPara(ElementoModelo el, bool esColumna)
+        {
+            if (EsAcero(el)) return MaterialAcero();
+            return esColumna ? MaterialColumna() : MaterialViga();
+        }
+
+        private static Material MaterialAcero()
+        {
+            if (matAcero == null)
+            {
+                matAcero = new Material(Shader.Find("Standard"));
+                if (matAcero == null) matAcero = new Material(Shader.Find("Unlit/Color"));
+                matAcero.color = new Color(0.32f, 0.42f, 0.55f);
+                matAcero.SetFloat("_Glossiness", 0.75f);
+                if (matAcero.HasProperty("_Metallic")) matAcero.SetFloat("_Metallic", 0.6f);
+            }
+            return matAcero;
         }
 
         private static Material MaterialBrazo()
@@ -1858,10 +2010,7 @@ namespace MCOC.Unity
         {
             foreach (BloqueVisual bv in bloques)
             {
-                if (bv.indice > 0 && separarBloquesY > 0f)
-                {
-                    bv.offset.y = (float)bv.datos.offset.y + separarBloquesY;
-                }
+                bv.offset = OffsetVisual(bv.indice);
 
                 foreach (KeyValuePair<string, GameObject> kv in bv.contenedor)
                 {
@@ -2072,7 +2221,7 @@ namespace MCOC.Unity
             {
                 bool col = consultaSeleccionada.ev.datos != null
                     && consultaSeleccionada.ev.datos.tipo == "column";
-                r.sharedMaterial = col ? MaterialColumna() : MaterialViga();
+                r.sharedMaterial = MaterialPara(consultaSeleccionada.ev.datos, col);
             }
             consultaSeleccionada = null;
         }
@@ -2094,7 +2243,7 @@ namespace MCOC.Unity
             if (elementoSeleccionado == null) return;
             Renderer r = elementoSeleccionado.ev != null && elementoSeleccionado.ev.objeto != null
                 ? elementoSeleccionado.ev.objeto.GetComponent<Renderer>() : null;
-            if (r != null) r.sharedMaterial = MaterialColumna();
+            if (r != null) r.sharedMaterial = MaterialPara(elementoSeleccionado.ev.datos, true);
             elementoSeleccionado = null;
         }
 
@@ -2127,7 +2276,7 @@ namespace MCOC.Unity
             if (vigaSeleccionada == null) return;
             Renderer r = vigaSeleccionada.ev != null && vigaSeleccionada.ev.objeto != null
                 ? vigaSeleccionada.ev.objeto.GetComponent<Renderer>() : null;
-            if (r != null) r.sharedMaterial = MaterialViga();
+            if (r != null) r.sharedMaterial = MaterialPara(vigaSeleccionada.ev.datos, false);
             vigaSeleccionada = null;
         }
 
@@ -2451,7 +2600,7 @@ namespace MCOC.Unity
 
             float nuevaSep = separarBloquesY;
             GUILayout.BeginHorizontal();
-            GUILayout.Label("Sep bloques Y:", GUILayout.Width(92));
+            GUILayout.Label("Sep bloques:", GUILayout.Width(92));
             nuevaSep = GUILayout.HorizontalSlider(separarBloquesY, 0f, 120f);
             GUILayout.Label(separarBloquesY.ToString("F0"), GUILayout.Width(40));
             GUILayout.EndHorizontal();

@@ -228,17 +228,121 @@ def _pm(ed, tag, esf, L):
 TIPO = {"vigas_x": "viga", "vigas_y": "viga", "column": "columna", "wall": "muro"}
 
 
+# ------------------------------------------------ vigas partidas (Sesion 29)
+# Una viga de la reticula partida por una viga secundaria (p. ej. la 134, eje 3
+# F–G del cielo piso 2, partida en x = 15 por la viga secundaria F–G) sigue
+# siendo UNA viga fisica de columna a columna. La app AR la muestra completa:
+# se encadenan los tramos colineales unidos en nudos SIN columna ni muro.
+def _cadena_viga(ed, tag):
+    """[tags] colineales de la viga fisica que contiene `tag` (en orden i→j)."""
+    els = {int(e["tag"]): e for e in ed["elementos"]}
+    el = els[int(tag)]
+    if el["tipo"] not in ("vigas_x", "vigas_y"):
+        return [int(tag)]
+    apoyos = set()
+    for e in ed["elementos"]:
+        if e["tipo"] in ("column", "wall"):
+            apoyos.update((int(e["ni"]), int(e["nj"])))
+    nod = ed["nodos"]
+
+    def dirv(e):
+        a, b = nod[str(e["ni"])], nod[str(e["nj"])]
+        v = (b["x"] - a["x"], b["y"] - a["y"], b["z"] - a["z"])
+        n = math.sqrt(sum(c * c for c in v)) or 1.0
+        return tuple(c / n for c in v)
+
+    d0 = dirv(el)
+    vigas = [e for e in ed["elementos"] if e["tipo"] == el["tipo"]
+             and int(e["tag"]) != int(tag) and e.get("material") == el.get("material")]
+
+    def colineal(e):
+        return sum(a * b for a, b in zip(dirv(e), d0)) > 1 - 1e-9
+
+    cadena = [int(tag)]
+    nodo = int(el["nj"])                              # hacia j
+    while nodo not in apoyos:
+        sig = [e for e in vigas if int(e["ni"]) == nodo and colineal(e)
+               and int(e["tag"]) not in cadena]
+        if len(sig) != 1:
+            break
+        cadena.append(int(sig[0]["tag"]))
+        nodo = int(sig[0]["nj"])
+    nodo = int(el["ni"])                              # hacia i
+    while nodo not in apoyos:
+        ant = [e for e in vigas if int(e["nj"]) == nodo and colineal(e)
+               and int(e["tag"]) not in cadena]
+        if len(ant) != 1:
+            break
+        cadena.insert(0, int(ant[0]["tag"]))
+        nodo = int(ant[0]["ni"])
+    return cadena
+
+
+def evaluar_tramos(tramos, x, lado=0):
+    """Esfuerzos en x de una viga de varios tramos [(x0, L, esf)]. En un nudo
+    interior (x = x0 de un tramo) se devuelve el promedio de los limites
+    izquierdo y derecho (lado=0), o el limite izquierdo (-1) / derecho (+1):
+    el corte salta ahi por la reaccion de la viga secundaria."""
+    tol = 1e-9
+    for k, (x0, L, esf) in enumerate(tramos):
+        if x <= x0 + L + tol or k == len(tramos) - 1:
+            if k + 1 < len(tramos) and abs(x - (x0 + L)) <= tol:
+                izq = evaluar(esf, L)
+                der = evaluar(tramos[k + 1][2], 0.0)
+                if lado < 0:
+                    return izq
+                if lado > 0:
+                    return der
+                return {c: 0.5 * (izq[c] + der[c]) for c in izq}
+            return evaluar(esf, min(max(x - x0, 0.0), L))
+    return evaluar(tramos[-1][2], tramos[-1][1])
+
+
+def _resumen_tramos(clave, xs, vals, tramos):
+    """_resumen para viga de varios tramos: extremos de cada parabola y
+    limites a ambos lados de cada nudo interior."""
+    cand = list(zip(xs, vals))
+    for k, (x0, L, esf) in enumerate(tramos):
+        if clave.startswith("M_"):
+            xe = _extremo_parabola(esf, clave[2:], L)
+            if xe is not None:
+                cand.append((x0 + xe, evaluar(esf, xe)[clave]))
+        if k > 0:
+            cand.append((x0, evaluar_tramos(tramos, x0, -1)[clave]))
+            cand.append((x0, evaluar_tramos(tramos, x0, +1)[clave]))
+    xa, va = max(cand, key=lambda t: abs(t[1]))
+    xp, vp = max(cand, key=lambda t: t[1])
+    xn, vn = min(cand, key=lambda t: t[1])
+    return {
+        "valores": [_r(v, 3) for v in vals],
+        "i": _r(vals[0], 3),
+        "j": _r(vals[-1], 3),
+        "max_abs": {"valor": _r(va, 3), "x": _r(xa, 3)},
+        "max_pos": {"valor": _r(vp, 3), "x": _r(xp, 3)},
+        "max_neg": {"valor": _r(vn, 3), "x": _r(xn, 3)},
+    }
+
+
 def exportar_elemento(ed, tag):
     t = str(tag)
     el = next((e for e in ed["elementos"] if str(e["tag"]) == t), None)
     if el is None:
         raise KeyError(f"tag {tag} no existe en el Edificio A")
-    md = ed["metadatos"][t]
-    esf = ed["esfuerzos_completos"][CASO][t]
-    ni, nj = ed["nodos"][str(el["ni"])], ed["nodos"][str(el["nj"])]
+    cadena = _cadena_viga(ed, tag)
+    el_i = next(e for e in ed["elementos"] if int(e["tag"]) == cadena[0])
+    el_j = next(e for e in ed["elementos"] if int(e["tag"]) == cadena[-1])
+    md = ed["metadatos"][str(cadena[0])]
+    md_j = ed["metadatos"][str(cadena[-1])]
+    tramos, x0 = [], 0.0
+    for tg in cadena:
+        e_t = ed["esfuerzos_completos"][CASO][str(tg)]
+        tramos.append((x0, e_t["L"], e_t))
+        x0 += e_t["L"]
+    esf = tramos[0][2]
+    ni, nj = ed["nodos"][str(el_i["ni"])], ed["nodos"][str(el_j["nj"])]
     gx, gy = ed["geometria"]["grid_x"], ed["geometria"]["grid_y"]
     niveles = ed["geometria"]["niveles_z"]
-    L = esf["L"]
+    L = x0
     ej = md["ejes_locales"]
 
     def extremo(n, nid):
@@ -248,13 +352,19 @@ def exportar_elemento(ed, tag):
             "xyz_opensees": [n["x"], n["y"], n["z"]],
             "xyz_unity": os_a_unity([n["x"], n["y"], n["z"]]),
             "etiqueta": f"Eje {ex or n['x']} / {ey or n['y']} · {_nombre_nivel(n['z'], niveles)}",
-            "restriccion": md["nodos"].get("i" if nid == el["ni"] else "j"),
+            "restriccion": (md["nodos"].get("i") if nid == el_i["ni"]
+                            else md_j["nodos"].get("j")),
         }
 
     xs = [L * k / (N_MUESTRAS - 1) for k in range(N_MUESTRAS)]
-    muestras = [evaluar(esf, x) for x in xs]
-    diag = {k: _resumen(k, xs, [m[k] for m in muestras], esf, L)
-            for k in ("N", "V_xz", "M_xz", "V_xy", "M_xy", "T")}
+    if len(tramos) == 1:
+        muestras = [evaluar(esf, x) for x in xs]
+        diag = {k: _resumen(k, xs, [m[k] for m in muestras], esf, L)
+                for k in ("N", "V_xz", "M_xz", "V_xy", "M_xy", "T")}
+    else:
+        muestras = [evaluar_tramos(tramos, x) for x in xs]
+        diag = {k: _resumen_tramos(k, xs, [m[k] for m in muestras], tramos)
+                for k in ("N", "V_xz", "M_xz", "V_xy", "M_xy", "T")}
 
     # lado de tracción para M > 0 (y lado de dibujo de V > 0: el opuesto)
     lado_xz = _neg(ej["z"])          # M_xz > 0 → tracción en −z local
@@ -275,7 +385,7 @@ def exportar_elemento(ed, tag):
     plano = "xz" if diag["M_xz"]["max_abs"]["valor"] ** 2 >= \
         diag["M_xy"]["max_abs"]["valor"] ** 2 else "xy"
 
-    ubic_i, ubic_j = extremo(ni, el["ni"]), extremo(nj, el["nj"])
+    ubic_i, ubic_j = extremo(ni, el_i["ni"]), extremo(nj, el_j["nj"])
     tipo = TIPO.get(el["tipo"], el["tipo"])
     if tipo == "viga":
         ubic = (f"Viga entre {ubic_i['etiqueta'].split(' · ')[0]} y "
@@ -303,6 +413,12 @@ def exportar_elemento(ed, tag):
         "coeficientes_extremo_i": {k: _r(v, 6) for k, v in esf.items()},
         "anclaje": _anclaje(ni, nj, niveles, tipo),
     }
+    if len(tramos) > 1:
+        # viga fisica de varios tramos del modelo (ver _cadena_viga)
+        out["tags_modelo"] = cadena
+        out["tramos"] = [{"tag": tg, "x0": _r(xa, 6), "L": _r(Lt, 6),
+                          "coeficientes": {k: _r(v, 6) for k, v in e_t.items()}}
+                         for tg, (xa, Lt, e_t) in zip(cadena, tramos)]
     if tipo in ("columna", "muro"):
         out["pm"] = _pm(ed, tag, esf, L)
     return out

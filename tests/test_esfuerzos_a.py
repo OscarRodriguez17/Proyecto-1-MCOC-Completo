@@ -80,7 +80,7 @@ def test_cierre_diagrama_por_viga_y_caso(diagramas):
             assert b["Wy"] == 0.0
             assert b["L"] > 0
         assert verif[caso]["cierre_ok"], f"cierre FALLA en caso {caso}"
-        assert verif[caso]["n_vigas"] == len(por_caso[caso]) == 228
+        assert verif[caso]["n_vigas"] == len(por_caso[caso]) == 238
 
 
 def test_equilibrio_global_de_la_pasada(diagramas):
@@ -135,7 +135,7 @@ def test_semana06_cierre_mz_por_viga_y_caso(diagramas, cierre_mz):
         assert verif[caso]["cierre_ok"], f"cierre (Vz/My/Mz) FALLA en {caso}"
         assert verif[caso]["vigas_sin_cierre"] == []
     bloque, cierre, _j = cierre_mz
-    assert len(cierre) == len(bloque) == 228
+    assert len(cierre) == len(bloque) == 238
     malos = {e: (c["dMz"], c["tolMz"]) for e, c in cierre.items()
              if c["dMz"] > c["tolMz"]}
     assert malos == {}, f"Mz(L) != -Mz_j en {len(malos)} vigas de A (caso GQ)"

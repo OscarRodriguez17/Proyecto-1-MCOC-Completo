@@ -64,9 +64,19 @@ def fuerzas_opensees():
     E_A._correr_caso("GQ")
     out = {}
     for t in TAGS:
-        n1, n2 = ops.eleNodes(t)
-        out[t] = (list(ops.eleResponse(t, "localForce")),
-                  math.dist(ops.nodeCoord(n1), ops.nodeCoord(n2)))
+        # Viga fisica de varios tramos (Sesion 29: la 134 queda partida en x=15
+        # por la viga secundaria del cielo piso 2): extremo i del primer tramo,
+        # extremo j del ultimo, L total.
+        with open(os.path.join(RAIZ, "results", "edificio_solido.json"),
+                  encoding="utf-8") as f:
+            ed = next(e for e in json.load(f)["edificios"]
+                      if e["bloque"].startswith("Edificio A"))
+        cadena = AR._cadena_viga(ed, t)
+        fi = list(ops.eleResponse(cadena[0], "localForce"))
+        fj = list(ops.eleResponse(cadena[-1], "localForce"))
+        L = sum(math.dist(*(ops.nodeCoord(n) for n in ops.eleNodes(tg)))
+                for tg in cadena)
+        out[t] = (fi[:6] + fj[6:], L)
     return out
 
 
@@ -144,9 +154,16 @@ def test_diagramas_reproducen_localforce_en_ambos_extremos(doc, fuerzas_opensees
 def test_dM_dx_igual_a_V(doc, tag):
     e = doc["elementos"][str(tag)]
     xs = e["x"]
+    # vigas de varios tramos: en los nudos interiores V salta (carga puntual de
+    # la viga secundaria) y M puede saltar (su torsion); alli la diferencia
+    # central no representa la derivada
+    nudos = [t["x0"] for t in e.get("tramos", [])[1:]]
+    paso = xs[1] - xs[0]
     for p in ("xz", "xy"):
         M, V = e["diagramas"]["M_" + p]["valores"], e["diagramas"]["V_" + p]["valores"]
         for k in range(1, len(xs) - 1):
+            if any(abs(xs[k] - xn) <= paso + 1e-9 for xn in nudos):
+                continue
             dM = (M[k + 1] - M[k - 1]) / (xs[k + 1] - xs[k - 1])
             assert dM == pytest.approx(V[k], abs=0.05 + 1e-3 * abs(V[k]))
 
@@ -159,16 +176,30 @@ def test_viga_134_valores_de_referencia(doc):
     assert "Eje G" in e["extremos"]["j"]["etiqueta"]
     assert e["principal"]["M"] == "M_xz"
     M, V = e["diagramas"]["M_xz"], e["diagramas"]["V_xz"]
-    assert V["i"] == pytest.approx(80.88, abs=0.05)
-    assert V["j"] == pytest.approx(-89.94, abs=0.05)
-    assert M["i"] == pytest.approx(-114.30, abs=0.05)
-    assert M["j"] == pytest.approx(-159.58, abs=0.05)
-    assert M["max_pos"]["valor"] == pytest.approx(77.19, abs=0.05)
-    assert M["max_pos"]["x"] == pytest.approx(4.735, abs=0.01)   # donde V = 0
-    w = -e["coeficientes_extremo_i"]["Wz"]
-    # |M_apoyos| promedio + M_tramo = wL²/8 (equilibrio de la viga continua)
-    assert (abs(M["i"]) + abs(M["j"])) / 2 + M["max_pos"]["valor"] == \
-        pytest.approx(w * 10.0 ** 2 / 8, rel=5e-3)
+    # Sesion 29: la viga secundaria F-G del cielo piso 2 apoya a mitad de la
+    # 134 (x = 5): en el modelo son dos tramos (134 y 350) y la app AR los
+    # muestra unidos como la viga fisica F-G. La reaccion de la secundaria
+    # (P ~ 96 kN) se ve como un salto de corte en x = 5 y sube los momentos.
+    # Original (sin secundaria): V 80.88/-89.94, M -114.30/-159.58, M+ 77.19.
+    assert e["tags_modelo"] == [134, 350]
+    assert [t["L"] for t in e["tramos"]] == pytest.approx([5.0, 5.0])
+    assert V["i"] == pytest.approx(128.77, abs=0.05)
+    assert V["j"] == pytest.approx(-138.15, abs=0.05)
+    assert M["i"] == pytest.approx(-220.04, abs=0.05)
+    assert M["j"] == pytest.approx(-265.27, abs=0.05)
+    assert M["max_pos"]["valor"] == pytest.approx(211.93, abs=0.05)
+    assert M["max_pos"]["x"] == pytest.approx(5.0, abs=0.01)     # bajo la carga
+    t0, t1 = e["tramos"]
+    w = -t0["coeficientes"]["Wz"]
+    P = (t0["coeficientes"]["Vz"] + t0["coeficientes"]["Wz"] * 5.0) - t1["coeficientes"]["Vz"]
+    assert P == pytest.approx(96.09, abs=0.05)                   # reaccion de la secundaria
+    # En x = 5 M salta un poco (torsion de la secundaria = momento puntual en
+    # el nudo); el valor muestreado alli es el PROMEDIO de ambos limites, que
+    # es el que entra en el equilibrio (el momento puntual se cancela):
+    # |M_apoyos| promedio + M_centro = wL²/8 + P·L/4
+    Mc = M["valores"][e["x"].index(5.0)]
+    assert (abs(M["i"]) + abs(M["j"])) / 2 + Mc == \
+        pytest.approx(w * 10.0 ** 2 / 8 + P * 10.0 / 4, rel=1e-4)
     assert "inferior" in M["lado_positivo"]["texto"]
     assert abs(e["diagramas"]["N"]["i"]) < 1e-3
 
@@ -239,7 +270,8 @@ def test_columna14_mz_en_cabeza_es_219_4_kNm(doc):
     assert L == pytest.approx(3.96, abs=1e-3)
 
     Mz_L = diagramas.evaluar(coef, L)["Mz"]
-    assert Mz_L == pytest.approx(219.4, abs=0.05)      # +219,4 kN·m
+    assert Mz_L == pytest.approx(217.05, abs=0.05)     # +217,0 kN·m (original 219,4;
+                                                       # vigas sec. F-G + pilar raiz)
 
     # Y cierra contra el extremo j del propio diagrama exportado.
     assert e["diagramas"]["M_xy"]["j"] == pytest.approx(Mz_L, abs=1e-3)
@@ -256,9 +288,13 @@ def test_paridad_evaluadores_secciones_vs_app_ar(doc, tag):
     from secciones import diagramas
 
     e = doc["elementos"][str(tag)]
-    coef = e["coeficientes_extremo_i"]
+    tramos = e.get("tramos") or [{"x0": 0.0, "L": e["L"],
+                                  "coeficientes": e["coeficientes_extremo_i"]}]
+    puntos = [(t["coeficientes"], t["x0"] + t["L"] * k / 10.0)
+              for t in tramos for k in range(11)]
 
-    for x in e["x"]:
+    for coef, xg in puntos:
+        x = xg - next(t["x0"] for t in tramos if t["coeficientes"] is coef)
         sd = diagramas.evaluar(coef, x)
         ar = AR.evaluar(coef, x)
         for clave_sd, clave_ar, signo in PARIDAD:

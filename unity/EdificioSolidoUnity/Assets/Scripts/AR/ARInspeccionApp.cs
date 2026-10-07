@@ -175,6 +175,12 @@ namespace MCOC.AR
         // --- Encuadre por 4 esquinas (Corrección 8, 5a) -------------------------
         /// <summary>Esquinas ya marcadas del recuadro en curso.</summary>
         private readonly List<Vector3> esquinas = new List<Vector3>();
+        /// <summary>
+        /// Cambio 01: plano del recuadro en curso, vertical y DE FRENTE a la cámara,
+        /// fijado por la primera esquina. Todas las esquinas quedan en él.
+        /// </summary>
+        private bool hayPlanoCuadro;
+        private Vector3 planoCuadroPunto, planoCuadroNormal;
         private int esquinasEstimadas;
         /// <summary>Recuadro de cada elemento encuadrado (tag → recuadro). Sin entrada: dibujo 1:1 del modelo.</summary>
         private readonly Dictionary<int, ARCuadroGeom> cuadroPorTag = new Dictionary<int, ARCuadroGeom>();
@@ -473,6 +479,7 @@ namespace MCOC.AR
             geoPorTag[tagSeleccionado] = g;
             ConstruirContenedor(g, go);
             AplicarVisibilidad();
+            if (ancla != null) CongelarTextos();   // «Amplitud ±» no puede soltar los rótulos
         }
 
         /// <summary>Amplitud de «Amplitud ±» relativa a la de partida (1 = por defecto).</summary>
@@ -528,14 +535,26 @@ namespace MCOC.AR
             tm.text = m.texto;
             tm.font = fuente;
             tm.fontSize = 48;
-            tm.characterSize = 0.018f;
-            tm.anchor = TextAnchor.LowerLeft;
-            tm.alignment = TextAlignment.Left;
+            // Alto de letra ≈ characterSize · fontSize / 10 (m).
+            tm.characterSize = m.alturaLetra > 0f ? m.alturaLetra / 4.8f : 0.018f;
+            tm.anchor = m.centrado ? TextAnchor.MiddleCenter : TextAnchor.LowerLeft;
+            tm.alignment = m.centrado ? TextAlignment.Center : TextAlignment.Left;
             tm.color = m.color;
             var mr = t.GetComponent<MeshRenderer>();
             mr.sharedMaterial = fuente.material;
             mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-            t.AddComponent<ARBillboard>();
+            if (m.normalPlano.sqrMagnitude > 1e-6f)
+            {
+                // Cambio 01: rótulo IMPRESO sobre el recuadro: plano, fijo, sin girar
+                // ni cambiar de tamaño. +Z del TextMesh hacia el lado contrario al que mira.
+                t.transform.localRotation = Quaternion.LookRotation(-m.normalPlano, Vector3.up);
+            }
+            else
+            {
+                // Rótulos del dibujo 1:1: se orientan hacia la cámara UNA vez, al
+                // colocar (CongelarTextos), y después quedan fijos.
+                t.AddComponent<ARBillboard>();
+            }
             visores.Add(new ARVisor { go = t, tipo = m.tipo, principal = m.principal, texto = true });
         }
 
@@ -748,6 +767,7 @@ namespace MCOC.AR
                 // El marcado a medias era del elemento anterior.
                 modo = ModoMarcado.Ninguno;
                 esquinas.Clear();
+                hayPlanoCuadro = false;
                 esquinasEstimadas = 0;
                 LimpiarVistaPrevia();
                 OcultarReticula();
@@ -1225,6 +1245,19 @@ namespace MCOC.AR
             if (contenedor != null)
                 contenedor.transform.localRotation = rotacionFija;
             AplicarVisibilidad();
+            CongelarTextos();
+        }
+
+        /// <summary>
+        /// Cambio 01: deja los rótulos del elemento elegido FIJOS (orientados una vez
+        /// hacia la cámara de ahora). Desde ahí no giran ni cambian de tamaño.
+        /// </summary>
+        private void CongelarTextos()
+        {
+            var c = ContenedorSeleccionado();
+            if (c == null) return;
+            foreach (var b in c.GetComponentsInChildren<ARBillboard>(true))
+                if (!b.congelado) b.Congelar(camara);
         }
 
         private void QuitarAncla()
@@ -1539,7 +1572,7 @@ namespace MCOC.AR
                 guia = new GameObject("GuiaCuadro");
                 guia.transform.SetParent(transform, false);
                 var lr0 = guia.AddComponent<LineRenderer>();
-                PrepararLineaMundo(lr0, new Color(1f, 0.85f, 0.10f, 0.9f), 0.01f);
+                PrepararLineaMundo(lr0, new Color(1f, 0.85f, 0.10f, 0.9f), 0.004f);
             }
             var lr = guia.GetComponent<LineRenderer>();
             if (!actual.HasValue || esquinas.Count == 0 || modo != ModoMarcado.Cuadro)
@@ -1547,18 +1580,12 @@ namespace MCOC.AR
                 lr.positionCount = 0;
                 return;
             }
-            Vector3 p = actual.Value;
-            if (esquinas.Count == 1)
-            {
-                lr.positionCount = 2;
-                lr.SetPositions(new[] { esquinas[0], p });
-                return;
-            }
-            Vector3 a = esquinas[0], b = esquinas[1];
-            float alto = p.y - 0.5f * (a.y + b.y);
-            Vector3 up = Vector3.up * alto;
-            lr.positionCount = 5;
-            lr.SetPositions(new[] { a, b, b + up, a + up, a });
+            // Cambio 01: las esquinas marcadas + la mira, cerrado; todo en el plano.
+            var pts = new List<Vector3>(esquinas);
+            pts.Add(actual.Value);
+            if (pts.Count >= 3) pts.Add(pts[0]);
+            lr.positionCount = pts.Count;
+            lr.SetPositions(pts.ToArray());
         }
 
         // =================================================================
@@ -1624,6 +1651,7 @@ namespace MCOC.AR
             }
             modo = ModoMarcado.Cuadro;
             esquinas.Clear();
+            hayPlanoCuadro = false;
             esquinasEstimadas = 0;
             LimpiarVistaPrevia();
             MostrarReticula();
@@ -1645,31 +1673,25 @@ namespace MCOC.AR
                 RefrescarEstado();
                 return;
             }
-            // Las 2 de arriba van SIEMPRE sobre el plano vertical de las de abajo
-            // (Corrección 9, 6a): aunque el punto venga de otro lado, se proyecta.
-            if (esquinas.Count >= 2)
+            // Cambio 01: la PRIMERA esquina fija el plano (vertical, de frente a la
+            // cámara); las demás van siempre sobre él. El recuadro queda plano, como
+            // una imagen impresa: nada más cerca ni más lejos para el que mira.
+            if (!hayPlanoCuadro || esquinas.Count == 0)
             {
-                Vector3 pp, n;
-                if (ARCuadro.PlanoVertical(esquinas[0], esquinas[1], FrenteCamara(), out pp, out n))
-                    p = ARCuadro.ProyectarEnPlano(p, pp, n);
+                if (!ARCuadro.PlanoDeFrente(p, FrenteCamara(), out planoCuadroPunto, out planoCuadroNormal))
+                {
+                    planoCuadroPunto = p;
+                    planoCuadroNormal = Vector3.back;
+                }
+                hayPlanoCuadro = true;
+                if (origen == OrigenCuadro.Estimado || origen == OrigenCuadro.PuntoCaracteristico)
+                    esquinasEstimadas++;
+            }
+            else
+            {
+                p = ARCuadro.ProyectarEnPlano(p, planoCuadroPunto, planoCuadroNormal);
             }
             esquinas.Add(p);
-            if (esquinas.Count <= 2 &&
-                (origen == OrigenCuadro.Estimado || origen == OrigenCuadro.PuntoCaracteristico))
-                esquinasEstimadas++;
-
-            if (esquinas.Count == 2)
-            {
-                string err = ARCuadro.ValidarBase(esquinas[0], esquinas[1], g.esViga);
-                if (err != null)
-                {
-                    esquinas.RemoveAt(1);
-                    ActualizarVistaPrevia();
-                    mensaje = err;
-                    RefrescarEstado();
-                    return;
-                }
-            }
             ActualizarVistaPrevia();
 
             if (esquinas.Count < ARCuadro.Esquinas)
@@ -1685,13 +1707,14 @@ namespace MCOC.AR
         {
             Vector3 frente = FrenteCamara();
             var q = ARCuadro.Desde4Puntos(esquinas, g.esViga, ARColocacion.Derecha(frente), frente);
-            string error = ARCuadro.ValidarRecuadro(q, g.esViga);
+            string error = ARCuadro.ValidarRecuadro(q);
             if (error != null)
             {
-                // Las 2 de abajo estaban bien (se validaron): se repiten sólo las de arriba.
-                esquinas.RemoveRange(2, esquinas.Count - 2);
+                esquinas.Clear();
+                hayPlanoCuadro = false;
+                esquinasEstimadas = 0;
                 ActualizarVistaPrevia();
-                mensaje = error;
+                mensaje = error + " Vuelve a marcar las 4 esquinas.";
                 RefrescarEstado();
                 return;
             }
@@ -1702,6 +1725,7 @@ namespace MCOC.AR
             OcultarReticula();
             LimpiarVistaPrevia();
             esquinas.Clear();
+            hayPlanoCuadro = false;
             esquinasEstimadas = 0;
 
             // Ancla en el CENTRO del recuadro (cerca de lo dibujado: menos brazo
@@ -1734,18 +1758,12 @@ namespace MCOC.AR
         {
             var g = Seleccionado();
             int n = esquinas.Count + 1;
-            bool viga = g != null && g.esViga;
-            string que;
-            if (n <= 2)
-                que = viga
-                    ? (n == 1 ? "abajo de la viga, junto a " + ARApoyos.NombreApoyo(Apoyo(true))
-                              : "abajo de la viga, junto a " + ARApoyos.NombreApoyo(Apoyo(false)))
-                    : (n == 1 ? "al PIE de la columna, en una arista de la cara que ves"
-                              : "al PIE de la otra arista de la misma cara");
-            else
-                que = viga ? "ARRIBA del costado de la viga (donde se junta con la losa), en un extremo"
-                           : "ARRIBA de la columna (donde llega al cielo o a la viga)";
-            return string.Format("Esquina {0} de 4: {1}. Apunta la mira y toca.", n, que);
+            string que = g == null ? "del elemento"
+                : g.esViga ? "de la viga (entre las caras de " + ARApoyos.NombreApoyo(Apoyo(true)) +
+                             " y " + ARApoyos.NombreApoyo(Apoyo(false)) + ")"
+                           : "de la " + g.tipo;
+            return string.Format("Esquina {0} de 4 {1}: pon el CENTRO de la mira en la esquina y toca " +
+                                 "(en cualquier orden).", n, que);
         }
 
         /// <summary>
@@ -1758,57 +1776,39 @@ namespace MCOC.AR
             origen = OrigenCuadro.Ninguno;
             if (camara == null || raycastMgr == null) return false;
             if (ARSession.state != ARSessionState.SessionTracking) return false;
-
-            var g = Seleccionado();
-            if (g == null) return false;
+            if (Seleccionado() == null) return false;
             Ray rayo = camara.ScreenPointToRay(pantalla);
 
-            // Esquinas 3 y 4: SOLO el plano vertical de las 2 de abajo. Nada de
-            // raycast: así no pueden caer en el piso detrás del elemento.
-            if (esquinas.Count >= 2)
+            // Cambio 01: desde la 2ª esquina, SOLO el plano de frente fijado por la
+            // 1ª. Nada de raycast ni profundidad: todas quedan a la misma distancia.
+            if (esquinas.Count >= 1 && hayPlanoCuadro)
             {
-                Vector3 pp, n;
-                if (!ARCuadro.PlanoVertical(esquinas[0], esquinas[1], FrenteCamara(), out pp, out n)) return false;
-                if (!ARCuadro.InterseccionPlano(rayo.origin, rayo.direction, pp, n, out punto)) return false;
+                if (!ARCuadro.InterseccionPlano(rayo.origin, rayo.direction,
+                                                planoCuadroPunto, planoCuadroNormal, out punto))
+                    return false;
                 origen = OrigenCuadro.PlanoDelRecuadro;
                 return true;
             }
 
-            // Esquinas 1 y 2 de una VIGA: su cara inferior, con la cadena de la 4b.
-            if (g.esViga)
+            // 1ª esquina: la superficie real bajo la mira (sólo para saber a qué
+            // DISTANCIA está el elemento): profundidad → plano → punto de ARCore →
+            // estimado con las alturas del modelo.
+            if (ProfundidadPedida && PrimerImpacto(pantalla, TrackableType.Depth, out punto))
             {
-                OrigenTecho ot;
-                if (!ResolverPuntoTecho(pantalla, out punto, out ot)) return false;
-                origen = ot == OrigenTecho.Profundidad ? OrigenCuadro.Profundidad
-                       : ot == OrigenTecho.Plano ? OrigenCuadro.Plano
-                       : ot == OrigenTecho.PuntoCaracteristico ? OrigenCuadro.PuntoCaracteristico
-                       : OrigenCuadro.Estimado;
+                origen = OrigenCuadro.Profundidad;
                 return true;
             }
-
-            // Esquinas 1 y 2 de una COLUMNA: su pie, en el PISO.
-            OrigenPunto op;
-            if (!ResolverPuntoPiso(pantalla, out punto, out op)) return false;
-            origen = op == OrigenPunto.Profundidad ? OrigenCuadro.Profundidad
-                   : op == OrigenPunto.PisoDetectado || op == OrigenPunto.PisoExtendido ? OrigenCuadro.Plano
-                   : op == OrigenPunto.PuntoCaracteristico ? OrigenCuadro.PuntoCaracteristico
-                   : OrigenCuadro.Estimado;
-
-            // Si la mira está sobre la COLUMNA (un poco arriba del pie), el rayo pasa
-            // de largo y el piso cae DETRÁS de ella. La profundidad ve la cara más
-            // cerca: el pie es el punto del piso justo bajo ella.
-            Vector3 d;
-            if (ProfundidadPedida && PrimerImpacto(pantalla, TrackableType.Depth, out d))
+            if (PrimerImpacto(pantalla, TrackableType.PlaneWithinPolygon, out punto))
             {
-                Vector3 c = camara.transform.position;
-                bool masCerca = Vector3.Distance(c, d) < Vector3.Distance(c, punto) - 0.25f;
-                if (masCerca && !ARPiso.CercaDelPiso(d.y, c.y, true, punto.y))
-                {
-                    punto = new Vector3(d.x, punto.y, d.z);
-                    origen = OrigenCuadro.Profundidad;
-                }
+                origen = OrigenCuadro.Plano;
+                return true;
             }
-            return true;
+            if (PrimerImpacto(pantalla, TrackableType.FeaturePoint, out punto))
+            {
+                origen = OrigenCuadro.PuntoCaracteristico;
+                return true;
+            }
+            return PuntoCuadroDesdeRayo(rayo, camara.transform.position.y, out punto, out origen);
         }
 
         private bool PrimerImpacto(Vector2 pantalla, TrackableType tipo, out Vector3 punto)
@@ -1862,9 +1862,10 @@ namespace MCOC.AR
                     var go = new GameObject("Esquina");
                     go.transform.SetParent(vistaPrevia.transform, false);
                     var lr = go.AddComponent<LineRenderer>();
-                    PrepararLineaMundo(lr, blanco, 0.012f);
+                    // Cambio 01: la esquina es un PUNTO; la cruz es mínima, sólo para verla.
+                    PrepararLineaMundo(lr, blanco, 0.004f);
                     lr.positionCount = 2;
-                    lr.SetPositions(new[] { e - d * 0.06f, e + d * 0.06f });
+                    lr.SetPositions(new[] { e - d * 0.015f, e + d * 0.015f });
                 }
             }
             if (esquinas.Count >= 2)
@@ -1872,7 +1873,7 @@ namespace MCOC.AR
                 var go = new GameObject("Lados");
                 go.transform.SetParent(vistaPrevia.transform, false);
                 var lr = go.AddComponent<LineRenderer>();
-                PrepararLineaMundo(lr, blanco, 0.008f);
+                PrepararLineaMundo(lr, blanco, 0.004f);
                 lr.positionCount = esquinas.Count;
                 lr.SetPositions(esquinas.ToArray());
             }
@@ -1953,6 +1954,7 @@ namespace MCOC.AR
         {
             modo = ModoMarcado.Ninguno;
             esquinas.Clear();
+            hayPlanoCuadro = false;
             esquinasEstimadas = 0;
             LimpiarVistaPrevia();
             OcultarReticula();
@@ -2504,19 +2506,9 @@ namespace MCOC.AR
                     reticulaValida = true;
                     puntoReticula = p;
                     origenReticulaCuadro = oc;
-                    if (reticula != null)
-                    {
-                        reticula.transform.position = p;
-                        // Esquinas de abajo: plano (piso / cara inferior). De arriba: de
-                        // frente a la cámara, porque están en una cara vertical.
-                        Vector3 haciaCamara = camara != null ? -camara.transform.forward : Vector3.up;
-                        reticula.transform.rotation = esquinas.Count >= 2
-                            ? Quaternion.FromToRotation(Vector3.up, haciaCamara)
-                            : Quaternion.identity;
-                        EscalarReticula(p);
-                        if (!reticula.activeSelf) reticula.SetActive(true);
-                        ColorearReticula(ARCuadro.EsSeguro(oc));
-                    }
+                    // Cambio 01: en el encuadre NO hay anillo. El punto es exactamente
+                    // el centro de la mira (sin tamaño); la guía muestra el recuadro.
+                    if (reticula != null && reticula.activeSelf) reticula.SetActive(false);
                     ActualizarGuia(p);
                     mensaje = InstruccionMarcado() + "  [" + ARCuadro.Describir(oc) + "]";
                 }
@@ -2526,9 +2518,7 @@ namespace MCOC.AR
                     origenReticulaCuadro = OrigenCuadro.Ninguno;
                     if (reticula != null && reticula.activeSelf) reticula.SetActive(false);
                     ActualizarGuia(null);
-                    mensaje = esquinas.Count >= 2
-                        ? "Apunta la mira ARRIBA del elemento, sobre la misma cara."
-                        : InstruccionMarcado();
+                    mensaje = InstruccionMarcado();
                 }
                 RefrescarEstado();
                 return;
@@ -2611,27 +2601,31 @@ namespace MCOC.AR
     {
         private Camera cam;
 
+        /// <summary>
+        /// Cambio 01: una vez colocado el diagrama, el rótulo queda FIJO (no gira ni
+        /// cambia de tamaño con la cámara): el diagrama se ve igual al volver a él.
+        /// </summary>
+        public bool congelado;
+
         private void LateUpdate()
         {
+            if (congelado) return;
             if (cam == null) cam = Camera.main;
             Orientar(cam);
-            // Corrección 9 (6e): el texto crece con la distancia para leerse siempre
-            // del mismo tamaño en pantalla (antes, a 3–4 m era ilegible).
-            if (cam != null)
-                transform.localScale = Vector3.one *
-                    EscalaPorDistancia(Vector3.Distance(transform.position, cam.transform.position));
         }
 
-        /// <summary>Distancia (m) a la que el texto se ve con su tamaño de base.</summary>
-        public const float DistanciaReferencia = 3.0f;
-
-        /// <summary>
-        /// Escala del texto a <paramref name="distancia"/> m: proporcional, entre 0,6 y 2.
-        /// (Corrección 10, 7b: con 1,5 m y tope 6 los rótulos salían enormes y tapaban todo.)
-        /// </summary>
-        public static float EscalaPorDistancia(float distancia)
+        /// <summary>Orienta el rótulo hacia <paramref name="camara"/> (derecho, vertical) y lo deja fijo.</summary>
+        public void Congelar(Camera camara)
         {
-            return Mathf.Clamp(distancia / DistanciaReferencia, 0.6f, 2f);
+            if (camara != null)
+            {
+                Vector3 dir = transform.position - camara.transform.position;
+                dir.y = 0f;
+                if (dir.sqrMagnitude > 1e-8f)
+                    transform.rotation = Quaternion.LookRotation(dir.normalized, Vector3.up);
+            }
+            transform.localScale = Vector3.one;
+            congelado = true;
         }
 
         /// Un TextMesh se lee al derecho cuando su +Z apunta en dirección CONTRARIA a la cámara.

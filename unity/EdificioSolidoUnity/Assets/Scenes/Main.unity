@@ -155,7 +155,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   objetivo: {fileID: 0}
   distancia: 190
-  rotVel: 0.25
+  rotVel: 3
   panVel: 0.25
   zoomVel: 30
   minDist: 2
@@ -163,8 +163,8 @@ MonoBehaviour:
   suavidad: 10
   velocidadVuelo: 0.8
   mostrarPanel: 1
-  pitchPerspectiva: 30
-  yawPerspectiva: 45
+  pitchPerspectiva: 20
+  yawPerspectiva: -90
   pitchPlanta: 89.5
   pitchFrente: 6
 --- !u!81 &351956750

@@ -361,7 +361,10 @@ def test_per_elemento_A_etiquetas():
     assert len(per) >= 100
     muros = [v for v in per.values() if v["tipo"] == "muro"]
     cols = [v for v in per.values() if v["tipo"] == "pilar"]
-    assert all(v["seccion"] == "col_A_0.70x0.70" for v in cols)
+    # pilares de hormigon 0.70x0.70; los metalicos (Sesion 29) con su curva
+    # de acero P.M. 300x300x20
+    assert {v["seccion"] for v in cols} == {"col_A_0.70x0.70", "PM_A_300x300x20"}
+    assert sum(v["seccion"] == "PM_A_300x300x20" for v in cols) == 8
     assert all(v["seccion"].startswith("muro_A_") for v in muros)
     assert {v["seccion"] for v in muros} == {
         "muro_A_0.20x3.70", "muro_A_0.20x6.60", "muro_A_0.20x7.25",
@@ -431,15 +434,18 @@ def test_semana04_metadatos_cobertura_y_schema():
     for pre, material, n, tipos in (
         ("", "H30", 315, {"column": 40, "wall": 60,
                           "vigas_x": 120, "vigas_y": 95}),
-        ("_A", "G35", 343, {"column": 79, "wall": 32,
-                            "vigas_x": 116, "vigas_y": 116}),
+        ("_A", "G35", 354, {"column": 80, "wall": 32,  # +5 viga F-G p1, +1 pilar,
+                            "vigas_x": 122, "vigas_y": 120}),     # +5 viga F-G p2
     ):
         md = c["metadatos" + pre]
         assert len(md) == n                          # cobertura total por caso
         from collections import Counter
         t = Counter(v["tipo"] for v in md.values())
         assert dict(t) == tipos                      # tipos de visor
-        assert all(v["material"] == material for v in md.values())
+        # A: los elementos metalicos (P.M./V.M./aspas) se rotulan "Acero"
+        assert all(v["material"] in (material, "Acero") for v in md.values())
+        if pre == "_A":
+            assert sum(v["material"] == "Acero" for v in md.values()) == 38
         assert all(v["L"] > 0 for v in md.values())          # longitud > 0
         for v in md.values():
             assert v["ejes_locales"]["x"] or v["ejes_locales"]["y"]
@@ -457,7 +463,7 @@ def test_semana04_metadatos_cobertura_y_schema():
 
 def test_semana04_esfuerzos_completos_esquema_por_caso():
     c = _cache4()
-    for pre, n_el in (("", 315), ("_A", 343)):
+    for pre, n_el in (("", 315), ("_A", 354)):
         ec = c["esfuerzos_completos" + pre]
         assert set(ec) == {"G", "Q", "GQ", "EX", "EY"}
         md = c["metadatos" + pre]
@@ -510,10 +516,11 @@ def test_semana04_columna_gravedad_compresion():
 
 def test_semana04_muro_flexion_sismica_en_plano():
     """El muro de mayor momento bajo EX es el sismorresistente (verificado
-    contra las demandas: B tag 91 ~24196 kN·m, A tag 100 ~20952 kN·m)."""
+    contra las demandas: B tag 91 ~24196 kN·m, A tag 100 ~21026 kN·m;
+    A era ~20952 antes de las vigas secundarias F-G y el pilar de raiz)."""
     c = _cache4()
     for pre, ref_tag, ref_m, rel in (("", "91", 24195.6, 2e-4),
-                                     ("_A", "100", 20951.6, 2e-4)):
+                                     ("_A", "100", 21025.9, 2e-4)):
         md = c["metadatos" + pre]
         muros = [t for t, v in md.items() if v["tipo"] == "wall"]
         ex = {t: (c["esfuerzos_completos" + pre]["EX"][t]["My"] ** 2

@@ -47,6 +47,8 @@ namespace MCOC.AR
         public float ancho;
         /// <summary>True si la viga se marcó por su cara inferior (recuadro horizontal).</summary>
         public bool caraInferior;
+        /// <summary>Normal del recuadro, hacia el que mira (cambio 01: recuadro plano de frente).</summary>
+        public Vector3 n;
         public bool valido;
         public string error;
     }
@@ -128,6 +130,8 @@ namespace MCOC.AR
                 umin = Mathf.Min(umin, a); umax = Mathf.Max(umax, a);
                 wmin = Mathf.Min(wmin, b); wmax = Mathf.Max(wmax, b);
             }
+            q.n = Vector3.Cross(q.u, q.w).normalized;
+            if (Vector3.Dot(q.n, frente) > 0f) q.n = -q.n;   // hacia el que mira
             q.largo = umax - umin;
             q.ancho = wmax - wmin;
             q.centro = c + q.u * (0.5f * (umin + umax)) + q.w * (0.5f * (wmin + wmax));
@@ -223,34 +227,30 @@ namespace MCOC.AR
         }
 
         // -----------------------------------------------------------------
-        //  Corrección 9 (6a): sólo las 2 esquinas de ABAJO se miden. Las 2 de
-        //  arriba se toman sobre el plano VERTICAL que pasa por las de abajo,
-        //  así una esquina mal medida ya no puede irse metros al fondo.
+        //  Cambio 01: recuadro PLANO y DE FRENTE.
+        //
+        //  Las 4 esquinas quedan sobre UN solo plano vertical que mira hacia la
+        //  cámara (el de la primera esquina). Así el recuadro es una figura 2D,
+        //  como una imagen impresa sobre el elemento: ninguna parte más cerca o
+        //  más lejos que otra para el que mira. La primera esquina fija a qué
+        //  distancia está ese plano; las otras tres son la mira cortada con él,
+        //  sin anillo ni medición de profundidad, en cualquier orden.
         // -----------------------------------------------------------------
 
-        /// <summary>Distancia entre las 2 esquinas de abajo: columna (cara) y viga (luz entre columnas).</summary>
-        public const float BaseMinColumna = 0.15f, BaseMaxColumna = 2.5f;
-        public const float BaseMinViga = 1.0f, BaseMaxViga = 25f;
-        /// <summary>Medidas aceptables del recuadro terminado (m).</summary>
-        public const float AltoMinColumna = 1.0f, AltoMaxColumna = 8f;
-        public const float AnchoMaxCara = 2.5f, AnchoMinCara = 0.15f;
+        /// <summary>Lado máximo aceptable del recuadro (m): más es una esquina perdida.</summary>
+        public const float LadoMaximo = 30f;
 
         /// <summary>
-        /// Plano VERTICAL que contiene las dos esquinas de abajo. Si están una
-        /// sobre otra (no debería), el plano mira hacia la cámara.
+        /// Plano vertical que pasa por <paramref name="primera"/> y mira hacia la
+        /// cámara (normal = frente horizontal de la cámara, hacia ella).
         /// </summary>
-        public static bool PlanoVertical(Vector3 a, Vector3 b, Vector3 frenteCamara,
+        public static bool PlanoDeFrente(Vector3 primera, Vector3 frenteCamara,
                                          out Vector3 punto, out Vector3 normal)
         {
-            punto = a;
-            Vector3 n = Vector3.Cross(b - a, Vector3.up);
-            n.y = 0f;
-            if (n.sqrMagnitude < 1e-6f)
-            {
-                n = ARColocacion.Horizontal(frenteCamara);
-                if (n.sqrMagnitude < 1e-8f) { normal = Vector3.zero; return false; }
-            }
-            normal = n.normalized;
+            punto = primera;
+            Vector3 f = ARColocacion.Horizontal(frenteCamara);
+            if (f.sqrMagnitude < 1e-8f) { normal = Vector3.zero; return false; }
+            normal = -f;
             return true;
         }
 
@@ -260,28 +260,13 @@ namespace MCOC.AR
             return p - normal * Vector3.Dot(p - puntoPlano, normal);
         }
 
-        /// <summary>Error para el usuario si las 2 esquinas de abajo no tienen sentido; null si están bien.</summary>
-        public static string ValidarBase(Vector3 a, Vector3 b, bool esViga)
-        {
-            float d = ARColocacion.DistanciaHorizontal(a, b);
-            float min = esViga ? BaseMinViga : BaseMinColumna;
-            float max = esViga ? BaseMaxViga : BaseMaxColumna;
-            if (d >= min && d <= max) return null;
-            return string.Format(System.Globalization.CultureInfo.InvariantCulture,
-                "Las 2 esquinas de abajo quedaron a {0:0.00} m (esperado {1:0.##}–{2:0.##} m). " +
-                "Marca de nuevo la segunda.", d, min, max);
-        }
-
         /// <summary>Error para el usuario si el recuadro terminado es absurdo; null si está bien.</summary>
-        public static string ValidarRecuadro(ARCuadroGeom q, bool esViga)
+        public static string ValidarRecuadro(ARCuadroGeom q)
         {
             if (!q.valido) return q.error;
-            if (!esViga && (q.largo < AltoMinColumna || q.largo > AltoMaxColumna))
+            if (q.largo > LadoMaximo || q.ancho > LadoMaximo)
                 return string.Format(System.Globalization.CultureInfo.InvariantCulture,
-                    "La columna quedó de {0:0.00} m de alto. Marca de nuevo las 2 esquinas de arriba.", q.largo);
-            if (q.ancho < AnchoMinCara || q.ancho > AnchoMaxCara)
-                return string.Format(System.Globalization.CultureInfo.InvariantCulture,
-                    "El recuadro quedó de {0:0.00} m de ancho. Marca de nuevo las 2 esquinas de arriba.", q.ancho);
+                    "El recuadro quedó de {0:0.0} × {1:0.0} m: alguna esquina se perdió.", q.largo, q.ancho);
             return null;
         }
 

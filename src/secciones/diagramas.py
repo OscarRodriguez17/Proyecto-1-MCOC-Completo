@@ -66,6 +66,9 @@ CASOS = ("G", "Q", "GQ", "EX", "EY")
 
 TIPO_VISOR = {"pilar": "column", "muro": "wall"}
 MATERIAL = {"B": "H30", "A": "G35"}
+# Elementos metalicos del Edificio A (pilares P.M., vigas V.M., aspas):
+# E = 200 GPa, gamma = 78.5 kN/m3 (datos_edificio.E_STEEL / GAMMA_STEEL).
+MATERIAL_ACERO = "Acero"
 # Sección NOMINAL de viga por edificio (catálogo del visor sólido:
 # geometria.secciones.viga de cada bloque).
 VIGA_NOMINAL = {"B": "viga0.60x0.80", "A": "viga0.60x0.80"}
@@ -152,12 +155,17 @@ def _clasificar_a(modelo):
 
 
 # ----------------------------------------------------------------- metadatos
-def _metadatos(tipo_elem, etiquetas, material, nom_viga):
+def _metadatos(tipo_elem, etiquetas, material, nom_viga, materiales=None):
     """Mapa tag(str) -> metadatos para el visor.
 
     `tipo_elem`: tag -> 'viga'|'pilar'|'muro'|'aspa' (o 'brazo' que se omite).
     `etiquetas`: tag(str) -> 'col.*'/'muro.*' para pilar/muro (de semana 03).
+    `materiales`: (opcional, Edificio A) tag -> {"material": "concreto"|"acero",
+    "perfil", "rol"} de `analizar.tabla_materiales`. Los elementos de ACERO se
+    rotulan con material "Acero" y su perfil real (P.M./V.M.), y las aspas con
+    rol "diagonal" (el tipo de VISOR sigue siendo vigas_x/vigas_y).
     """
+    materiales = materiales or {}
     out = {}
     for e in sorted(tipo_elem):
         t = tipo_elem[e]
@@ -177,13 +185,20 @@ def _metadatos(tipo_elem, etiquetas, material, nom_viga):
         else:
             visor = _viga_view(n1, n2)
             seccion = nom_viga
-        out[str(e)] = {
+        reg = {
             "tipo": visor,
             "seccion": seccion,
             "material": material,
             "L": float(L),
             "ejes_locales": _ejes_locales(n1, n2, L),
         }
+        info_mat = materiales.get(e, {})
+        if info_mat.get("material") == "acero":
+            reg["material"] = MATERIAL_ACERO
+            reg["seccion"] = info_mat.get("perfil") or seccion
+        if t == "aspa" or info_mat.get("rol") == "diagonal":
+            reg["rol"] = "diagonal"
+        out[str(e)] = reg
     return out
 
 
@@ -360,10 +375,12 @@ def correr_edificio_a(etiquetas):
 
     # --- metadatos con un modelo nuevo (sin resolver) ---
     modelo = construir_con_voladizo(d)
+    from benchmark_3d.analizar import tabla_materiales
     tipo0, _, _ = ef._tipo_y_area(modelo)
     estados = _clasificar_a(modelo)
     metadatos = _agregar_nodos_y_estados(
-        _metadatos(tipo0, etiquetas, MATERIAL["A"], VIGA_NOMINAL["A"]),
+        _metadatos(tipo0, etiquetas, MATERIAL["A"], VIGA_NOMINAL["A"],
+                   materiales=tabla_materiales(modelo)),
         estados)
     base_nodes = set(ops.getFixedNodes())
 
