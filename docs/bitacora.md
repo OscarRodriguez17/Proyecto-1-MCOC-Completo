@@ -2997,3 +2997,91 @@ falta liberar nada** ni sacar el turno del "lo que es basura" de la sesión 31.
 - [ ] Probar encuadre por 4 esquinas de `LEEME_cambio_01.txt` (fotos A, B y C).
 - [ ] Arreglar `productName` en el proyecto de origen para que deje de hacer falta el parche
       en cada build (Correcciones 23 a 32).
+
+---
+
+# Sesión 33 — ENTREGA FINAL (Semana 7): informe final, sync a corrección10v2 y release
+
+**Grupo:** Oscar Rodríguez · Nicolás Letelier · Pablo Arancibia.
+**Fecha:** hoy (cierre del proyecto).
+**Rol:** consolidación del repositorio único (`MCOC_Complejo_AB`) a su estado
+**más reciente** (regla: usar SIEMPRE la versión más nueva de cada fichero, de
+más reciente a más antiguo), informe final `reports/final.md`, README
+reproducible y release `entrega-final`.
+
+## Qué había (diagnóstico)
+
+- El repo en disco estaba en el linaje "week 5" (A=343, sin Correcciones AR
+  5–10) y el ZIP `MCOC_semana06-ar_correccion10_v2` + `cambio_01` era la
+  versión más nueva del proyecto (A=354, app AR final, rama `semana06-ar`).
+- `exportar_ar.py --tags 134 14 26 354 350 337 340 342 105` **fallaba** en el
+  repo (`KeyError: tag 354 no existe en el Edificio A`): el `edificio_solido.json`
+  local tenía 343 elementos. Decisión confirmada con el usuario: **sincronizar
+  el repo al ZIP**.
+
+## Sync repo → ZIP (corrección10v2 + cambio_01)
+
+- Comparación de árbol ZIP vs repo (rel, robocopy `/E`): 58 solo-ZIP, 15
+  solo-REPO, 47 distintos. Se copió todo el árbol del ZIP y se eliminaron los
+  restos del linaje AR viejo (`Assets/Tests/`, `MCOC.AR.asmdef`, `MCOC.AR.csproj`,
+  `EditModeTests.csproj`, `editmode_results.xml`, `tests.log`, `build_android.log`).
+- **Conservados** los ficheros del repo que el ZIP no trae: `docs/bitacora.md`
+  (Sesión 32), `docs/bitacora_edificio_A.md`, `docs/sesion20.md`.
+- Verificado en el repo sincronizado: **A = 354 elementos (206 nodos)**,
+  B = 350 (240 nodos); `results/edificio_solido.json` = 2 174 717 B.
+
+## 9 elementos del contrato AR (regenerado canónico)
+
+```
+python src\ar\exportar_ar.py --tags 134 14 26 354 350 337 340 342 105
+```
+- `results/ar_elementos.json` = **86 866 B**, tags **14 26 105 134 337
+  340 342 350 354** (caso GQ, Edificio A), copiado a
+  `unity/EdificioSolidoUnity/Assets/StreamingAssets/`.
+- Se re-aplicó en `LlenarElementosTests.cs` el arreglo de la Sesión 32
+  (helper `TagsEnOrdenDelContrato()` en vez de `{14, 26, 134}`), ya que el
+  ZIP traía la versión de 3 elementos.
+
+## Números finales verificados (que entran en el informe)
+
+- **A:** G = 45 417,4 kN · Q = 7 671,3 kN (GQ 53 088,7) · V sísmico EX=EY =
+  4 541,7 kN (0,10·G) · 354 elems (80 columnas, 238 vigas, 32 muros,
+  4 diagonales de acero) · 206 nodos · niveles −4,21 … 11,83 m.
+- **B:** G = 48 171,1 kN · Q = 11 029,6 kN · V = 4 817,1 kN · 350 elems
+  (40 col, 215 vigas, 60 muros, 35 brazos) · 240 nodos · 6 niveles.
+- **Complejo:** G = 93 588,6 kN · Q = 18 700,8 kN.
+- **Superposición:** G+Q≡GQ / G+EX / G+Q+EX con max ΔR ≤ 6,0e-11 kN,
+  max ΔP = 4,68e-11 kN. **Equilibrio** ~1e-11 … 1e-12 por caso.
+- **pytest:** `python -m pytest tests\` → **169 passed** (16,6 s; incorpora
+  acero/vigas secundarias + 17 de AR).
+- **D/C:** muro B tag 41 GQ 0,74 (EY 1,78 ❌ documentado) · col B tag 2 1,05 ·
+  A col 14 0,191 · col 26 0,189 · col 340 0,02 · muro 105 0,04.
+
+## Entregables escritos
+
+- `reports/final.md` — informe final con las 22 secciones del enunciado +
+  reproducibilidad. Honors Track: **H3 (AR estructural avanzada) y H5
+  (capacidad/análisis avanzado) SÍ**; H1/H2/H4 NO (declarado).
+- `reports/README.md` — fila semana 7 + suite 169 + tag `entrega-final`.
+- `README.md` — estado final, resultados canónicos y sección de ejecución
+  reproducible (Python 3.12.7 · OpenSeesPy 3.8.0.0 · Unity 2022.3.62f3).
+
+## Git
+
+- Commit **`fec7c0d`** "Entrega final Semana 7: sync a correccion10v2 + cambio_01,
+  contrato AR de 9 elementos, informe final y reproducibilidad (169 passed)".
+- Consolidado en **`master`** (fast-forward desde `semana06-ar`), tag
+  **`entrega-final`** creado.
+- ⚠️ **PUSH/RESEASE BLOQUEADOS por permisos**: `git push origin` y `gh release`
+  dan **403 — Permission to OscarRodriguez17/Proyecto-1-MCOC-Completo denied to
+  Pabloaran201120** (no es colaborador con push en ese repo). Pendiente de que
+  el dueño agregue a Pablo como colaborador (Write) o se use una cuenta con
+  acceso; luego:
+  `git push origin master semana06-ar entrega-final`
+  `gh release create entrega-final --title "Entrega Final Semana 7" --notes "9 elementos AR · 169 tests · informe final" unity/EdificioSolidoUnity/build/EdificioComplejo_MCOC_AR.apk`
+
+## Pendientes (heredados de la Sesión 32)
+
+- [ ] Probar `MCOC_AR_9elementos.apk` en el Edificio A real (viga 134 con sus columnas a la vista).
+- [ ] Decidir si el tag 342 se muestra como `viga` o `diagonal`.
+- [ ] Desbloquear push + release (ver arriba).
