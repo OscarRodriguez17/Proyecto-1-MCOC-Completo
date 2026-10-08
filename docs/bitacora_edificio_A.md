@@ -1538,6 +1538,36 @@ esta Sesión 21 para toda la geometría del voladizo de piso 1.
 
 ---
 
+## 🧩 Sesión 22 — Martes 6 de octubre 2026 (viga secundaria F–G / 3–2 de la planta 101)
+
+Detalle completo en `docs/bitacora.md` → Sesión 26 del complejo. Resumen:
+
+- Viga V.60/80 en **x = 15 m** (500 cm del eje F), del eje 3 al eje 2, **solo
+  nivel 1** (z = −0,05), en 2 tramos (tags **347** 3→2a y **348** 2a→2).
+- Módulo nuevo `src/benchmark_3d/vigas_secundarias.py`; enganche en
+  `analizar.construir_con_voladizo`; `cargas.distribuir_nivel` divide el panel
+  y reparte en vigas partidas.
+- Excepción a la regla aditiva: las 3 vigas F–G del nivel 1 (ejes 3, 2a, 2) se
+  parten en x = 15; los tramos 10→15 conservan sus tags (109, 114, 119) y los
+  15→20 son nuevos (344, 345, 346). Base 190/321 intacto.
+- Modelo completo: **203 nodos / 348 elementos**; G +87,00 kN
+  (45 323,48), Q igual, V sísmico 4 532,35 kN. Equilibrio y cierre OK.
+- `pytest tests/ -q` → 164 passed.
+
+---
+
+## 🧩 Sesión 23 — Miércoles 7 de octubre 2026 (acero rotulado + pilar P.M.I. de raíz)
+
+Detalle en `docs/bitacora.md` → Sesión 27. Los pilares 73, 74, 75, 328, 329,
+340, 341 y las diagonales 330, 331, 342, 343 ya eran de acero en OpenSees; se
+corrigió su rótulo (metadatos "Acero" + perfil), se sacaron del catálogo P–M
+de hormigón y el visor sólido los dibuja con su perfil 300×300 y color acero.
+Pilar P.M. 300×300×20 nuevo (tag **349**) en (17,5; 0), piso 1, desde
+`pilares_metalicos.py`. Modelo completo: 203 nodos / 349 elementos;
+G = 45 330,44 kN. `pytest` → 169 passed.
+
+---
+
 ## 🔧 Referencias rápidas
 
 - Repo: https://github.com/OscarRodriguez17/Proyecto1-MCOC

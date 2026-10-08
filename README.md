@@ -1,100 +1,179 @@
-# Proyecto 1 MCOC — COMPLEJO de Ingeniería (Edificios A y B)
+# Proyecto 1 MCOC — Laboratorio estructural digital 3D del Complejo de Ingeniería (Edificios A y B)
 
-Laboratorio estructural digital 3D (OpenSeesPy + Unity + AR). **Tercera
-carpeta que unifica el Edificio A y el Edificio B como UN solo proyecto**,
-mostrados lado a lado.
+**Grupo 5:** Nicolás Letelier · Oscar Rodríguez · Pablo Arancibia — Universidad de los Andes.
 
-- **Edificio A** (`src/benchmark_3d/`): modelo lineal-elástico 3D según los
-  planos `2017_67-*` (retícula 50 × 16.15 m con anexo metálico hasta el eje J y
-  voladizos trasero A3 y de piso 1 del eje F). Hormigón **G35**. Completo y
-  verificado: casos G/Q/GQ/EX/EY, diafragmas rígidos, superposición ~1e-11,
-  169 tests.
-- **Edificio B** (`src/edificio_b/`): modelo armado desde cero según los
-  planos `2024_22-*` (6 niveles × 3.96 m, 8 pilares 70×70, muros columna
-  ancha + brazos rígidos, bloque escalera/ascensor). Hormigón **H30**. Completo
-  y verificado: G/Q/GQ/EX/EY con sismo pseudoestático α = 0,10.
-- **Fusión** (`src/benchmark_3d/fusionar.py`): análisis independientes + un
-  solo contrato `results/edificio_completo.json` con el Edificio B desplazado
-  en **+X** (offset paramétrico, default 60 m) y renumerado (+100,000).
+El proyecto modela en OpenSeesPy (lineal elástico 3D) dos edificios reales a partir de sus planos DXF:
 
-## Estructura
+- **Edificio A**: planos 2017_67, hormigón G35, con anexo y voladizos metálicos.
+- **Edificio B**: planos 2024_22, hormigón H30.
 
-```
-Proyecto 1 MCOC - Complejo (A+B)/
-├── data/                  # Esquema JSON (esquema/ejemplo)
-├── docs/                  # bitacora.md (unificada) · ficha_geometria(.md/_B) · bitacoras por edificio
-├── results/               # edificio_solido.json · edificio_completo.json · ar_elementos.json (9 tags) · PNG/HTML
-├── scripts/               # Extracción DXF · subir_json_telefono.ps1 (adb) · refresh de cachés
-├── src/
-│   ├── complejo.py        # Punto de entrada: A + B + fusión + sincronización
-│   ├── benchmark_3d/      # Pipeline del Edificio A (+ fusionar + acero + vigas secundarias)
-│   ├── edificio_b/        # Pipeline del Edificio B (paquete, imports relativos)
-│   ├── secciones/         # Fibras, M–φ, envolventes P–M, demanda–capacidad, superposición
-│   └── ar/                # exportar_ar.py → ar_elementos.json (app de inspección AR)
-├── tests/                 # 169 tests (A · B · secciones · contrato · ar · acero · vigas)
-└── unity/EdificioSolidoUnity/   # Visor 3D + app AR (escenas Main.unity y AR_Inspeccion.unity)
-```
+Sobre esos modelos se agregaron:
 
-## Estado
+- un motor de secciones de fibras (M–φ, P–M y demanda–capacidad);
+- un **visor Unity**, que funciona como pre y postprocesador;
+- una **app Android de realidad aumentada** que superpone los diagramas de esfuerzos de 9 elementos del Edificio A sobre la estructura real.
 
-**ENTREGA FINAL (Semana 7).** Complejo completo y verificado: análisis
-OpenSeesPy de A y B (casos G/Q/GQ/EX/EY), motor de secciones/fibras con
-envolventes P–M y demanda–capacidad, visor Unity pre/postprocesador, app AR de
-inspección con **9 elementos** del Edificio A, build Android con ARCore y suite
-de **169 tests** (pytest) + **153/153** (Unity EditMode).
+**Informe técnico final:** [`reports/final.pdf`](reports/final.pdf). El mismo contenido está en Markdown en [`reports/final.md`](reports/final.md) y la fuente LaTeX en `reports/final.tex`.
 
-- Informe final: [`reports/final.md`](reports/final.md) (22 secciones).
-- Índice de entregables + cómo regenerar todo (análisis, resultados, visor,
-  tests, móvil): [`reports/README.md`](reports/README.md).
-- Bitácora completa (Sesiones 1–33): [`docs/bitacora.md`](docs/bitacora.md).
-- Producto ejecutable: `unity/EdificioSolidoUnity/build/EdificioComplejo_MCOC_AR.apk`
-  (adjunto también a la release **`entrega-final`** de GitHub).
+---
 
-## Ejecución
+## 1. Dependencias y versiones
 
-```bash
-# Entorno (Python 3.12; dependencias en requirements.txt)
+| Componente | Versión usada | Notas |
+|---|---|---|
+| Python | **3.12** (también probado con 3.11) | Windows del grupo y Linux |
+| OpenSeesPy | **3.8.0.0** (fijada en `requirements.txt`) | La suite también pasa con 3.7.1.2 |
+| numpy / matplotlib / pytest / ezdxf | ≥ 2.5 / ≥ 3.11 / ≥ 9.1 / 1.4.4 | Ver `requirements.txt` |
+| Unity Editor | **2022.3.62f3** (LTS) | Con el módulo **Android Build Support** (SDK, NDK y OpenJDK) |
+| AR Foundation / ARCore XR Plugin | **4.2.0 / 4.2.0** | Además: XR Plug-in Management 4.4.0 y Test Framework 1.1.33 |
+| Teléfono (app AR) | Android 7.0+ (API 24), **ARM64**, con **ARCore** | Si el teléfono tiene Depth API, el modo «apuntar a la viga» funciona mejor |
+
+> **macOS:** openseespy no trae binarios nativos para Apple Silicon. Hay que usar un entorno x86_64, por ejemplo Miniforge `osx-64`. El grupo compila los APK en Windows.
+
+## 2. Instalación
+
+```powershell
+# Desde la raíz del proyecto (Windows / PowerShell)
 python -m venv .venv
 .venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-
-# COMPLETO (analiza A, analiza B, fusiona y sincroniza StreamingAssets)
-python src\complejo.py --sin-visualizar
-
-# Contrato AR de 9 elementos (Edificio A, caso GQ)
-python src\ar\exportar_ar.py --tags 134 14 26 354 350 337 340 342 105
-
-# Tests
-python -m pytest tests\          # → 169 passed
 ```
 
-Visor Unity: abrir `unity/EdificioSolidoUnity` con **Unity 2022.3 LTS**
-(acceso directo `abrir_unity_solido.cmd`) y pulsar **"Recargar JSON"**.
-Build Android: menú `Tools/MCOC/Build Android` (visor) / `... Build Android AR`.
-Actualización de datos en el teléfono sin recompilar:
-`scripts\subir_json_telefono.ps1` (`adb push`).
+En Linux o macOS se activa con `source .venv/bin/activate`.
 
-## Resultados de referencia (canonical final)
+## 3. Ejecutar el análisis y generar los resultados
+
+```powershell
+# Pipeline completo (unos segundos):
+#   analiza A y B (G, Q, GQ, EX, EY), verifica equilibrio y superposición,
+#   fusiona los dos edificios y genera los contratos de Unity y de la app AR
+python src\complejo.py --sin-visualizar
+
+# Contrato AR con los 9 elementos de la app (complejo.py exporta por defecto solo 3)
+python src\ar\exportar_ar.py --tags 134 14 26 354 350 337 340 342 105
+Copy-Item results\ar_elementos.json unity\EdificioSolidoUnity\Assets\StreamingAssets\ -Force
+
+# La misma ejecución, pero abriendo además la vista matplotlib + HTML
+python src\complejo.py
+
+# Figuras del informe final (blanco y negro, en reports/fig/final_*.png)
+python scripts\final_figuras.py
+
+# Compilar el informe (requiere una distribución LaTeX: MiKTeX, TeX Live u Overleaf)
+cd reports
+pdflatex final.tex
+pdflatex final.tex
+```
+
+Al terminar, el pipeline imprime `equilibrio=OK superposición=OK` para cada edificio y deja estos archivos:
+
+| Archivo | Contenido |
+|---|---|
+| `results/modelo_resultados.json` | Edificio A: geometría, cargas, reacciones, desplazamientos y esfuerzos |
+| `results/modelo_resultados_b.json` | Edificio B, con la misma estructura |
+| `results/edificio_completo.json` | Contrato fusionado A+B (B desplazado +60 m en x) |
+| `results/edificio_solido.json` | Contrato del visor: catálogo P–M, demandas, esfuerzos completos y metadatos por `elementTag` |
+| `results/ar_elementos.json` | Contrato de la app AR, caso GQ: 9 elementos (14, 26, 105, 134, 337, 340, 342, 350, 354) |
+| `results/secciones_semana03.json`, `secciones_semana04.json` | Cachés del motor de secciones: curvas M–φ y P–M, y esfuerzos completos |
+
+El pipeline copia automáticamente los JSON a `unity/EdificioSolidoUnity/Assets/StreamingAssets/` (`edificio_completo.json` y `ar_elementos.json`).
+
+**Comprobación de reproducibilidad.** El 7 de octubre de 2026 se ejecutó `python src/complejo.py --sin-visualizar` en un entorno nuevo con openseespy 3.8.0.0, seguido de `exportar_ar.py --tags ...`. Los archivos de resultados salieron con el mismo contenido que los del repositorio. Solo puede cambiar el fin de línea: en Windows es CRLF.
+
+### Cambiar el modelo y regenerar el motor de secciones
+
+```powershell
+# 1) editar el dato (por ejemplo src\edificio_b\cargas.py o src\benchmark_3d\datos_edificio.py)
+python src\complejo.py --sin-visualizar                  # reanaliza A y B y regenera los contratos
+python scripts\semana05_refrescar_caches.py --force-curvas  # demandas y curvas P–M nuevas, si hacen falta
+python scripts\semana04_esfuerzos_completos_run.py --recalcular
+python src\ar\exportar_ar.py --tags 134 14 26 354 350 337 340 342 105   # contrato AR de 9
+# 2) en Unity: botón «Recargar JSON»
+```
+
+> **Ojo:** `scripts\semana03_run.py --recalcular` parte con la caché vacía y borra curvas de B (bug conocido, ver el informe §19). Para refrescar solo las combinaciones hay que usar `superposicion.verificar` sobre la caché cargada.
+
+## 4. Abrir el visor (Unity)
+
+1. Unity Hub → **Add** → `unity/EdificioSolidoUnity`, con el Editor 2022.3.62f3. También sirve hacer doble clic en `abrir_unity_solido.cmd`.
+2. Abrir la escena `Assets/Scenes/Main.unity` y presionar **Play**. La escena pesa unos 10 KB porque se reconstruye desde `StreamingAssets/edificio_completo.json`.
+3. Controles:
+   - **Navegación:** botón derecho para rotar (sensibilidad ajustable), botón central para desplazar, rueda para zoom; teclas `0`/`R` vuelven a la vista inicial.
+   - **Capas:** columnas, vigas, muros, apoyos, cargas G/Q/sismo, tributaria y deformada (Base/G/GQ/EX/EY, con amplificación).
+   - **Consulta:** «Consulta de elemento (click izquierdo)» abre el panel del elemento, con la ventana de diagramas y la ventana P–M (incluye el D/C).
+   - **«Recargar JSON»:** vuelve a leer los datos sin cerrar el editor.
+4. `unity/EdificioComplejoUnity/` es el visor antiguo. **No es el que se entrega.**
+
+## 5. Compilar las apps móviles (Android)
+
+Se compilan desde `unity/EdificioSolidoUnity` y requieren Android Build Support:
+
+| Menú | APK | Paquete | Contenido |
+|---|---|---|---|
+| **Tools → MCOC → Build Android AR** | `build/EdificioComplejo_MCOC_AR.apk` | `com.mcoc.edificiocomplejo.ar` | App AR (`AR_Inspeccion.unity` + `Main.unity`), minSdk 24, IL2CPP ARM64, OpenGLES3, ARCore |
+| Tools → MCOC → Build Android visor | `build/EdificioComplejo_MCOC.apk` | `com.mcoc.edificiocomplejo` | Visor clásico, sin AR |
+
+`Tools → MCOC → Configurar AR` deja configurado el `ARCoreLoader` para Android. Los build scripts lo llaman solos.
+
+**Instalación:** `adb install -r build\EdificioComplejo_MCOC_AR.apk`, o copiar el APK al teléfono.
+
+**Uso de la app AR:**
+1. Elegir el elemento de la lista: 14, 26, 105, 134, 337, 340, 342, 350 o 354.
+2. Elegir un modo de colocación:
+   - «Encuadrar: 4 esquinas»: se tocan las 4 esquinas de la cara, en cualquier orden, y el diagrama queda plano y fijo;
+   - «Marcar base (anillo)»;
+   - para las vigas, «Marcar viga: apuntar a ella» o «Marcar viga: pie de columnas».
+3. Si los textos no se leen bien en el teléfono, usar «Panel 2D».
+
+**Datos del visor sin recompilar:** `powershell -ExecutionPolicy Bypass -File scripts\subir_json_telefono.ps1` hace un `adb push` del JSON a `persistentDataPath`. Después, en el teléfono, se presiona «Recargar JSON». Con `-Borrar` se vuelve al JSON que trae el APK.
+
+## 6. Tests
+
+```powershell
+python -m pytest tests -q        # → 169 passed
+```
+
+Usar la ruta `tests`: `para_entrega/` tiene una copia antigua de un test con el mismo nombre de módulo.
+
+**Unity:** Window → General → **Test Runner** → **EditMode** → **Run All** → **153/153**. Cubren la colocación AR, el encuadre, el piso, los rótulos, el panel 2D, la interfaz y la configuración XR de Android.
+
+## 7. Estructura
+
+```
+├── data/        esquema JSON de entrada (nodos, elementos, materiales, cargas)
+├── docs/        bitácora (bitacora.md), fichas de geometría, extracción de los DXF
+├── reports/     final.pdf / final.md / final.tex + informes semanales 03–06 + fig/
+├── results/     contratos y resultados JSON, figuras PNG/HTML
+├── scripts/     runners del motor de secciones, refresco de cachés, figuras, adb
+├── src/
+│   ├── complejo.py       punto de entrada: A + B + fusión + contratos
+│   ├── benchmark_3d/     Edificio A (datos, construir, voladizos, vigas secundarias,
+│   │                      pilares metálicos, cargas, analizar, esfuerzos, fusionar)
+│   ├── edificio_b/       Edificio B (paquete)
+│   ├── secciones/        motor de fibras: materiales, sección, M–φ, P–M, acero, D/C, superposición
+│   └── ar/               exportador del contrato de la app AR
+├── tests/       169 tests de pytest
+└── unity/EdificioSolidoUnity/   visor + app AR (Assets/Scripts, Assets/Scripts/AR, Assets/Editor)
+```
+
+## 8. Resultados de referencia (modelo final)
 
 | Magnitud | Edificio A | Edificio B |
 |---|---|---|
-| Nodos | 206 (+maestros diafragma) | 240 (+maestros) |
-| Elementos | **354** (80 columnas, 238 vigas, 32 muros, 4 diagonales) | 350 |
-| Casos | G / Q / GQ / EX / EY | G / Q / GQ / EX / EY |
-| Carga gravitatoria | G = 45.417 kN · Q = 7.671 kN | G = 48.171 kN · Q = 11.030 kN |
-| V sísmico (α = 0,10) | 4.542 kN | 4.817 kN |
-| Superposición | G+Q≡GQ · G+EX · G+Q+EX: max ΔR ≤ 6,0e-11 kN | ídem |
-| Material | G35 | H30 |
-| Offset visual B | 0 | +60 m en X |
+| Nodos / elementos | 206 / 354 | 235 (+5 maestros) / 350 |
+| G / Q [kN] | 45 417,4 / 7 671,3 | 48 171,1 / 11 029,6 |
+| Corte basal V = 0,10·W [kN] | 4 541,7 | 4 817,1 |
+| Techo EX / EY [mm] | 8,48 / 2,35 | 16,00 / 19,77 |
+| Superposición, máx. ΔR [kN] | 3,6e-11 | 6,0e-11 |
 
-## Documentación
+Elementos de la app AR, caso GQ:
+- columnas 14 y 26: D/C = 0,19 y 0,19;
+- viga 134: M = −220,0 / +211,9 / −265,3 kN·m (extremo i, centro, extremo j);
+- pilar de acero 340: D/C = 0,02;
+- muro 105: D/C = 0,04.
 
-- `docs/bitacora.md` — bitácora unificada (leer al iniciar cada sesión).
-- `docs/ficha_geometria.md` — Edificio A · `docs/ficha_geometria_B.md` — Edificio B.
-- `src/benchmark_3d/README.md` — modelo benchmark del Edificio A.
+## 9. Entrega
 
-## Unity
-
-El contrato `results/edificio_completo.json` alimenta al visualizador del
-complejo (`unity/Scripts/UnityComplejo.cs`). Ver `unity/README.md` para
-instalación y puesta en marcha.
+- Rama `master`, tag **`entrega-final`**. El APK de la app AR (`MCOC_AR_EdificioComplejo.apk`) va adjunto al Release `entrega-final`.
+- La historia de cada sesión está en `docs/bitacora.md`.
+- Los informes semanales están en `reports/semana0X.md`.

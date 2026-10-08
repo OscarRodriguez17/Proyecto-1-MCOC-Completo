@@ -1,10 +1,17 @@
 # ÍNDICE DE ENTREGA — Proyecto 1 MCOC (Complejo de Ingeniería A+B)
 
 > Repositorio: `https://github.com/OscarRodriguez17/Proyecto-1-MCOC-Completo.git`
-> Rama `master` — tag **`entrega-final`** (Semana 7). Informe final:
-> [`final.md`](final.md). APK: adjunto a la release `entrega-final`.
-> Suite de verificación: `python -m pytest tests/ -q` → **169 passed**
-> (Unity EditMode → **153/153**).
+> Rama `master` — tag a evaluar: **`entrega-final`**.
+> Suite de verificación: `python -m pytest tests -q` → **169 passed** · Unity EditMode → **153/153**.
+
+## Entrega final (Semana 7)
+
+| Archivo | Qué es |
+|---|---|
+| [final.pdf](final.pdf) | **Informe técnico final** (carátula, 22 secciones, blanco y negro) |
+| [final.md](final.md) | El mismo informe en Markdown (generado desde `final.tex`) |
+| [final.tex](final.tex) | Fuente LaTeX (`pdflatex final.tex` dos veces) |
+| `fig/final_*.png` | Figuras del informe, generadas por `scripts/final_figuras.py` |
 
 ## Reportes semanales
 
@@ -15,7 +22,6 @@
 | [semana05.md](semana05.md) | 5 | Modelo "de la hoja al teléfono": **MOD1** sobrecarga `SC_PISO` 3,0→4,0 (Q 11 029,6→14 423,3 kN) y **MOD2** muro t 0,60→0,70 (P₀_aci 38 645,8→44 829,6; D/C 0,74→0,79) con flujo **editar → correr → "Recargar JSON"**; superposición interactiva G+Q≡GQ/G+EX/G+Q+EX (`|superpuesta − OpenSees| ≈ e-11`); sidequest "carga móvil" documentada (NO implementada en v1); **build Android** (`Tools/MCOC/Build Android`) y **actualización de los datos en el teléfono sin recompilar** (`adb push` a `persistentDataPath`). |
 | [supuesto_armado_edificio_A.md](supuesto_armado_edificio_A.md) | Anexo | Hipótesis de armado y materiales del Edificio A (f'c 30 MPa G35, columna 70×70 8Ø28, recetas de muros) — supuesto documentado para el catálogo. |
 | [semana06.md](semana06.md) | 6 | **Corrección del signo de `Mz(x)`** (era `Mz + Vy·x + Wy·x²/2`; correcto `Mz − Vy·x − Wy·x²/2`, porque `dMz/dx = −Vy`) en las 3 fórmulas del visor, con evidencia contra OpenSees (A tag 14 GQ: **−672,32 → +219,38 kN·m** vs **+219**); **cierre `Mz(L) = −Mz_j`** añadido a A y B; el mismo bug corregido en `src/secciones/diagramas.py` con `dMz` en `_cierre_verticales()`. **App AR de inspección en obra completa**: `src/ar/` genera `ar_elementos.json` (tags 14/26 columnas con P–M, 134 viga) desde los datos ya verificados, 12 tests propios (**suite 138 → 150**); escena `AR_Inspeccion.unity` + 5 guiones en `Assets/Scripts/AR/`, shader propio sin URP, AR Foundation 4.2.0 y build Android con API 24 / IL2CPP ARM64 / OpenGLES3 / ARCore. El APK **no se genera en esta máquina** (falta Android Build Support, §8.3). |
-| [final.md](final.md) | 7 | **ENTREGA FINAL**: informe técnico completo del proyecto (22 secciones: idealización, geometrías A/B, cargas y áreas tributarias, carga viva, sismo pseudoestático, superposición, análisis global, fibras, M–φ, P–M, D/C, Unity pre/postprocesador, visualización, modificación del modelo, AR, sidequests, QA, limitaciones, IA, contribuciones y Honors Track H3+H5) + sección de **reproducibilidad**. Cierra la cadena con el **contrato AR de 9 elementos** (tags 14/26/105/134/337/340/342/350/354), la suite **169 passed** y el **APK final** `EdificioComplejo_MCOC_AR.apk` adjunto a la release `entrega-final`. |
 
 Figuras de apoyo: `reports/fig/` (envolventes de muros/columnas, superposición, mosaico).
 
@@ -43,10 +49,8 @@ Figuras de apoyo: `reports/fig/` (envolventes de muros/columnas, superposición,
 3. **Suite de protección**:
 
    ```
-   python -m pytest tests/ -q    # → 169 passed
+   python -m pytest tests/ -q    # → 150 passed
    ```
-   Unity EditMode (en el editor): **153/153** (incluye la lista de los
-   **9 elementos** del contrato AR, Sesión 32).
 
 ## Cómo generar el build Android (APK)
 

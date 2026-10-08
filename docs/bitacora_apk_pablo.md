@@ -1,3 +1,7 @@
+> **Bitácora de compilación de los APK (equipo de Pablo, Windows).** La numeración de sesiones de
+> este archivo es propia y no coincide con la de `docs/bitacora.md`, que es la bitácora principal
+> del proyecto. Se conservó tal cual al integrar la entrega final.
+
 # BITÁCORA DEL PROYECTO — COMPLEJO DE INGENIERÍA (Edificios A y B)
 
 > **Registro vivo del proyecto.** Al iniciar cada sesión, LEER ESTE ARCHIVO.
@@ -33,10 +37,6 @@ mostrándolos **lado a lado**.
   (bloque esfuerzos en `modelo_resultados.json` y `edificio_solido.json`,
   228 vigas × 5 casos). Las vigas del Edificio A se consultan en el visor
   sólido con el mismo panel que las de B.
-- **Edificio A, Sesión 26:** viga secundaria V.60/80 F–G / 3–2 de la planta
-  101 agregada (x = 15 m, solo nivel 1, tags 347–348; vigas F–G del nivel 1
-  partidas en x = 15). Modelo completo: **203 nodos / 348 elementos, 233 vigas
-  con diagrama**; G = 45 323,48 kN.
 - **Visor Unity (Sesión 8, después):** el proyecto oficial es
   `unity/EdificioSolidoUnity/` (visor sólido A+B). Se reemplazó el
   `Assets/Scenes/Main.unity` de 64 MB (geometría horneada, causa del "modelo
@@ -1810,1218 +1810,1282 @@ Main.unity: inalterado (hash blob idéntico a HEAD)
 
 
 
-## Sesión 22 - Viernes 2 de octubre 2026 (Corrección 3: pose, lista, Plan B, frames y XR Android)
-
-### Qué se hizo?
-
-- **Reparado el texto corrupto (mojibake)** en `ARInspeccionApp.cs`, `MCOCBuildAndroid.cs` y en esta bitácora: se sustituyeron los caracteres de reemplazo U+FFFD por su letra acentuada correcta. Verificado: 0 U+FFFD en los tres archivos.
-- **`ARInspeccionApp.cs` — integración completa**:
-  - `Preparar()` idempotente (se puede llamar varias veces sin duplicar nada).
-  - `AplicarContrato(ARRaiz)`: el callback `OK` ya rellena la lista con la cabecera `MCOC · AR · caso GQ` y deja seleccionado el primer elemento (tag `14`).
-  - Lista ordenada por el orden de contrato (`14`, `26`, `134`).
-  - `DestroyOtherCameras()` al arrancar para que sólo quede la de AR.
-  - Plan A / Plan B, `DesplazarPiso(...)` en pasos de 5 cm y `RumboCamara()`.
-  - `ARFramesCamara.Activar()` y contador de frames visible en la interfaz.
-  - `Destruir(GameObject)` nuevo helper: `Destroy` en modo edición lanzaba un error que Unity reportaba como log no gestionado y hacía fallar los tests.
-- **`ARInterfaz.cs`**: paneles con `Image.raycastTarget = false` para no bloquear los toques; `TextAnchor.MiddleCenter`; `CargarFuente()` segura en batchmode (no rompe si no encuentra la fuente).
-- **`ARRig.cs`**: pose real con `TrackedPoseDriver` (`GenericXRDevice`, `ColorCamera`, `UpdateAndBeforeRender`, `RotationAndPosition`).
-- **`ARColocacion.cs`**: `AlturaCamaraSobrePiso`, `PasoPiso`, `AnclaEstimadaBajoCamara(...)` (1.40 m bajo la cámara) y `DesplazarPiso(...)`.
-- **Dependencia añadida** a `Packages/manifest.json`: `"com.unity.xr.legacyinputhelpers": "2.1.12"`.
-- **Correcciones de API** que rompían la compilación: `ARPlaneManager.trackables.count`, `ARSession.state` como miembro estático, `Canvas` desde `UnityEngine`, eventos `Action` envueltos en lambdas.
-- **`MCOCXRSetup.cs` reescrito para XR Management 4.4.0**: el asset maestro correcto es `XRGeneralSettingsPerBuildTarget`; `XRGeneralSettings` y `XRManagerSettings` quedan como sub-assets. Se usa `XRManagerSettings.activeLoaders` (el `loaders` ya no existe). Se eliminaron los assets legacy que se habían creado por error (`Assets/XR/XRGeneralSettings.asset` y `Assets/XR/XRManagerSettings.asset`).
-- **Diagnóstico del fallo de XR**: los dos tests de XR fallaban no por la API sino porque el test comprobaba los settings **sin pasar por la asignación del loader**. Con un test temporal se confirmó que `XRPackageMetadataStore.AssignLoader(...)` sí funciona en batchmode (`ARCore` presente, `activeLoaders = 1`). Se hizo público `MCOCXRSetup.ActivarArcoreAndroid()` y el test ahora recorre el camino real de configuración; el diagnóstico temporal se borró.
-- **NRE de los `LineRenderer`**: en modo headless, un segundo `LineRenderer` en el mismo GameObject falla. `ConstruirMarca` crea ahora un GameObject hijo por eje.
-- **`MCOCBuildAndroid.cs`**: `BuildAr()` registra el loader ARCore si falta, y todos los avisos van también al log (`Faller(...)`) para que el build funcione en batchmode. El log del APK incluye ahora el tamaño en MB.
-- **Tests**: ampliados `ARRigTests`, `LlenarElementosTests`, `ARColocacionTests`, `ARFramesCamaraTests`, `ARPlanBTests`, `XRAndroidConfigTests`.
-- **Metas creados** para los ficheros que Unity no tenía importados (`ARRig.cs`, `ARFramesCamara.cs` y varios tests de `Editor`).
-- **`pytest.ini` añadido**: la suite recogía dos `test_secciones.py` (`tests/` y `para_entrega/`) y chocaban en el mismo nombre de módulo.
-
-### Verificación
-
-```text
-Python:     155 passed
-EditMode:   34/34 Passed  (Unity 2022.3.62f3, batchmode, sin errores de compilación)
-```
-
-### Build Android AR: NO generado
-
-Se intentó `Tools/MCOC/Build Android AR` en batchmode y **falló**. Causa raíz, verificada:
-
-```text
-UnityException: JDK not found
-Java Development Kit (JDK) directory is not set or invalid.
-JDK was not installed with Unity at
-  ...\Editor\Data\PlaybackEngines\AndroidPlayer\OpenJDK
-CheckAndroidJDK:Execute
-```
-
-En esta máquina **no hay ningún JDK instalado** (ni `JAVA_HOME`, ni en `Android Studio`, ni en `Program Files\Java`, ni Adoptium/Corretto/Zulu). Además faltan también los otros dos componentes del Android Build Support dentro de `PlaybackEngines\AndroidPlayer`:
-
-| Componente | Estado  |
-| ---------- | ------- |
-| `OpenJDK`  | ausente  |
-| `SDK`      | ausente  |
-| `NDK`      | ausente  |
-
-Por tanto **no se ha generado ningún APK**. El código de build y la configuración XR están correctos y listos; lo que falta es el toolchain.
-
-### Pendientes
-
-- [ ] Instalar desde Unity Hub los módulos **OpenJDK**, **Android SDK & NDK Tools** en la versión `2022.3.62f3`, y volver a ejecutar `Tools/MCOC/Build Android AR`.
-- [ ] Verificar el APK resultante (`build\EdificioComplejo_MCOC_AR.apk`) y anotar tamaño y salida de consola.
-- [ ] Prueba en dispositivo real con ARCore: colocación, Plan B (piso +/-), lista, contador de frames.
 
 ---
 
-## Sesión 23 - Viernes 2 de octubre 2026 (Corrección 4: orientación doble, piso ±5 cm y respaldo de FeaturePoint)
+## Sesión 19 — Jueves 1 de octubre 2026: APK Android AR
 
-Corrección 4 sobre la app AR. Todo lo demás se mantiene: mismo contrato
-(`ar_elementos.json`), mismo rig, mismos botones, misma escala 1:1.
+**Participantes:** Pablo Arancibia + agente OpenCode.
 
-### 1) Orientación doble (el error de verdad)
+### Contexto
 
-`ColocarEnAncla` orientaba el elemento **dos veces**:
+El código de AR (AR Foundation + ARCore + diagramas de esfuerzos) estaba en
+`Proyecto_1_MCOC_Complejo_A_B_COMPLETO (1).zip` (`unity/EdificioSolidoUnity`), no en el
+proyecto `unity/EdificioIngUnity` del repo, que es el visor de escritorio. Se extrajo el
+zip completo a `MCOC_Complejo_AB/` y se trabajó sobre `unity/EdificioSolidoUnity`
+(Unity 2022.3.62f3).
 
-| antes | ahora |
-|---|---|
-| `raizVisual.localRotation = RumboCamara()` | `raizVisual.localRotation = Quaternion.identity` |
-| `contenedor.localRotation = RotacionInicial(g, FrenteCamara())` | idem (sin cambios) |
+### Toolchain Android
 
-La orientación la pone **sólo el contenedor**, que es además donde acumula el
-gesto de dos dedos. `RumboCamara()` quedó sin uso y **se ha borrado**; el
-comentario de la cabecera de `ARColocacion` deja escrito que es el único sitio
-donde se decide la orientación.
+- El módulo `Android Build Support` estaba **registrado** en Unity Hub pero **sin archivos**:
+  la instalación de OpenJDK + SDK/NDK Tools (23:38) quedó borrada por el instalador base
+  `UnitySetup-Android-Support-for-Editor-2022.3.62f3.exe` que corrió al final (23:51-23:28).
+  Se resolvió desmarcar y volver a marcar los tres módulos en *Manage modules* e instalarlos
+  en una sola operación.
+- Después de eso seguía fallando con `UnityException: JDK not found`: el pref
+  `JdkUseEmbedded_h2297287597 = 0` dejaba `AndroidExternalToolsSettings.jdkRootPath` vacío,
+  mientras NDK y SDK sí resolvían. Se añadió `MCOCXRSetup.ResolverToolchainAndroid()` para
+  restaurar la ruta embebida del JDK (`Editor/Data/PlaybackEngines/AndroidPlayer/OpenJDK`)
+  de forma reproducible en cada build.
 
-Por qué pasaba desapercibido: con la cámara mirando a **+Z** el yaw es 0, las
-dos rotaciones se suman y el resultado es el correcto. En cuanto el teléfono
-mira a otro lado, el rumbo se aplicaba dos veces y el elemento quedaba girado un
-ángulo arbitrario.
+### Correcciones aplicadas
 
-#### Test EditMode parametrizado nuevo: `Assets/Editor/AROrientacionTests.cs`
-
-**15 casos** (5 frentes de cámara: `+Z`, `+X`, `−Z`, `−X`, `37°`) × 3
-comprobaciones. Monta la app por el camino real del teléfono
-(`Preparar` → `AplicarContrato` → `ColocarAqui`), gira `app.Camara` al frente,
-y mide sobre los `Transform` reales de la jerarquía
-`ancla → raizVisual → contenedor`, con la geometría que la app tiene cargada
-en `geoPorTag`:
-
-| prueba | qué comprueba |
-|---|---|
-| `Viga134_A3_96m_...` | `(j − i)` mundial paralelo a `ARColocacion.Derecha(frente)` (`dot > 0,999`), luz 10 m y los dos extremos a 3,96 m sobre el piso |
-| `LaRaizDeDiagramas_NoRota` | la raíz en identidad y el ancla sin rotación |
-| `Columna14_LaTraccionDeMpositivo...` | `rot * ladoPrincipal = −Derecha(frente)`, y que la flecha de tracción dibujada sale hacia la izquierda |
-
-**El test se ha verificado contra el bug**: reintroduciendo el yaw de cámara
-en la raíz, fallan **12 de 15**, y los 3 que pasan son exactamente los de frente
-`+Z`. Esa es la firma del fallo, y confirma que el test guarda algo.
-
-### 2) Piso ±5 cm sin tocar el ancla
-
-`DesplazarPiso` escribía en `ancla.transform.position`, y eso **no aguanta**:
-`ARCore` reescribe la pose del `ARAnchor` en cuanto el subsystem la actualiza, así
-que el ajuste se perdía al primer update. Ahora:
-
-- campo acumulado `offsetPiso` (float, metros);
-- se aplica con `AplicarOffsetPiso()` → `raizVisual.localPosition = (0, offsetPiso, 0)`;
-  la raíz cuelga del ancla, así que sigue al piso sin escribir en la pose que
-  controla ARCore;
-- `ColocarEnAncla` y `Restablecer` lo respetan (`Restablecer` es sobre el
-  elemento: amplitud y rumbo, no sobre el cuadre del piso);
-- `QuitarAncla` lo pone a 0;
-- nuevo `ARColocacion.AcumularPiso(offsetActual, pasos)`; `DesplazarPiso(Vector3,int)`
-  se queda como la aritmética del paso de 5 cm.
-
-API nueva pública para los tests: `OffsetPiso()` y `PosicionPiso()`
-(= `ancla.position + (0, offsetPiso, 0)`). `DesplazarPiso` **no** llama a
-`ColocarEnAncla` a propósito: ésta reorienta el contenedor y se comería el giro
-del gesto de dos dedos.
-
-**Fallo extra que destaparon los tests**: `QuitarAncla` destruía el GameObject
-del ancla **antes** de sacar de debajo la raíz de diagramas, que es su hija.
-Unity se lleva por delante todos los hijos al destruir, así que **el diagrama
-entero se perdía** y el siguiente «Colocar aquí» no tenía nada que mostrar
-(era lo mismo al recolocar, porque `CrearAnclaEn` empieza llamando a
-`QuitarAncla`). Corregido: la raíz se reparenta primero, el ancla se destruye
-después. `Destruir` (el helper que usa `DestroyImmediate` en modo edición) no lo
-camuflaba en los tests anteriores.
-
-### 3) Bonus: `FeaturePoint` como respaldo del raycast
-
-En `ColocarAncla`, si el raycast `PlaneWithinPolygon` no devuelve nada se reintenta
-con `TrackableType.FeaturePoint` antes de decir «No se detectó piso». Cuando el
-móvil no cierra un polígono (sala a oscuras, moqueta, luz rasante) el plano no
-aparece pero los puntos de referencia sí. El mensaje distingue el origen
-(`raycast` / `punto de referencia`) y, si tampoco hay puntos, sugiere «Colocar
-aquí».
-
-### Verificación
-
-```text
-Python:   155 passed in 5.70s
-EditMode: 51/51 Passed  (Unity 2022.3.62f3, batchmode, sin errores CS)
-```
-
-| fixture | tests |
-|---|---|
-| ARColocacionTests | 8 |
-| ARFramesCamaraTests | 6 |
-| **AROrientacionTests** (nuevo) | **15** |
-| ARPlanBTests | 7 (antes 5) |
-| ARRigTests | 4 |
-| LlenarElementosTests | 7 |
-| UIOverlapTests | 1 |
-| XRAndroidConfigTests | 3 |
-
-Se añadieron 2 pruebas a `ARPlanBTests`: `CambiarDeTagYRestablecer_MantienenElDesplazamientoDelPiso`
-y `QuitarAncla_PuestaElDesplazamientoACero` (esta última es la que destapó el
-borrado del diagrama). Se generó `.meta` para el test nuevo
-(`0022762fecf34e9eab44f4d1e3a0c426`) porque si no Unity no lo importa y la suite
-no lo ve.
-
-### Build Android AR: NO generado
-
-Sin cambios respecto a la Sesión 22: falta el toolchain (OpenJDK + SDK + NDK) en
-`2022.3.62f3`. El APK se compila en el Mac.
-
-### Pendientes
-
-- [ ] Prueba en dispositivo con ARCore: colocar mirando a **+X o −X** (no sólo +Z),
-      que es donde antes salía el elemento girado, y el gesto de dos dedos encima
-      de un piso ya desplazado con ±5 cm.
-- [ ] Instalar OpenJDK + Android SDK/NDK y ejecutar `Tools/MCOC/Build Android AR`.
-
----
-
-## Sesión 24 - Corrección 5: legibilidad (parte 1) y marcado en terreno (partes 2a, 2b y 2c)
-
-La sesión ataca la Corrección 5 en cuatro entregas sucesivas, cada una commiteada
-por separado. Ninguna toca la escala 1:1 del elemento ni el contrato
-`ar_elementos.json`.
-
-**Parte 1 — lo que se veía mal en el teléfono.** El texto 3D salía **en
-espejo**, los rótulos y las marcas no se veían a 3-5 m, y el mensaje de estado
-pisaba lo que la app quería decir. Se detalla abajo, tal cual se dejó.
-
-**Partes 2a, 2b y 2c — el problema de fondo.** En terreno el diagrama «se
-alejaba» del elemento: el ancla acababa bajo el usuario («Colocar aquí») o donde
-apuntaba el centro de la pantalla, **no en la base del elemento real**. Con
-perspectiva, eso hace que dos vigas paralelas del mismo piso parezcan estar en
-lugares distintos. La solución es que el usuario **marque el elemento en el piso**
-con un anillo de retícula: dos toques para una viga (bajo el extremo i y bajo el
-j) y uno para una columna (la cara visible). Las tres partes van de lo más interno
-a lo más externo:
-
-| Parte | Qué hace | Commit |
+| Ajuste | Antes | Ahora |
 |---|---|---|
-| 2a | Funciones **puras** de colocación por dos puntos, sin UI | `a86a113` |
-| 2b | Modo de marcado en la app: retícula, raycast al piso, flujo i–j | `3468cbe` |
-| 2c | Botones de marcado y su conexión con la interfaz | (este commit) |
+| Escenas en Build Settings | solo `Main.unity` | `AR_Inspeccion.unity` (index 0) + `Main.unity` |
+| Minimum API Level | 22 | **24** (mínimo de ARCore) |
+| Arquitectura | ARMv7 | **ARM64** |
+| Scripting Backend | Mono2x | **IL2CPP** |
+| Application ID | `com.DefaultCompany.EdificioIngUnity` | `com.mcoc.edificiocomplejo.ar` |
+| XR Plug-in Management | sin `XRGeneralSettings` (ARCore nunca se registraba) | `XRGeneralSettingsPerBuildTarget.asset` creado, `ARCoreLoader` asignado, `InitManagerOnStart: 1` |
+| Build | solo interactivo | `MCOCBuildAndroid.BuildArBatch()` para `-batchmode` |
 
-### 1) Texto en espejo (`ARBillboard`)
+- `MCOCXRSetup.CrearGeneralSettings()`: el proyecto no traía el contenedor por plataforma,
+  así que `XRGeneralSettingsForBuildTarget()` devolvía `null` y `ActivarArcoreAndroid()`
+  nunca lograba registrar el loader ARCore.
+- `MCOCBuildAndroid.BuildArBatch()`: sin `DisplayDialog` ni `RevealInFinder` (no funcionan en
+  batchmode), deja el APK en `Builds/MCOC_AR.apk` y cierra el editor con código 0/1.
 
-`LateUpdate` orientaba el texto con `cam.transform.position - transform.position`,
-o sea con el **+Z del texto hacia la cámara**. Un `TextMesh` se lee al derecho
-cuando su +Z apunta en dirección **contraria** a la cámara, así que salía
-reflejado. Ahora:
-
-```
-private void LateUpdate()
-{
-    if (cam == null) cam = Camera.main;
-    Orientar(cam);
-}
-
-public void Orientar(Camera camara)
-{
-    if (camara == null) return;
-    Vector3 dir = transform.position - camara.transform.position;
-    if (dir.sqrMagnitude < 1e-8f) return;
-    transform.rotation = Quaternion.LookRotation(dir, camara.transform.up);
-}
-```
-
-La orientación sale a un método **público** `Orientar(Camera)` para poder
-ejercitarla desde un test sin esperar al `LateUpdate`. El guardia
-`dir.sqrMagnitude < 1e-8f` evita que `LookRotation` reciba un vector nulo.
-
-#### Test EditMode nuevo: `Assets/Editor/ARBillboardTests.cs`
-
-**4 pruebas**: tres `TestCase` de posición de cámara (detrás `(0,0,−3)`, al lado
-`(3,0,0)` y arriba en diagonal `(−2,1,5,2)`) que comprueban
-`dot(texto.forward, haciaAfuera) > 0,999` y `dot(texto.up, camara.up) > 0,9`, más
-`SinCamaraNoRevienta`, que llama `Orientar(null)`.
-
-Con el signo viejo `dot(texto.forward, haciaAfuera)` valía **−1** en los tres
-casos, con lo que la aserción principal falla; el test guarda algo.
-
-### 2) Tamaños legibles a 3-5 m
-
-La escala del ELEMENTO no cambia (sigue 1:1): esto es grosor de trazo y tamaño
-de rótulo, que no alteran longitudes ni alturas sobre el piso.
-
-| Archivo | Antes | Ahora |
-|---|---|---|
-| `ARGeometria.cs` `anchoLinea` | 0,005 | **0,025** |
-| `ARGeometria.cs` `anchoLineaPrincipal` | 0,009 | **0,04** |
-| `ARGeometriaBuilder.Marca` `radio` | 0,028 | **0,08** |
-| `ARGeometriaBuilder.Marca` `alturaTexto` | 0,035 | **0,10** |
-| `ARInspeccionApp.ConstruirMarca` ancho del eje | `radio * 0.3f` | **`Mathf.Min(0.02f, radio * 0.5f)`** |
-| `ARInspeccionApp.ConstruirMarca` `characterSize` | 0,011 | **0,018** |
-
-El ancho de la marca va con `Mathf.Min(0.02f, ...)` y no con `radio * 0.5f` a
-secas porque las marcas de la envolvente P–M y de la demanda siguen siendo
-pequeñas (`radio` 0,012 y 0,01): sin el tope, el texto de rechazo las volvería
-illegibles y el trazo se comería el gráfico.
-
-### 3) El mensaje de estado vuelve a ser el de la app
-
-El bloque de diagnóstico de `Update()` escribía cada medio segundo
-
-```
-ui.estado.text = "ARSession: " + estado + " · planos: " + planos + " · camara: " + permiso;
-```
-
-así que **tapaba** el `mensaje` que la app va cambiando según lo que pase
-("Anclado en…", "Piso +5 cm…", "No se detectó piso…"). Ahora esa línea es
-`ui.estado.text = mensaje;` y la misma información se **añade al principio de
-`diagText`**, así que sigue estando en el panel Diag y no se pierde.
-
-### 4) Parte 2a: las funciones puras de colocación (`ARColocacion`)
-
-Todo el cálculo del marcado vive primero en `ARColocacion`, **sin UI y sin
-escenas**, para poder verificarlo con tests sin montar nada. Se añade al final de
-la clase, después de `PuntoEnAncla`:
-
-- `PorDosPuntos(Pi, Pj, g)` → devuelve la colocación de la geometría `g` con la
-  viga **`(Pi, Pj)` como línea de base**: la sitúa en el punto medio, a la altura
-  del punto **más bajo**, y la gira para que `puntoJ − puntoI` caiga sobre la
-  recta `Pi→Pj`. Devuelve la rotación en la colocación, **no** en la raíz.
-- `DistanciaHorizontal(a, b)` → distancia en el plano, **ignorando la altura**.
-- `PorDosPuntos` usa `Yaw(ejeX, dir)`, el mismo giro que ya usaba la colocación
-  por un punto.
-- Utilidades: `ToleranciaLuz`, `DistanciaMinimaPuntos`, `FueraDeTolerancia(x, L)`
-  (10 % de desviación), `DiferenciaPorcentual`, `MitadSeccion(nombre)` (lee la
-  primera medida del nombre, `0.70x0.70` → 0,35) y
-  `BaseDesdeCara(cara, haciaCamara, mediaSeccion)` (entra media sección hacia
-  donde mira la cámara).
-
-Punto delicado: la geometría de la viga 134 trae `puntoI` y `puntoJ` en
-`y = 3,96` y **simétricos respecto al origen**, de modo que el centro de la línea
-base coincide con `c.posicion` en horizontal. Eso es lo que permite comprobar
-`centro == posicion` sin tolerancia extra.
-
-#### Test EditMode nuevo: `Assets/Editor/ARDosPuntosTests.cs`
-
-**10 pruebas**: 6 `TestCase` del flujo completo de `PorDosPuntos` (simétricos,
-desplazados, girados 90°, girados 37°, alturas distintas usando **la menor**, y
-puntos invertidos que deben girar la viga 180°) y 4 tests sueltos
-(`DistanciaHorizontal`, `FueraDeTolerancia`, `MitadSeccion`, `BaseDesdeCara`).
-
-### 5) Parte 2b: el modo de marcado en la app (`ARInspeccionApp`)
-
-`ARInspeccionApp.cs`, +460 / −27. Se añade:
-
-- `enum ModoMarcado { Ninguno, Base, ExtremoI, ExtremoJ }`.
-- `IniciarMarcadoBase()`, `IniciarMarcadoViga()`, `CancelarMarcado()` y
-  `MarcarPunto(Vector3)`, los cuatro **públicos**.
-- Viga: dos toques → `ARColocacion.PorDosPuntos(puntoI, p, g)`. La **rotación se
-  guarda en el contenedor** del elemento, la raíz se queda en identidad.
-- Columna: un toque → `ARColocacion.BaseDesdeCara(...)`.
-- **Retícula** en el piso que sigue el raycast al centro de la pantalla, con
-  `RadioReticula = 0,10`; `ActualizarReticula()` mientras hay modo activo.
-- `RaycastPiso()`: primero `Plane`, y si no hay plano, `FeaturePoint` (paredes).
-- Reglas de toque: los toques que **empiezan sobre un botón no cuentan**; tocar
-  el piso **sólo coloca si no hay ancla**; `Restablecer` vuelve a la rotación
-  marcada; `QuitarAncla` y cambiar de elemento **borran** la rotación marcada.
-
-`ActualizarBotonesMarcado()` **se deja a propósito sin conectar** en esta parte:
-los botones llegan en la 2c.
-
-#### Test EditMode nuevo: `Assets/Editor/ARMarcadoTests.cs`
-
-**14 pruebas** del flujo: viga 134 marcada recta / girada 37° / girada con la
-cámara girada / con la cámara mirando al otro lado, columna 14 desde tres
-orientaciones de cámara, `Restablecer` vuelve a la rotación marcada,
-`QuitarAncla` la borra, cambiar de elemento cancela el marcado, marcar sin modo
-no coloca nada, se autocorrige el modo equivocado, luz medida demasiado
-distinta avisa, y puntos demasiado cerca pide marcar de nuevo.
-
-### 6) Parte 2c: los botones (`ARInterfaz` + `ARInspeccionApp`)
-
-`ARInterfaz.cs`, +55 / −8. Tres botones nuevos y tres eventos:
-
-| Botón | Texto | Evento | Cuándo se ve |
-|---|---|---|---|
-| `btnMarcarBase` | «Marcar base» | `MarcarBase` | columna o muro elegido |
-| `btnMarcarViga` | «Marcar extremos i y j» | `MarcarViga` | viga elegida |
-| `btnCancelarMarcado` | «Cancelar marcado» | `CancelarMarcado` | sólo mientras se marca |
-
-`MostrarMarcado(hayElemento, esViga, marcando)` decide la visibilidad: nunca
-`Marcar base` y `Marcar viga` a la vez, y `Cancelar marcado` excluye a los otros
-dos mientras hay marcado activo.
-
-**Orden en la lista**: los botones de marcado van **justo después de los
-toggles** de planta y **antes** de «Piso ±5 cm», «Quitar ancla», «Restablecer»,
-amplitud y «Diag». **«Colocar en el piso» y «Colocar aquí» quedan al FINAL**,
-porque son el método antiguo y el marcado es ahora el principal.
-
-En `ARInspeccionApp.cs` sólo van cuatro líneas: `ConstruirInterfaz` conecta los
-tres eventos y `ActualizarBotonesMarcado()` —que estaba vacío desde la 2b—
-ahora llama a `ui.MostrarMarcado(g != null, g != null && g.esViga, modo !=
-ModoMarcado.Ninguno)`.
-
-#### Test EditMode nuevo: `Assets/Editor/ARMarcadoUITests.cs`
-
-**5 pruebas**: `MarcarBase` conectado, con columna se ve «Marcar base» y no el de
-la viga, con viga se ve «Marcar extremos» y no «Marcar base», durante el marcado
-sólo se ve «Cancelar», y **«Colocar sin marcar» queda al final de la lista**.
-
-### Cómo se usa en terreno
-
-El anillo amarillo del centro de la pantalla es la retícula: dice en qué punto
-del piso se va a clavar el elemento.
-
-**Columna** (un toque):
-
-1. Elige la columna en la lista.
-2. Pulsa **«Marcar base»**.
-3. Gira el teléfono hasta poner el **anillo amarillo al pie de la cara
-   visible** de la columna.
-4. **Toca la pantalla fuera de los botones.**
-
-**Viga** (dos toques):
-
-1. Elige la viga.
-2. Pulsa **«Marcar extremos i y j»**.
-3. Pon la **mira al PIE de la columna 14**, en la **cara que ves**, y toca.
-4. Repite en el **PIE de la columna 26** y toca.
-
-Mientras marcas, arriba aparece `Medido x m · modelo L m (±%)`, que avisa en
-verde si lo medido encaja con la longitud del modelo y en otro color si se pasa
-del 10 %. Si los dos puntos quedan demasiado cerca, la app pide marcar de nuevo.
-Para cancelar a medias: **«Cancelar marcado»**.
-
-> Importante: marcar y «Colocar en el piso» / «Colocar aquí» son **métodos
-> distintos**. Los dos últimos siguen al final de la lista y ya no son el camino
-> principal; el marcado es el que deja el elemento en su sitio real.
-
-**Ver los diagramas de cualquier elemento: «Panel 2D»**
-
-1. Elige un elemento en la lista (viga, columna o muro).
-2. Pulsa **«Panel 2D»**, que está justo antes de «Diag».
-3. Aparece un **recuadro fijo** con los tres diagramas del plano principal de
-   ese elemento: **N, V y M**, con su leyenda (valor máximo y unidad).
-4. Si cambias de elemento con el panel abierto, **se redibuja solo** con los
-   diagramas del nuevo. Para cerrarlo, vuelve a pulsar «Panel 2D».
-
-Es el **respaldo legible**: los diagramas 3D del piso sirven para ver la forma,
-y el panel 2D para leer los valores sin rodear el elemento. En las vigas, el
-momento sale **hacia abajo cuando M > 0**, como es costumbre: tensión arriba,
-compresión abajo.
-
-### Verificación
-
-Las cuatro partes, cada una por separado:
-
-| Parte | Commit | EditMode | Python |
-|---|---|---|---|
-| 1 | `d182ed3` | 55 / 55 | 154 + 1 |
-| 2a | `a86a113` | 65 / 65 | 154 + 1 |
-| 2b | `3468cbe` | 79 / 79 | 154 + 1 |
-| 2c | este | **84 / 84** | 154 + 1 |
-
-Salidas reales de la última (2c):
+### Build y verificación del APK
 
 ```text
-Python:    154 passed + 1 fallo conocido  (test_mfi_p0_elastico_agrietado, 4.71 s)
-EditMode:  84/84 Passed  (Unity 2022.3.62f3, batchmode, LogAssemblyErrors 0ms, sin errores CS)
+Unity -batchmode -nographics -buildTarget Android
+       -executeMethod MCOC.EditorTools.MCOCBuildAndroid.BuildArBatch
+Build Finished, Result: Success.
+aapt2: package=com.mcoc.edificiocomplejo.ar  versionName=1.0
+       sdkVersion=24  targetSdkVersion=36  native-code=arm64-v8a
+       permission CAMERA; uses-feature android.hardware.camera.ar
+       uses-feature com.google.ar.core.depth
+tamaño: 23.3 MB
 ```
 
-```text
-total=84 passed=84 failed=0 skipped=0 result=Passed
-
-  ARBillboardTests         Passed   4
-  ARColocacionTests        Passed   8
-  ARDosPuntosTests         Passed  10   <- 2a
-  ARFramesCamaraTests      Passed   6
-  ARMarcadoTests           Passed  14   <- 2b
-  ARMarcadoUITests         Passed   5   <- 2c
-  AROrientacionTests       Passed  15
-  ARPlanBTests             Passed   7
-  ARRigTests               Passed   4
-  LlenarElementosTests     Passed   7
-  UIOverlapTests           Passed   1
-  XRAndroidConfigTests     Passed   3
-```
-
-`UIOverlapTests` sigue en verde con los tres botones nuevos: `NoRaycastTargetImage
-SolapaBotones` comprueba que ningún `Image` con `raycastTarget` tapa los botones,
-y los de marcado se crean en la misma lista vertical que el resto.
-
-Además, los ficheros de código de las partes 2b y 2c se compararon **byte a byte**
-contra las referencias entregadas:
-
-```text
-diff ARInspeccionApp.cs ARInspeccionApp_referencia_2c.cs   ->  EXIT=0  (idénticos)
-diff ARInterfaz.cs       ARInterfaz_referencia_2c.cs       ->  EXIT=0  (idénticos)
-```
-
-Los parches se aplicaron con `git apply --check` limpio y **sin ningún `.rej`** en
-las tres partes.
-
-Sobre el fallo de Python: `test_mfi_p0_elastico_agrietado` (`tests/test_secciones.py:73`,
-`assert c.Mmax > 700.0`) **no se ha tocado**. Es una diferencia de plataforma: en
-Linux la suite da 155 passed con `openseespy==3.8.0.0` y aquí, en macOS arm64 con
-`3.7.1.2`, el M–φ cae ~19 % sobre el mismo procedimiento (645,88 kN·m en vez de
-~766). Ya está documentado en el commit `1c6e43d` ("§7 IA + corrección de
-reproducibilidad del build de openseespy"), que por eso el pin de `openseespy`
-no es cosmético. La línea base de esta sesión es **154 passed + 1 fallo conocido**.
-
-### Build Android AR: NO generado
-
-Sin cambios. Ni el APK ni los módulos de Android se tocan en esta sesión; el
-EditMode corre igual en este Mac porque no los necesita.
+Los `440 error(es)` que reporta `BuildSummary.totalErrors` son ruido interno de Bee/licensing
+contado por Unity: no hay `error CS`, ni errores de Gradle, y el veredicto es `Success`.
 
 ### Pendientes
 
-- [ ] Prueba en dispositivo: confirmar que el texto ya se lee al derecho, que las
-      marcas y rótulos se ven a 3-5 m y que el mensaje de estado ya no se pisa
-      con el diagnóstico.
-- [ ] **Prueba en dispositivo del marcado** (lo más importante que queda):
-      comprobar que el anillo de la retícula sigue al centro de la pantalla al
-      mover el teléfono, que marca dos vigas paralelas en el sitio correcto, que
-      el mensaje `Medido x m · modelo L m (±%)` sale con la unidad y el color
-      esperados, y que tocar un botón no cuenta como marcado.
-- [ ] Comprobar en paredes sin ARCore grounding (`FeaturePoint`) que el marcado
-      también funciona; en el EditMode sólo se cubre la rama de `Plane`.
-- [ ] Instalar OpenJDK + Android SDK/NDK y ejecutar `Tools/MCOC/Build Android AR`
-      (lo hacen los compañeros en Windows).
-- [ ] Acordar qué se hace con `test_mfi_p0_elastico_agrietado`: hoy la línea base
-      en macOS es 154 + 1.
+- [ ] Probar en el edificio con el teléfono (cámara AR, point & raycast, diagramas).
+- [ ] El `productName` sigue siendo `EdificioIngUnity`: la app aparece con ese nombre en el
+      launcher; se puede cambiar a algo como `MCOC AR`.
+- [ ] Decidir si `MCOC_Complejo_AB/` se integra al repo principal o se trabaja aparte.
 
 ---
 
-## Sesión 25 - Corrección 6, parte 3a: mira fija y punto del piso que no se pierde
+## SesiÃ³n 20 â€” CorrecciÃ³n 2: rig AR con UNA cÃ¡mara, fondo, pose y toques
 
-### El problema visto en terreno
+**Fecha:** 2026-10-01
+**Alcance:** Ãºnicamente la app AR. Sin tocar `exportar_ar.py`, `ar_elementos.json`,
+`ARGeometriaBuilder`, `ARColocacion` ni `Main.unity`. Todos los cambios son aditivos.
 
-Con la app de la Sesión 24 en el edificio, marcar en el piso salía mal de dos
-formas:
+### DiagnÃ³stico recibido
 
-1. **El anillo se perdía.** `RaycastPiso` buscaba un plano ARCore y, si en ese
-   momento no había plano, la retícula **no aparecía**: el usuario apuntaba al
-   techo o a una mesa, lo que devolvía un punto alto que no era el piso, y a
-   veces no devolvía nada y el marcado se quedaba sin hacer. Como la retícula
-   solo se dibujaba cuando el raycast acertaba, no había forma de saber si
-   faltaba el punto o si el punto estaba mal.
-2. **Los textos se encimaban.** El rótulo «Medido x m · modelo L m (±%)» salía
-   pegado al de otros elementos, y no había ninguna referencia fija de «aquí es
-   donde voy a marcar».
+En el telÃ©fono ARCore **ya trackeaba** (`SessionTracking`, permiso de cÃ¡mara OK), pero:
 
-### Qué hace este parche
+- el fondo era el azul de borrado de Unity, sin imagen de la cÃ¡mara;
+- la vista no seguÃ­a al telÃ©fono;
+- la interfaz bloqueaba los toques.
 
-**Matemática pura en `Assets/Scripts/AR/ARPiso.cs`** (nuevo, 103 líneas).
+### Causa raÃ­z
 
-`public enum OrigenPunto` dice de dónde salió el punto, y `public static class
-ARPiso` lleva la matemática, sin UI ni escenas:
+Faltaban tres cosas del rig canÃ³nico de AR Foundation 4.2:
 
-| Método | Qué hace |
-|---|---|
-| `EsPiso(yPunto, yCamara)` | **descarta cielos y mesas altas**: no es piso si el punto queda por encima de la cámara |
-| `CercaDelPiso(yPunto, yCamara, hayPisoConocido, yPiso)` | exige la altura del piso cuando ya se conoce |
-| `AlturaPisoEstimada(yCamara, hayPisoConocido, yPisoConocido)` | **1,40 m bajo el teléfono** si no hay piso conocido; si lo hay, lo reutiliza |
-| `InterseccionPlanoHorizontal(origen, direccion, y, ...)` | corta el rayo con un plano horizontal; **descarta** si el punto cae demasiado lejos |
-| `Describir(OrigenPunto)` | texto para el mensaje de estado |
+1. **`ARCameraBackground` no existÃ­a.** Es el componente que vuelca la textura de la
+   cÃ¡mara AR. Sin Ã©l la cÃ¡mara se dibuja contra su color de borrado: de ahÃ­ el azul.
+2. **La cÃ¡mara no era hija de un `ARSessionOrigin`.** El rig viejo colgaraba
+   `ARCamera` del GameObject raÃ­z, asÃ­ que el origen de trackeo no la gobernaba y la
+   pose no seguÃ­a el dispositivo.
+3. **No habÃ­a `ARPoseDriver`**, que es el que aplica la pose cada frame en 4.2.
 
-**Cadena de respaldos en `ARInspeccionApp.cs`.** `RaycastPiso` ahora delega en
-`ResolverPuntoPiso`, que prueba cuatro fuentes en orden y **siempre devuelve
-algún punto**:
+Se exploratory el API real de los paquetes en `Library/PackageCache` y se confirmÃ³:
 
-1. plano ARCore **bajo el teléfono** (no cualquier plano);
-2. **último piso conocido**, extendido (no se pierde si el plano parpadea);
-3. `FeaturePoint` a la **altura del piso** (muros y superficies verticales);
-4. **piso estimado**, 1,40 m bajo el teléfono.
+- El subsistema se llama **`XRCameraSubsystem`**, no `ARCameraSubsystem` (por eso un
+  intento previo de diagnÃ³stico con `ARCameraSubsystem` no compilaba).
+- `ARCameraManager` deriva de
+  `SubsystemLifecycleManager<XRCameraSubsystem, ...>`.
+- `ARCameraBackground` tiene `[RequireComponent(typeof(ARCameraManager))]` y toma su
+  material de `cameraManager.cameraMaterial`.
+- `ARPoseDriver` es pÃºblico y usa el `InputDevices` legado.
+- `ARSessionOrigin` expone la propiedad `camera`.
+- `ARCameraBackground` **guarda y sobrescribe** `clearFlags` a `Nothing` mientras
+  pinta el fondo, restaurando el valor previo al desactivarse. Por eso el
+  `clearFlags` se fija *despuÃ©s* de aÃ±adir el componente.
 
-Se hacen públicos `PuntoPisoDesdeRayo(Ray, float, out Vector3, out OrigenPunto)`
-y `RegistrarAlturaPiso(float)`, más las propiedades `HayPisoConocido` y
-`AlturaPisoConocida`, para poder ejercitarlo desde tests.
+### 1) Una sola cÃ¡mara
 
-**Retícula con aviso de color.** `RadioReticula` pasa de 0,10 a **0,25 m**. El
-color dice de dónde salió el punto: **amarillo = piso detectado**, **naranja =
-estimado o punto suelto**, y cuando se marca sobre piso estimado la app **avisa
-en pantalla** para que el usuario sepa que está estimando.
+Se extrajo el rig a `Assets/Scripts/AR/ARRig.cs` con `ARRig.Construir(Transform)`:
 
-**Mira fija en `ARInterfaz.cs`.** GameObject `Mira` en el centro de la pantalla,
-con imágenes **`raycastTarget = false`** para que **no se coman los toques**, y
-`MostrarMira(bool)`. Se muestra **mientras se marca** y se oculta en cuanto
-terminas: es la referencia visual de «aquí voy a marcar» que faltaba.
+```
+ARSession                    (ARSession)
+  ARSessionOrigin            (ARSessionOrigin, ARPlaneManager, ARAnchorManager, ARRaycastManager)
+    ARCamera                 (Camera, ARCameraManager, ARCameraBackground, ARPoseDriver)
+```
 
-### Test EditMode nuevo: `Assets/Editor/ARPisoTests.cs`
+- La `ARCamera` lleva `tag = MainCamera`, `clearFlags = SolidColor`, fondo **negro**,
+  `depth = 0`, near 0.05, far 200.
+- `ARRig.Construir` llama a `DestruirCamarasAjenas()`, que desactiva y destruye
+  cualquier otra `Camera` de la escena y registra los nombres eliminados en
+  `camarasEliminadas`.
+- Se eliminÃ³ por completo el `ConstruirRigAR()` antiguo de `ARInspeccionApp`.
+- `AR_Inspeccion.unity` se verificÃ³: 1 GameObject (`ARInspeccion`), **0 cÃ¡maras**.
+  El rig se construye 100 % por cÃ³digo.
 
-**11 pruebas**, todas de la matemática pura y de la mira:
+### 2) DiagnÃ³stico ampliado (cada 0,5 s)
 
-| Prueba | Qué fija |
-|---|---|
-| `EsPiso_DescartaCielosYMesasAltas` | un punto sobre la cámara no es piso |
-| `ApuntandoAlCielo_NoHayPunto` | rayo horizontal hacia arriba no da punto |
-| `CercaDelPiso_ConPisoConocido_ExigeLaMismaAltura` | con piso conocido se compara la altura |
-| `AlturaEstimada_SinPisoConocido_Es1_40BajoElTelefono` | el estimado son 1,40 m bajo el teléfono |
-| `ConPisoConocido_ElPuntoSaleDelPisoExtendido` | el piso conocido sobrevive a la pérdida de plano |
-| `SinPisoConocido_ElPuntoSaleDelPisoEstimado` | y si no hay, sale del estimado |
-| `Interseccion_RayoA45Grados_CaeA1_4m` | geometría del corte con plano horizontal |
-| `Interseccion_RayoHaciaArribaUHorizontal_NoHayPunto` | sin división por cero ni punto absurdo |
-| `Interseccion_DemasiadoLejos_SeDescarta` | se descarta el punto a distancia absurda |
-| `LaMira_NoInterceptaToques` | los `Image` de la mira tienen `raycastTarget = false` |
-| `LaMira_SoloSeVeMientrasSeMarca` | la mira no aparece fuera del marcado |
+`ARRig.Describir()` alimenta un panel de UI (se sustituyÃ³ el `OnGUI` anterior):
 
-### Parte 3b: la viga se marca por el PIE de sus columnas de apoyo
+- `CÃ¡maras: N (nombres)` â€” incluye el sufijo `[off]` si estÃ¡ deshabilitada.
+- `Fondo: ARCameraBackground enabled=? / material=<shader o "<sin material>">`
+- `Pose cÃ¡mara: x,y,z / yaw` â€” debe cambiar al mover el telÃ©fono.
+- `Planos detectados: N`
+- `Ancla: sÃ­/no`, `SelecciÃ³n: <tag>`, `FPS`.
 
-En la 3a el usuario marcaba **bajo el extremo i y bajo el j**, en teoría donde
-están las columnas. En la práctica eso falla: el extremo de la viga está
-**sobre** la columna, y quien está en el edificio con el teléfono **no ve ese
-extremo**, ve la **cara de la columna**. Marcando en el aire o en un punto
-parecido, la viga sale desplazada.
+El panel se refresca en `Update()` con `proximoDiag = Time.time + 0.5f`.
 
-**Matemática pura en `Assets/Scripts/AR/ARApoyos.cs`** (nuevo, 95 líneas).
-`public static class ARApoyos` busca en el contrato `ar_elementos.json` la
-columna cuya **cabeza coincide con el extremo** de la viga:
+### 3) MigraciÃ³n a AR Foundation 5.1 â€” **NO ejecutada (condicional)**
 
-| Método | Qué hace |
-|---|---|
-| `ColumnaBajoExtremo(datos, viga, extremoI)` | la columna de apoyo: para la viga 134, la **14** bajo el extremo i y la **26** bajo el j. Usa `ToleranciaPlanta = 0,50` m y `ToleranciaAltura = 0,60` m |
-| `MitadApoyo(columna)` | media sección de la columna: **`MitadColumnaPorDefecto = 0,35` m**, o la medida real si el nombre la trae |
-| `NombreApoyo(columna)` | el nombre para las instrucciones en pantalla |
+Queda **pendiente**: sÃ³lo aplica si, con una sola cÃ¡mara, el fondo sigue sin la
+imagen de la cÃ¡mara o la pose no cambia. Ninguna de las dos condiciones se puede
+evaluar sin una prueba en el telÃ©fono. Ver "Pendientes" mÃ¡s abajo.
 
-**Cambio en `ARInspeccionApp.cs`.** `CentroApoyo(puntoCara, extremoI)` toma el
-punto que el usuario tocó en la **cara visible** de la columna y lo mete
-**media sección (0,35 m) hacia su eje**: el punto marcado es el **pie de la
-columna**, no el eje, pero la viga se calcula sobre el eje. Las instrucciones ya
-**nombran la columna**: «Apunta la mira al PIE de …» en vez de «bajo el extremo».
+### 4) Interfaz
 
-#### Test existente ajustado (el único)
+`ARInterfaz.Construir` pasÃ³ a llamarse **`ARInterfaz.Crear`**.
 
-`Viga134_DosToques_QuedaSobreLaRectaMarcada` (los 4 `TestCase`):
-antes marcaba los puntos directamente sobre la recta; ahora mete
-`Pi += f * 0.35f` y `Pj += f * 0.35f` con `f` la dirección de la cámara, que es
-exactamente lo que hace `CentroApoyo`. Sigue siendo el mismo test, con la misma
-aspiración: la viga queda sobre la recta que une los **ejes** de las columnas.
+- **TÃ¡ctil:** los `Image` de los paneles de fondo ahora tienen `raycastTarget = false`.
+  Antes `true` en paneles de pantalla casi completa: el `GraphicRaycaster` se comÃ­a el
+  toque dirigido al piso. SÃ³lo los botones interceptan.
+- Se aÃ±adiÃ³ `SobreUI(Touch)` en `ToqueSimple()`: sin esa comprobaciÃ³n, tocar un botÃ³n
+  tambiÃ©n disparaba el gesto de colocar y el ancla saltaba al centro de la pantalla.
+- **Panel DIAGNOSTICO:** abajo a la izquierda, `anchorMax.x = 0.40` (â‰¤ 40 % del ancho),
+  banda vertical 10..150. `raycastTarget = false` en el `Image` y en sus textos.
+- **BotÃ³n "Diag"** en la columna Controles que muestra u oculta el panel.
+- **Panel Elementos:** la lista sale ahora del contrato (`datos.EnOrden()`), no de la
+  geometrÃ­a, asÃ­ que hay un botÃ³n por tag aunque la construcciÃ³n visual no haya
+  terminado. Tags del contrato: **134, 14, 26** (ordenados: 14, 26, 134).
+- **Resaltado:** `ResaltarElemento(tag)` pinta el botÃ³n elegido de azul
+  (`0.16, 0.52, 0.86`). Se indexa con `botonPorTag` en vez de parsear `b.name`.
+- **Defaults:** Eje SÃ, M SÃ, V SÃ, N **no**, No principal no, P-M SÃ.
+- **Layout:** cabecera y estado ocupan 0..-134; los paneles laterales arrancan en
+  y = -142; la banda inferior ocupa 0..150. Los textos `estado` e `info` quedan
+  verificados por test contra los tres paneles.
+- `info` ahora muestra tag, ubicaciÃ³n, secciÃ³n, material, plano principal y longitud,
+  con respaldo al contrato cuando la geometrÃ­a todavÃ­a no estÃ¡ construida.
 
-#### Test EditMode nuevo: `Assets/Editor/ARApoyosTests.cs`
+### 5) Test EditMode
 
-**4 pruebas**:
+Nuevo `Assets/Tests/EditMode/TestRigYInterfaz.cs` â€” **16 tests, 16 pasan**.
 
-| Prueba | Qué fija |
-|---|---|
-| `Viga134_ApoyaEnColumna14_YColumna26` | la búsqueda en el contrato acierta las dos columnas |
-| `Viga134_MarcadaPorElPieDeSusColumnas_QuedaSobreSusEjes` | marcar el pie deja la viga sobre los ejes |
-| `LasInstrucciones_NombranLasColumnasDeApoyo` | el texto al usuario dice «columna 14», no «extremo» |
-| `SinColumnaConocida_UsaValoresPorDefecto` | sin columna en el contrato usa 0,35 m y no revienta |
+Cubre: exactamente 1 cÃ¡mara; jerarquÃ­a canÃ³nica; `clearFlags` negro y `depth` 0;
+`ARCameraBackground` enabled; destrucciÃ³n de cÃ¡maras ajenas; 0 cÃ¡maras en
+`AR_Inspeccion.unity`; ningÃºn `Image` con `raycastTarget = true` solapa un `Button`
+en rect de pantalla 2772x1280; paneles de fondo no interceptan; un botÃ³n por tag;
+resaltado del elegido; diag â‰¤ 40 % y en la mitad inferior; `estado`/`info` no solapan
+paneles.
 
-### Parte 3c: el toggle «No principal» corregido y rótulos que no se enciman
+Dos desviaciones que hicieron falta para que compilara el assembly de tests:
 
-#### El bug: «No principal» estaba al revés
+- Se creÃ³ `Assets/Scripts/AR/MCOC.AR.asmdef`: los tests no pueden referenciar
+  `Assembly-CSharp`, asÃ­ que el cÃ³digo AR necesita su propio ensamblado.
+- `XElement.Count()` requiere `System.Linq`; se llama explÃ­citamente.
 
-El toggle se llamaba «No principal» y al activarse **ocultaba justo lo
-principal**. La causa era `EsPrincipal()`, que decidía comparando dos cadenas:
+### Herramientas de build
+
+- `MCOCBuildAndroid.TestsYBuildArBatch()` â€” lee `editmode_results.xml` y, sÃ³lo si
+  estÃ¡ en verde, compila el APK. Si algÃºn test fallÃ³, no genera el binario.
+
+**Los EditMode se lanzan con el flag de lÃ­nea de comandos, no con
+`TestRunnerApi.Execute`.** Invocado desde `-executeMethod` en batchmode, el runner no
+completa y el proceso queda esperando el XML indefinidamente (se colgaron dos
+corridas de ~8 min por esto). AdemÃ¡s `TestRunnerApi` es un `ScriptableObject`:
+necesita `CreateInstance`, y `new` lanza una excepciÃ³n. La secuencia que funciona
+son **dos invocaciones**:
+
+```powershell
+# 1) Tests
+Unity.exe -batchmode -projectPath <proj> -runTests -testPlatform EditMode `
+  -testResults <proj>\editmode_results.xml -logFile tests.log
+
+# 2) Build (sÃ³lo si los tests pasaron)
+Unity.exe -batchmode -nographics -projectPath <proj> -buildTarget Android `
+  -executeMethod MCOC.EditorTools.MCOCBuildAndroid.TestsYBuildArBatch `
+  -logFile build_android.log
+```
+
+### Resultado de la corrida
+
+Tests: **16/16 correctos**, 0 fallos.
+Build: `Succeeded`, 456 574 771 bytes. APK de 23,3 MB.
+
+VerificaciÃ³n del binario con `aapt2` y lectura de la tabla `lib/` del ZIP:
+
+- `com.mcoc.edificiocomplejo.ar`, versionName 1.0, compileSdk 36
+- `application-label: 'MCOC AR'`
+- `android.hardware.camera.ar`, `android.hardware.camera`, `com.google.ar.core.depth`
+- permiso `android.permission.CAMERA`
+- un solo ABI: `arm64-v8a`
+
+### Problema de entorno encontrado
+
+`Start-Process` con `-ArgumentList` como **array** no entrecomilla los argumentos en
+PowerShell 5.1. Con rutas que contienen espacios (`Proyecto 1`) Unity recibÃ­a
+`-logFile C:\Users\pablo\Desktop\Proyecto` y un argumento basura, y el build terminaba
+sin escribir el log. La forma correcta es construir **un Ãºnico string** con comillas
+explÃ­citas alrededor de cada ruta.
+
+### CorrecciÃ³n de robustez anterior (SesiÃ³n 19)
+
+`ARInterfaz.CargarFuente` hacÃ­a `Resources.FindObjectsOfTypeAll<Font>()[0]`: sin
+fuentes cargadas ese Ã­ndice lanzaba `IndexOutOfRangeException` sin capturar, y como
+`Awake()` la llamaba en la primera lÃ­nea, abortaba **antes** de construir el rig.
+Ahora nunca lanza y `Awake` va dentro de un `try/catch` que deja la interfaz en
+pantalla aunque algo falle.
+
+
+### Entrega (APK + ZIP)
+
+- APK listo para instalar: `C:\Users\pablo\Desktop\MCOC_AR.apk` (24 479 023 bytes,
+  SHA-256 `09A7AB82F9F95554D2EB7CCD5974077722EA374FA707847FFB60884FAA739969`).
+- ZIP completo y verificado (`7z t` = OK): `C:\Users\pablo\Desktop\MCOC_Complejo_AB_entrega.zip`,
+  28 MB, 407 entradas. Lleva el proyecto sin `Library/`, `Temp/`, `Logs/`, `obj/`,
+  `Builds/`, `.vscode/`, `UserSettings/` ni `.git/`, mas el `MCOC_AR.apk` en la raiz.
+- Detalle completo en `docs/sesion20.md`.
+
+#### Nota de entorno: comprimir el proyecto en Windows
+
+`Compress-Archive` de PowerShell 5.1 se colgo (10 min sin salida) comprimiendo el arbol
+completo de `MCOC_Complejo_AB/`. Ademas `[System.IO.Compression.ZipFileExtensions]`
+no se resuelve sin cargar antes el assembly: PowerShell 5.1 no trae ese tipo en el
+ensamblado por defecto y `CreateEntryFromFile` fallaba con
+`ArgumentNullException` en el parametro `destination`. La forma que si funciono fue
+**7-Zip** desde linea de comandos:
+
+```powershell
+& "C:\Program Files\7-Zip\7z.exe" a -tzip -mx=5 $zip "$raiz\*" `
+    '-xr!Library' '-xr!Temp' '-xr!Logs' '-xr!obj' '-xr!Builds' 
+    '-xr!.vscode' '-xr!UserSettings' '-xr!.git'
+& "C:\Program Files\7-Zip\7z.exe" t $zip
+```
+
+Ojo: los `-xr!` deben ir **entrecomillados** en PowerShell, si no 7-Zip los parte y
+responde `Too short switch`. El APK se agrega aparte con `-mx=0` (ya esta comprimido).
+
+### Pendientes
+
+- [ ] **Probar en el telÃ©fono** y mandar los valores del panel DIAGNOSTICO con el
+      telÃ©fono en la mano. Es lo que decide si hace falta el punto 3.
+- [ ] Si el fondo sigue sin imagen de cÃ¡mara o la pose no cambia: migrar a
+      AR Foundation 5.1.x + ARCore XR Plugin 5.1.x, `XROrigin`
+      (`com.unity.xr.core-utils`) en vez de `ARSessionOrigin`, `TrackedPoseDriver`
+      (`com.unity.inputsystem`) en vez de `ARPoseDriver`, `Active Input Handling = Both`
+      (el cÃ³digo usa `Input.touchCount`), y ajustar `ARRig`, `ARRigTests` y
+      `XRAndroidConfigTests` a 5.1. `ARColocacion` no cambia.
+- [ ] El `productName` ya es `MCOC AR` (cambiado en `ConfigurarAndroid`).
+- [ ] Decidir si `MCOC_Complejo_AB/` se integra al repo principal o se trabaja aparte.
+
+---
+
+## Sesión 23 — APK generado desde el ZIP `Proyecto_1_MCOC_Complejo_A_B_COMPLETO (1).zip`
+
+**Fecha:** 2026-10-04
+
+### Que se pidio
+
+Build del APK Android AR **con los archivos del ZIP nuevo** de
+`Proyecto 1`, no con los del proyecto local. Mismos requisitos que el APK de la
+Sesión 20 (escena AR index 0, IL2CPP/ARM64, minSdk 24, GLES3, camara + ARCore,
+interfaz que no bloquea toques, label `MCOC AR`).
+
+### Hallazgo: el ZIP es MAS NUEVO que el proyecto local
+
+El ZIP (contenido del 16-sep al 02-10) ya traia la **Corrección 3** que el
+proyecto local todavia no tiene:
+
+- `ARRig.cs` usa **`TrackedPoseDriver`** (`com.unity.xr.legacyinputhelpers 2.1.12`)
+  en vez de `ARPoseDriver`. El motivo esta escrito en el propio archivo:
+  `ARPoseDriver` es obsoleto desde AR Foundation 2.0 y con ARCore +
+  `UpdateAndBeforeRender` dejaba la camara clavada en (0,0,0) — la sesion
+  arrancaba y trackeaba, pero nadie escribia la pose en el transform.
+- `Packages/manifest.json` del ZIP ya incluye `com.unity.xr.legacyinputhelpers`.
+- El ZIP tambien trae el arreglo de `QuitarAncla` en `ARColocacion` (la raiz de
+  diagramas se reparenta antes de destruir el ancla; antes se perdia el diagrama
+  entero) y el respaldo por `FeaturePoint` en el raycast.
+- Bitacora del ZIP: 155 tests Python + **51/51 EditMode**; el APK lo compilaban en el Mac.
+
+Diferencias por hash contra el proyecto local: `ARRig.cs`,
+`ARInspeccionApp.cs`, `ARInterfaz.cs`, `ARColocacion.cs`,
+`MCOCBuildAndroid.cs`, `MCOCXRSetup.cs`, `manifest.json` y
+`ProjectSettings.asset`. Iguales: `AR_Inspeccion.unity`, `ARGeometriaBuilder.cs`
+y `ar_elementos.json`.
+
+**El ZIP no traia ningun `.apk`** (0 coincidencias sobre 13 456 entradas; su
+ZIP anidado `para_entrega.zip` tampoco).
+
+### Como se compilo en Windows
+
+El toolchain si esta instalado en esta maquina (la bitacora del ZIP decia que
+faltaba, porque alli se compilo en Mac):
+
+- Unity Hub `2022.3.62f3` con `AndroidPlayer` (SDK + NDK + OpenJDK).
+- Paquetes AR resueltos **offline** desde la cache global
+  `%LOCALAPPDATA%\Unity\cache\packages\packages.unity.com`.
+
+Pasos:
+
+1. Extraer el ZIP a una carpeta **aparte** (`%LOCALAPPDATA%\Temp\opencode\zipbuild`).
+   Nunca sobre el proyecto local: son dos linajes distintos del mismo codigo.
+2. Borrar el `Library/` que venia del Mac (204 MB). Unity lo regenera; los
+   paquetes se resuelven de la cache global.
+3. `Unity.exe -batchmode -nographics -quit -executeMethod
+   MCOC.EditorTools.MCOCBuildAndroid.BuildAr -buildTarget Android`
+
+El build del ZIP **no tiene entrypoint de batch** propio (solo `[MenuItem]`),
+pero `-executeMethod` invoca metodos publicos estaticos, asi que el metodo del
+menu sirve tal cual. Salida en `<proyecto>/build/EdificioComplejo_MCOC_AR.apk`.
+
+Primer build: ~19 min (import + IL2CPP + Gradle desde cero). Segundo, tras tocar
+un `.cs`: ~5 min incremental.
+
+### Un ajuste si hizo falta
+
+El `ConfigurarAndroid()` del ZIP **no fija `productName`**, asi que el launcher
+sale como `EdificioIngUnity` (y `companyName` como `DefaultCompany`). Se
+anadieron dos lineas en la **copia de trabajo** (no en el ZIP del usuario):
 
 ```csharp
-private static bool EsPrincipal(ARGeometriaElemento g, ARTrazo t)
-{
-    if (t.etiqueta == null) return true;
-    return g.planoPrincipal != null && g.planoPrincipal.EndsWith(t.etiqueta);
-}
+PlayerSettings.companyName = "MCOC";
+PlayerSettings.productName = "MCOC AR";
 ```
 
-`g.planoPrincipal` traía el **texto** del plano (`"local x–z"`) y `t.etiqueta`
-el **nombre del trazo** (`"M_xz"`). `"local x–z".EndsWith("M_xz")` es `false`
-**siempre**, así que el diagrama principal nunca se reconocía como tal y el
-toggle hacía lo contrario de lo que prometía. Un método que compara texto con
-`EndsWith` para decidir geometría es el tipo de cosa que falla en silencio.
+Con eso el label pasa a `MCOC AR`, igual que el APK de la Sesión 20.
 
-**La corrección: que el dato venga del que lo sabe.** El builder es quien sabe
-qué plano es el principal, así que lo pone:
+### Resultado
 
-- `ARTrazo.principal` y `ARMarca.principal` (`bool`, por defecto `true`).
-- `ARMarca.tipo` (`ARTipoTrazo`), para saber a qué diagrama pertenece cada cruz.
-- El builder calcula `esPrincipal = tipo == Normal || forzarAncho` — **N siempre
-  es principal**, y en V y M lo decide el plano.
-- **`EsPrincipal()` desaparece**, con `grep` limpio: no queda ninguna referencia.
+```text
+Build Finished, Result: Success.        0 errores CS
+[MCOC] APK: ...\build\EdificioComplejo_MCOC_AR.apk  (23,35 MB)
+application-label: 'MCOC AR'
+package: com.mcoc.edificiocomplejo.ar   versionName 1.0
+sdkVersion 24 / targetSdkVersion 36 / compileSdk 36
+permisos: INTERNET, CAMERA
+features: android.hardware.camera.ar, com.google.ar.core.depth, android.hardware.camera
+ABI: arm64-v8a (unico)   libil2cpp.so + libUnityARCore.so presentes
+```
 
-#### Rótulos a alturas distintas
+- **APK:** `C:\Users\pablo\Desktop\MCOC_AR_ZIP.apk` — 24 483 835 bytes,
+  SHA-256 `2A15D8C616F883C64E24F1CA5041767D320D07595E012D9FAEB84EB401DEAC71`.
+- Distinto del APK anterior (`MCOC_AR.apk`, 24 479 023 bytes): este es el que
+  lleva la **Corrección 3** (`TrackedPoseDriver`), que es justo lo que faltaba
+  para que la camara siga al telefono.
 
-Todos los rótulos iban en el punto medio del elemento (`m = puntos.Count / 2`),
-así que N, V y M se **encimaban** en el mismo sitio. Ahora cada diagrama tiene su
-fracción de la longitud, con `FraccionRotulo(tipo, principal)`:
+### Pendientes
 
-| Diagrama | Fracción | |
-|---|---|---|
-| N | 0,20 | |
-| V | 0,45 | |
-| M | 0,70 | |
-| no principales | lo anterior **+ 0,12** | para que no caigan sobre su principal |
+- [ ] **Probar `MCOC_AR_ZIP.apk` en el Xiaomi Redmi Note Pro 15 5G** y mandar el
+      panel DIAGNOSTICO con el telefono en la mano. Este APK ya incluye el arreglo
+      de la pose, asi que la migracion a AR Foundation 5.1.x queda como plan B.
+- [ ] Decidir cual de los dos linajes es el bueno: el proyecto local (Sesión 20,
+      `ARPoseDriver`) o el del ZIP (Sesión 23, `TrackedPoseDriver`). No se han
+      mezclado; convendria quedarse con el del ZIP y portar el build script.
+- [ ] La copia de trabajo vive en `%LOCALAPPDATA%\Temp` y se puede perder.
+      Si hay que seguir editando, extraer el ZIP en una carpeta permanente.
+- [ ] Sincronizar el arreglo de `QuitarAncla` de `ARColocacion` y el respaldo
+      por `FeaturePoint` al proyecto local, si ese sigue vivo.
 
-`IndiceRotulo()` convierte la fracción en índice, con `Math.Max/Min` para no
-salirse. El texto también se **acorta**: de «i … j … Mmax …» a
-`«M_xz  i −114.3 · j −159.6 · máx 159.6 kN·m»`. Las marcas de P–M y de demanda
-llevan su `tipo`, así que se ocultan con su propio diagrama.
+---
 
-#### `ARInspeccionApp.cs`: los rótulos y las cruces siguen a su toggle
+## Sesión 24 — APK desde el ZIP `correccion5`
 
-`bool vis = v.texto ? true : Visible(v.tipo, v.principal);` era la causa de que
-los rótulos se vieran **siempre**: el `? true` los dejaba pasar. Ahora es
-`bool vis = Visible(v.tipo, v.principal);` para los dos, y las cruces se registran
-en `visores` con `tipo = m.tipo, principal = m.principal` en lugar de
-`tipo = Eje, principal = true`.
+**Fecha:** 2026-10-05
+**Origen:** `C:\Users\pablo\Desktop\Proyecto 1\Proyecto_1_MCOC_Complejo_A_B_COMPLETO_correccion5.zip`
+(12 930 471 bytes, contenido del 04-10 17:14, 869 entradas, sin `.apk` dentro).
 
-#### Test EditMode nuevo: `Assets/Editor/ARRotulosTests.cs`
+Mismos requisitos que siempre: escena AR index 0, IL2CPP/ARM64, minSdk 24, GLES3,
+camara + ARCore, interfaz que no bloquea toques, label `MCOC AR`.
 
-**5 pruebas**:
+### Que trae la Corrección 5
 
-| Prueba | Qué fija |
-|---|---|
-| `Principal_Viga134_EsElPlanoXZ` | en la viga 134 el plano principal es el **xz** |
-| `Principal_Columna14_EsElPlanoXY` | en la columna 14 es el **xy** |
-| `EnLaApp_PorDefectoSeVeElPrincipalYNoElSecundario` | **el bug**: por defecto se ve el principal, no el secundario |
-| `LosRotulos_VanAAlturasDistintas` | N, V y M no comparten índice |
-| `LosRotulos_SonCortos` | el texto cabe, con unidad y sin el Mmax en crudo |
+Ademas de la Corrección 3 (que ya traía `TrackedPoseDriver` en vez de
+`ARPoseDriver`), este ZIP anade marcado de dos puntos:
 
-### Parte 3d: panel 2D de diagramas (respaldo legible)
+- `ARDosPuntos`: punto medio exacto y eje `i-j` sobre `Pi..Pj`, incluso con la
+  viga girada 90°/37° e invertida.
+- `ARBillboard`: el texto se lee al derecho desde cualquier posición de cámara.
+- Flujo en la app: viga 134 por dos toques (independiente del rumbo de la cámara) y
+  columna por un toque ("Marcar base"); boton Restablecer; aviso de longitud L.
+- Tests nuevos: `ARDosPuntosTests`, `ARBillboardTests`, `ARMarcadoTests`,
+  `ARMarcadoUITests`.
 
-Los diagramas se dibujan **en el piso, en 3D**, y eso tiene dos problemas en
-terreno: hay que rodear el elemento para leerlos, y si el AR pierde el plano se
-van con él. La 3c separó los rótulos, pero **siguen siendo texto en el espacio**.
-Esta parte añade un **respaldo fijo en pantalla**: los mismos diagramas del
-elemento elegido, en un recuadro 2D que siempre se lee igual.
+### Verificación antes de compilar
 
-**Dibujo puro en `Assets/Scripts/AR/ARGrafico.cs`** (nuevo, 169 líneas).
-`public static class ARGrafico` con:
+A diferencia del ZIP anterior, aqui **si** se corrio la suite EditMode en Unity
+(la bitácora del ZIP lo pedia explicitamente) para no gastar 20 min de build con
+codigo roto:
 
-- `Series(el)` → las **tres series** N, V y M **del plano principal** (para la
-  viga 134 el `xz`, para la columna 14 el `xy`).
-- `Leyenda(Serie)` → el texto de cada fila.
-- `APixel(x, v, L, vmaxAbs, …)` → proyecta un valor a coordenadas de píxel,
-  **con ejes y signos** (para que se vea en qué lado del cero cae cada curva).
-- `Dibujar(el, destino)` → genera la `Texture2D`: un gráfico de **3 filas**, una
-  por diagrama, reutilizando la textura si se le pasa una. En **vigas con
-  M > 0, el momento va hacia abajo** (tensión arriba, compresión abajo).
+```text
+Unity EditMode: total=84  passed=84  failed=0  inconclusive=0
+errores CS: 0
+```
 
-**`ARInterfaz.cs`**: botón **«Panel 2D»**, creado **justo antes de «Diag»**, con
-el evento `Panel2D`. El recuadro lleva `panel2DImagen` (RawImage),
-`panel2DTitulo`, `panel2DLeyendas` (3 `Text`) y **todo con `raycastTarget =
-false`**, para no robarle toques a los botones. Métodos `MostrarPanel2D(bool)` y
-`ActualizarPanel2D(...)`. Nace oculto (`MostrarPanel2D(false)` al construir).
+La bitácora del ZIP reportaba 81/81 con un emulador de la API de Unity escrito a
+mano (`mcs`); en Unity 2022.3.62f3 real son **84/84**.
 
-**`ARInspeccionApp.cs`**: `AlternarPanel2D()`, `RefrescarPanel2D()` y la
-propiedad `Panel2DVisible`. El panel **sigue al elemento elegido**: al cambiar de
-elemento, si está visible, se refresca con los diagramos del nuevo.
+### Build
 
-#### Test EditMode nuevo: `Assets/Editor/ARPanel2DTests.cs`
+Mismo metodo que en la Sesión 23: extraer aparte, borrar `Library/`, resolver
+paquetes offline desde la cache global y
+`-executeMethod MCOC.EditorTools.MCOCBuildAndroid.BuildAr -buildTarget Android`.
+Toolchain en esta maquina: Unity Hub 2022.3.62f3 + AndroidPlayer (SDK/NDK/OpenJDK).
+~22 min (import + IL2CPP + Gradle desde cero).
 
-**6 pruebas**:
+Se volvio a anadir `companyName = "MCOC"` y `productName = "MCOC AR"` en
+`ConfigurarAndroid()` de la **copia de trabajo**: el ZIP sigue sin fijar el
+`productName`, asi que sin eso el launcher sale como `EdificioIngUnity`.
 
-| Prueba | Qué fija |
-|---|---|
-| `Series_Viga134_PlanoXZ` | la viga toma N, V y M **del plano xz** |
-| `Series_Columna14_PlanoXY` | la columna toma **del xy** |
-| `Leyenda_Viga134_TraeLosValoresDeReferencia` | la leyenda trae los valores reales del contrato |
-| `APixel_EjesYSentidos` | la proyección mantiene ejes y lado positivo/negativo |
-| `Dibujar_Viga134_ElMomentoQuedaEnLaFilaDeAbajo` | con M > 0 el momento se dibuja abajo |
-| `ElPanel_SeAbreConElBoton_YSigueAlElemento` | el botón abre el panel y al cambiar de elemento se redibuja |
+### Resultado
+
+```text
+Build Finished, Result: Success.        0 errores CS
+[MCOC] APK: ...\build\EdificioComplejo_MCOC_AR.apk  (23,36 MB)
+application-label: 'MCOC AR'
+package: com.mcoc.edificiocomplejo.ar   versionName 1.0
+sdkVersion 24 / targetSdkVersion 36 / compileSdk 36
+permisos: INTERNET, CAMERA
+features: android.hardware.camera.ar, com.google.ar.core.depth, android.hardware.camera
+ABI: arm64-v8a (unico)   libil2cpp.so + libUnityARCore.so presentes
+```
+
+- **APK:** `C:\Users\pablo\Desktop\MCOC_AR_C5.apk` — 24 492 603 bytes,
+  SHA-256 `F785FE26AE628D0456D17E4BFA68AB5DD975DC5F87665DDA4215146C9BC9FD59`.
+
+### Los tres APKs que hay en el Desktop
+
+| Archivo | Fecha | Que lleva |
+| ------- | ----- | --------- |
+| `MCOC_AR.apk` | 01-10 12:43 | Sesión 20, `ARPoseDriver` (pose clavada) |
+| `MCOC_AR_ZIP.apk` | 04-10 11:19 | Sesión 23, `TrackedPoseDriver` |
+| `MCOC_AR_C5.apk` | 05-10 09:26 | **Este**: Corrección 5, marcado de 2 puntos + billboard |
+
+Instalar **solo** `MCOC_AR_C5.apk`: los otros dos quedan obsoletos.
+
+### Pendientes
+
+- [ ] **Probar `MCOC_AR_C5.apk`** en el Xiaomi Redmi Note Pro 15 5G: columna con
+      "Marcar base" y viga 134 con "Marcar extremos i y j", caminando alrededor, y
+      mandar el panel DIAGNOSTICO.
+- [ ] La copia de trabajo vive en `%LOCALAPPDATA%\Temp\opencode\c5build` y se
+      puede perder. La bitácora y el código sí están en el ZIP del usuario.
+- [ ] Sigue pendiente decidir el linaje bueno: el proyecto local (Sesión 20,
+      `ARPoseDriver`) quedo atrasado frente a los ZIP de las Sesiones 23/24.
+
+---
+
+## Sesión 25 — APK de la rama `semana06-ar`
+
+**Fecha:** 2026-10-05
+**Origen:** `C:\Users\pablo\Desktop\Proyecto 1\MCOC_semana06-ar_correccion5.zip`
+(117 360 445 bytes, contenido del 04-10, 13 302 entradas, trae `Library/` pero
+**ningún** `.apk`).
+
+Mismos requisitos de siempre: escena AR index 0, IL2CPP/ARM64, minSdk 24, GLES3,
+camara + ARCore, interfaz que no bloquea toques, label `MCOC AR`.
+
+### Que trae
+
+Rama `semana06-ar`: texto corregido (ya no en espejo), líneas y letras más grandes
+para verse a distancia, y colocación **marcando el elemento real** para que el
+diagrama quede pegado a la columna/viga en vez de "alejarse". Es la Corrección 5
+del ZIP anterior más estas mejoras de la semana 06.
+
+Confirmado en el código: `ARRig` sigue con `TrackedPoseDriver`
+(`GenericXRDevice` + `ColorCamera`, `RotationAndPosition`,
+`UpdateAndBeforeRender`) y `ARCameraBackground` montado; `ARPoseDriver` ya no
+aparece.
+
+### Disco: hay que limpiar antes de construir
+
+Al empezar quedaban **2,76 GB libres**: los dos builds anteriores habian dejado
+`%LOCALAPPDATA%\Temp\opencode\c5build` (3,5 GB) y `zipbuild` (3,3 GB). Se
+borraron esas dos carpetas —sus APK ya estaban copiados al Desktop— y quedaron
+**9,45 GB**. Un build Android IL2CPP desde cero se come unos 3 GB solo de
+`Library/`. **Revisar espacio en disco antes de cada build.**
 
 ### Verificación
 
 ```text
-Python:    154 passed + 1 fallo conocido  (test_mfi_p0_elastico_agrietado, 4.61 s)
-EditMode:  110/110 Passed  (Unity 2022.3.62f3, batchmode, LogAssemblyErrors 0ms, sin errores CS)
+Unity EditMode: total=84  passed=84  failed=0  skipped=0  result=Passed
+errores CS: 0
+Build Finished, Result: Success.        0 errores CS
+[MCOC] APK: ...\build\EdificioComplejo_MCOC_AR.apk  (23,36 MB)
+application-label: 'MCOC AR'
+package: com.mcoc.edificiocomplejo.ar   versionName 1.0
+sdkVersion 24 / targetSdkVersion 36 / compileSdk 36
+permisos: INTERNET, CAMERA
+features: android.hardware.camera.ar, com.google.ar.core.depth, android.hardware.camera
+ABI: arm64-v8a (unico)
 ```
 
-```text
-total=110 passed=110 failed=0 skipped=0 result=Passed
+Se corrieron los **84/84 EditMode** otra vez aqui, confirmando el "pasan los 84
+tests" del mensaje de entrega. Build: ~30 min (import + IL2CPP + Gradle desde
+cero); Gradle se llevo 199 s.
 
-  ARBillboardTests         Passed   4
-  ARColocacionTests        Passed   8
-  ARDosPuntosTests         Passed  10
-  ARFramesCamaraTests      Passed   6
-  ARMarcadoTests           Passed  14
-  ARMarcadoUITests         Passed   5
-  AROrientacionTests       Passed  15
-  ARPanel2DTests           Passed   6   <- nuevo (3d)
-  ARPisoTests              Passed  11
-  ARApoyosTests            Passed   4   <- 3b
-  ARRotulosTests           Passed   5   <- nuevo (3c)
-  ARPlanBTests             Passed   7
-  ARRigTests               Passed   4
-  LlenarElementosTests     Passed   7
-  UIOverlapTests           Passed   1
-  XRAndroidConfigTests     Passed   3
-```
+De nuevo hubo que anadir `companyName = "MCOC"` y `productName = "MCOC AR"` en
+`ConfigurarAndroid()` de la **copia de trabajo**: el ZIP sigue sin fijar el
+`productName`, asi que sin eso el launcher sale como `EdificioIngUnity`.
 
-`UIOverlapTests` sigue en verde: la mira se añade al centro con `raycastTarget =
-false`, así que no interfiere con los botones.
+### Resultado
 
-El fichero de código se comparó **byte a byte** contra la referencia entregada:
+- **APK:** `C:\Users\pablo\Desktop\MCOC_AR_S6.apk` — 24 495 343 bytes,
+  SHA-256 `8F57A9D7C005C2C1C3E91283D03BD9C6108FD5B4EF11037E9ECF50C9F9B00998`.
 
-```text
-diff ARInspeccionApp.cs ARInspeccionApp_referencia_3a.cs  ->  EXIT=0  (idénticos)
-diff ARInterfaz.cs       ARInterfaz_referencia_3a.cs       ->  EXIT=0  (idénticos)
-diff ARInspeccionApp.cs ARInspeccionApp_referencia_3b.cs  ->  EXIT=0  (idénticos)
-diff ARMarcadoTests.cs   ARMarcadoTests_referencia_3b.cs   ->  EXIT=0  (idénticos)
-diff ARInspeccionApp.cs  ARInspeccionApp_referencia_3c.cs    ->  EXIT=0  (idénticos)
-diff ARGeometria.cs      ARGeometria_referencia_3c.cs        ->  EXIT=0  (idénticos)
-diff ARGeometriaBuilder.cs ARGeometriaBuilder_referencia_3c.cs ->  EXIT=0  (idénticos)
-diff ARInspeccionApp.cs ARInspeccionApp_referencia_3d.cs    ->  EXIT=0  (idénticos)
-diff ARInterfaz.cs       ARInterfaz_referencia_3d.cs       ->  EXIT=0  (idénticos)
-```
+### Los cuatro APKs del Desktop
 
-El parche se aplicó con `git apply --check` limpio y **sin ningún `.rej`**. Igual que en la 3a, en la 3b.
+| Archivo | Fecha | Que lleva |
+| ------- | ----- | --------- |
+| `MCOC_AR.apk` | 01-10 12:43 | Sesión 20, `ARPoseDriver` (pose clavada) |
+| `MCOC_AR_ZIP.apk` | 04-10 11:19 | Sesión 23, `TrackedPoseDriver` |
+| `MCOC_AR_C5.apk` | 05-10 09:26 | Sesión 24, Corrección 5 (marcado de 2 puntos) |
+| `MCOC_AR_S6.apk` | 05-10 15:38 | **Este**: `semana06-ar` |
 
-### Build Android AR: NO generado
-
-Sin cambios. Ni el APK ni los módulos de Android se tocan en esta parte.
+Instalar **solo** `MCOC_AR_S6.apk`. Como dice el mensaje de entrega, **desinstalar
+la version anterior del telefono antes** (mismo paquete `com.mcoc.edificiocomplejo.ar`,
+misma versionName 1.0 y mismo versionCode 1: Android los trata como la misma app).
 
 ### Pendientes
 
-- [ ] **Prueba en dispositivo**, que es lo que motivó esta corrección: la mira
-      tiene que verse fija en el centro mientras se marca, el anillo tiene que
-      **no desaparecer** aunque ARCore pierda el plano, y el color (amarillo /
-      naranja) tiene que coincidir con lo que dice el aviso.
-- [ ] Comprobar que **el piso estimado de 1,40 m** sirve de algo cuando no hay
-      plano: en una sala real esa distancia depende de la altura del teléfono
-      que lleva el usuario, así que puede ir algo desviado.
-- [ ] Los rótulos «Medido x m · modelo L m (±%)» **siguen encimándose**: el
-      parche añade la mira, que ayuda, pero no reubica los textos.
-- [ ] **Prueba en dispositivo del marcado por apoyos (3b)**: apuntar la mira al
-      pie de la columna 14 y ver que la viga sale **sobre el eje** y no
-      desplazada hacia la cara que se ve, y lo mismo con la 26. Es el motivo de
-      esta parte y no se ha podido comprobar en un teléfono.
-- [ ] Comprobar que las **tolerancias** (`ToleranciaPlanta` 0,50 m,
-      `ToleranciaAltura` 0,60 m) son suficientes con la desviación real del
-      encaje: si el contrato tiene la columna 0,6 m desviada, `ColumnaBajoExtremo`
-      no la encuentra y se cae al valor por defecto sin avisar.
-- [ ] **En dispositivo, comprobar el toggle «No principal»**: que al activarlo
-      desaparezca el **secundario** y quede el principal (justo lo contrario de
-      lo que hacía), y que los rótulos y las cruces **se oculten y vuelvan** con
-      su diagrama. Los tests lo fijan en EditMode, pero el comportamiento en
-      pantalla no se ha visto.
-- [ ] Verificar en el edificio que las **fracciones 20/45/70 %** separan de
-      verdad los rótulos en una viga real; con %+12 en los no principales puede
-      que dos rótulos sigan cerca.
-- [ ] **En dispositivo, abrir «Panel 2D»** sobre una viga y una columna reales:
-      que las tres filas se lean sin ambigüedad, que las leyendas no se corten en
-      pantalla y que al cambiar de elemento con el panel abierto se redibuje.
-- [ ] Comprobar que el **ancho del recuadro** sirve en pantalla: el gráfico es
-      una `Texture2D` de tamaño fijo, así que en una pantalla estrecha las
-      leyendas de los extremos pueden quedar apretadas.
-- [ ] Instalar OpenJDK + Android SDK/NDK y ejecutar `Tools/MCOC/Build Android AR`.
-- [ ] Acordar qué se hace con `test_mfi_p0_elastico_agrietado`: línea base en
-      macOS 154 + 1.
+- [ ] **Probar `MCOC_AR_S6.apk`** en el Xiaomi Redmi Note Pro 15 5G: columna 14/26
+      con "Marcar base", viga 134 con "Marcar extremos i y j", "Piso ±5 cm", caminar
+      alrededor y comprobar que el diagrama queda pegado al elemento y el texto se
+      lee al derecho. Mandar captura y panel Diag si algo falla.
+- [ ] Probar el marcado en paredes sin grounding de ARCore (`FeaturePoint`): en
+      EditMode solo se cubre la rama de `Plane`.
+- [ ] La copia de trabajo vive en `%LOCALAPPDATA%\Temp\opencode\s6build` (se puede
+      perder). El codigo y la bitacora estan en el ZIP del usuario.
 
 ---
 
-## Sesión 26 - Martes 6 de octubre 2026 (Edificio A: viga secundaria F–G / 3–2 de la planta 101)
+## Sesión 26 — APK de la Corrección 6 (rama `semana06-ar`)
 
-### Motivo
+**Fecha:** 2026-10-05
+**Origen:** `C:\Users\pablo\Desktop\Proyecto 1\MCOC_semana06-ar_correccion6.zip`
+(117 836 294 bytes, 13 392 entradas, trae `Library/` pero **ningún** `.apk`).
 
-En el visor sólido de Unity **no aparecía** una viga V.60/80 que sí está en la
-planta 101 (cielo piso 1): entre los ejes F–G y 3–2, a 500 cm del eje F. El
-modelo nunca la tuvo (`GRID_X` salta de F = 10 a G = 20 m).
+Mismos requisitos de siempre: escena AR index 0, IL2CPP/ARM64, minSdk 24, GLES3,
+camara + ARCore, interfaz que no bloquea toques, label `MCOC AR`.
 
-### Geometría (DXF 2017_67-101, capa RLE-VIGA, 1 u = 1 cm)
+### Que trae la Corrección 6
 
-- Caras en x = 2531,3 y 2591,3 con el eje F en x = 2061,3 → caras a 470 y
-  530 cm de F, **eje a 500 cm → x = 15,00 m** del modelo.
-- De la cara de la viga del eje 3 (y = 1973) a la del eje 2 (y = 2638):
-  **eje 3 (A3, y = 0) → eje 2 (A2, y = 7,25)**, L = 7,25 m. Rótulo "V. 60/80".
-- **Alcance decidido por el usuario: SOLO el nivel de la planta 101**
-  (índice 1, z = −0,05), aunque la misma viga aparece también en 102/103.
+Respondiendo a lo visto en la prueba en terreno:
 
-### Implementación
+- **Mira fija en el centro** de la pantalla y busqueda de punto en el piso siempre:
+  el anillo ya no se pierde. Amarillo = piso detectado, naranja = estimado (conviene
+  "Piso ±5 cm").
+- La viga se marca **por sus columnas**: "Marcar extremos i y j" apunta al PIE de las
+  columnas 14 y 26, y la app corrige hacia el centro de cada columna.
+- "No principal" ya no funciona al revés: por defecto solo se ve el diagrama
+  principal, con rótulos separados y más cortos.
+- Boton nuevo **"Panel 2D"**: N, V y M del elemento en un recuadro fijo.
 
-- **Nuevo** `src/benchmark_3d/vigas_secundarias.py`:
-  `agregar_viga_secundaria_FG_piso1(modelo, dat, offset)` + `CONFIG_VIGA_FG`.
-  - 3 nodos nuevos en x = 15 sobre los ejes 3, **2a** y 2 (la retícula del
-    modelo tiene el eje intermedio 2a, y = 2,31, con viga X F–G que la viga
-    nueva cruza), agregados al diafragma rígido del nivel 1
-    (`ops.rigidDiaphragm` adicional con el mismo maestro). Rol `viga_sec_fg`.
-  - La viga nueva va en **2 tramos** (3→2a y 2a→2), igual que todas las vigas
-    Y del vano 3–2: sección T (`sec_viga_compuesta(L, "T")`), G35, A_pp = 0,48.
-- **Excepción justificada a la regla aditiva:** los extremos caen a mitad de
-  las vigas F–G (un solo elemento de 10 m). Para que la viga trabaje
-  (rigidez, reacciones, diagramas) se **parten las 3 vigas F–G del nivel 1**
-  (ejes 3, 2a, 2) en x = 15: el tramo 10→15 **conserva el tag original** y el
-  15→20 recibe tag nuevo; mismas propiedades de sección (span 10, L/T).
-  `construir.py` y `datos_edificio.py` **no se tocaron**; el modelo base sigue
-  en 190 nodos / 321 elementos.
-- `analizar.construir_con_voladizo`: única línea nueva de enganche, después de
-  `integrar_voladizo` (esfuerzos.py hereda la viga).
-- `cargas.distribuir_nivel`: (a) un panel atravesado por una viga con
-  `"divide_panel": True` se divide en dos subpaneles; (b) si un borde de panel
-  no tiene viga exacta, se busca una **cadena contigua de tramos colineales**
-  (viga partida) y cada tramo recibe el mismo w. La búsqueda exacta tiene
-  prioridad: los demás niveles no cambian.
+Codigo nuevo en `Assets/Scripts/AR`: `ARApoyos.cs`, `ARPiso.cs`,
+`ARGrafico.cs`. Y 4 suites EditMode nuevas: `ARApoyosTests`,
+`ARPanel2DTests`, `ARPisoTests`, `ARRotulosTests`.
 
-### Tags
+### Espacio en disco
 
-| Elemento | Tag(s) |
-|---|---|
-| Viga nueva, tramo 3→2a (L = 2,31) | **347** |
-| Viga nueva, tramo 2a→2 (L = 4,94) | **348** |
-| Viga F–G eje 3 (y = 0): 10→15 / 15→20 | 109 (original) / **344** |
-| Viga F–G eje 2a (y = 2,31): 10→15 / 15→20 | 114 (original) / **345** |
-| Viga F–G eje 2 (y = 7,25): 10→15 / 15→20 | 119 (original) / **346** |
-| Nodos nuevos (15; 0 / 2,31 / 7,25; −0,05) | **201, 202, 203** |
-
-### Área tributaria (nivel 1)
-
-- Viga nueva: **18,125 m²** → w = 2,5·q (w_G = 15,75 kN/m, w_Q = 6,25 kN/m;
-  en GQ con peso propio Wz = 34,0 kN/m).
-- Tramos partidos: mismo w por metro que la viga de 10 m (idéntico al nivel 2).
-- Vigas Y en x = 10 y x = 20 del vano 3–2: pierden el aporte de 5 m del lado F–G.
-- Área de losa del nivel y "transferido" = q·área: **sin cambios** (exacto).
-
-### Resultados (antes → después)
-
-| Magnitud | Antes | Después |
-|---|---|---|
-| Nodos modelo completo A | 200 | **203** |
-| Elementos modelo completo A | 343 | **348** (vigas_x 119 · vigas_y 118 · column 79 · wall 32) |
-| Vigas con diagrama (A) | 228 | **233** |
-| ΣFz G (kN) | 45 236,48 | **45 323,48** (+87,00 = 0,48·25·7,25) |
-| ΣFz Q (kN) | 7 671,25 | 7 671,25 |
-| ΣFz GQ (kN) | 52 907,73 | **52 994,73** |
-| V sísmico EX/EY (kN) | 4 523,65 | **4 532,35** (+8,70) |
-
-Equilibrio G/Q/GQ/EX/EY ≤ 1e-9 kN; superposición 1,2e-11 kN; cierre de
-diagramas (Vz, My, Mz) OK en las 233 vigas y 5 casos.
-
-### Regeneración de salidas
-
-`semana03_edificio_A_run.py --recalcular` → `superposicion.verificar` (solo
-§4 combinaciones) → `semana04_esfuerzos_completos_run.py --recalcular` →
-`src/complejo.py`. JSON copiados a los StreamingAssets de
-`EdificioComplejoUnity` y `EdificioSolidoUnity` (`edificio_completo.json`,
-`ar_elementos.json`). Las 8 vigas (347, 348, 344–346, 109, 114, 119) están en
-`elementos`, `esfuerzos` (5 casos), `esfuerzos_completos` (5 casos) y
-`metadatos` del visor sólido. `modelo_resultados_b.json` quedó idéntico (B
-sin cambios).
-
-**Ojo, bug previo detectado (no corregido):** `scripts/semana03_run.py
---recalcular` arranca con `cache = {}` y al final hace `demandas.guardar(cache)`:
-borra las curvas genéricas `col`/`muro` y el resumen `superposicion` de B
-(rompe 4 tests de `test_secciones`). Para refrescar solo las combinaciones §4
-usar `superposicion.verificar(cache, correr_directo=True)` sobre el caché
-cargado.
-
-### Tests
-
-- **Nuevo** `tests/test_viga_secundaria_fg.py` (9 tests): base intacto,
-  conteos 203/348, geometría y nivel único, tag original conservado, nodos en
-  el diafragma (cuerpo rígido bajo EX), área tributaria 18,125 m² y
-  conservación, +87,00 kN exacto, equilibrio y cierre de las vigas nuevas.
-- Actualizados con justificación: `test_esfuerzos_a` (228 → 233 vigas);
-  `test_secciones` (metadatos A 343 → 348, vigas_x 119 / vigas_y 118; muro
-  A tag 100 EX 20 951,6 → 20 989,5 kN·m); `test_ar_elementos` (viga 134:
-  M_i −114,30 → −116,56, M_j −159,58 → −161,75, M+ 77,19 → 74,97; columna 14
-  Mz cabeza 219,4 → 218,4 kN·m — el nudo F/A3 del nivel 1 recibe ahora la
-  viga secundaria).
-- `pytest tests/ -q` → **164 passed** (Linux, Python 3.13).
-
-### Observación
-
-La viga de raíz del voladizo metálico del eje F (y = 0, x 10 → 17,5, nivel 1)
-pasa por x = 15 **sin nodo**; no se modificó.
-
-### Pendientes
-
-- [ ] Abrir el visor sólido en Unity y comprobar que la viga aparece entre F
-      y G a 5 m del eje F en el piso 1 y que su diagrama se puede elegir.
-- [ ] Decidir si la viga (y sus gemelas en x = 25 y x = 35, vanos 3–2 y 1–2,
-      y la de x = 17,5) se agregan también en los niveles de las plantas
-      102/103, donde aparecen igual.
-- [ ] `para_entrega/` no se regeneró (es la entrega de semana 03).
-- [ ] Corregir el bug de `semana03_run.py --recalcular` descrito arriba.
-
----
-
-## Sesión 27 - Miércoles 7 de octubre 2026 (Edificio A: elementos metálicos rotulados como acero + pilar P.M.I. faltante)
-
-### Motivo
-
-El usuario indicó que las columnas **73, 74, 75, 328, 329, 340, 341** y las
-diagonales **330, 331, 342, 343** son de fierro y aparecían como hormigón
-armado. Además faltaba un pilar metálico alineado entre la columna 341 y la 14.
-
-### Diagnóstico
-
-- En **OpenSees ya eran de acero** (E = 200 GPa, P.M. 300×300×20 / V.M.
-  300×300×5, γ = 78,5 kN/m³): el cálculo era correcto.
-- El error estaba en la **capa de presentación**:
-  1. `metadatos_A` (semana 04) rotulaba TODO el Edificio A como **G35**, con
-     sección `col_A_0.70x0.70` / `viga0.60x0.80` (lo que muestra el panel
-     «Material» del visor y la ficha de la app AR);
-  2. `per_elemento_A` (semana 03) etiquetaba los pilares metálicos como
-     `col_A_0.70x0.70`: el panel P–M y la app AR les asignaban la
-     **envolvente de una columna de hormigón 70×70**;
-  3. el visor sólido dibujaba toda columna de 0,70×0,70 y toda viga/aspa de
-     0,60×0,80, con el color del hormigón.
-
-### Pilar faltante (DXF)
-
-- Planta 101: cuadrado 30×30 en **RLE-PROYECCION** centrado en (2810,3; 1943,0)
-  → 749 cm desde F, sobre el eje 3 ⇒ **(17,5; 0)**; rótulo **"P.M.I."**.
-- Planta 102 (cielo piso 2): rótulo **"P.M. 300x300x20"** en el mismo punto.
-- Es la raíz del borde del voladizo de piso 1 (nodos `raiz_vol_f` 195/196 ya
-  existentes): en la proyección del poste 341 (17,5; −4,30) y en la línea del
-  pilar 14 (10; 0).
-
-### Cambios
-
-- **Nuevo** `src/benchmark_3d/pilares_metalicos.py`:
-  `agregar_pilar_raiz_vol_f()` — P.M. 300×300×20, acero, entre z = −0,05 y
-  3,91, **tag 349**, une 195→196 (aditivo: sin nodos nuevos). Enganche en
-  `analizar.construir_con_voladizo` (después de la viga F–G).
-- `analizar.py`: `material_elemento()` / `tabla_materiales()`; cada elemento
-  del JSON lleva `"material": "concreto"|"acero"` y, si es acero, `"perfil"`.
-- `exportar_unity_solido.adaptar_a`: pasa `material`, `perfil` y
-  `rol: "diagonal"` (aspas) al contrato sólido.
-- `secciones/diagramas.py`: `metadatos_A` rotula los 38 elementos metálicos
-  con material **"Acero"**, sección = perfil real y `rol: "diagonal"` en aspas.
-- `secciones/demandas_a.py`: los pilares metálicos **se excluyen** de
-  `per_elemento_A` (catálogo P–M de hormigón armado): sin curva P–M falsa.
-  Los planos no especifican la calidad del acero (no hay fy / A270ES en las
-  láminas), por eso no se generó una curva P–M de acero.
-- Visor sólido (`EdificioSolidoUnity/Assets/Scripts`):
-  - `ModeloComplejo.cs`: `ElementoModelo.material`, `.perfil`, `.rol`;
-    `MetadatoElemento.rol`.
-  - `UnityStickModel.cs`: `CrearColumna3D`/`CrearViga3D` dibujan los elementos
-    de acero con el lado del perfil (0,30 m) y un material **gris azulado
-    metálico** (`MaterialAcero`); al deseleccionar se restaura el material
-    correcto (`MaterialPara`). Contratos sin `material` → hormigón (compatible).
-  - Métodos nuevos compilados y probados con `mcs` + stubs (no hay Unity aquí):
-    `LadoPerfil("P.M. 300x300x20") = 0,30`, `EsAcero`, `MaterialPara`.
-
-### Resultados
-
-| Magnitud | Sesión 26 | Sesión 27 |
-|---|---|---|
-| Elementos modelo completo A | 348 | **349** (column 80) |
-| Elementos de acero | 37 | **38** |
-| ΣFz G (kN) | 45 323,48 | **45 330,44** (+6,96 = 0,0224·78,5·3,96) |
-| ΣFz Q (kN) | 7 671,25 | 7 671,25 |
-| Columnas con curva P–M (hormigón) | 79 | **72** |
-
-Equilibrio G/Q/GQ/EX/EY ≤ 1e-9 kN; cierre de diagramas OK.
-
-### Tests
-
-- **Nuevo** `tests/test_acero_elementos.py` (5): geometría/sección del pilar
-  349, los 11 tags + 349 en acero en el cálculo, equilibrio y +6,96 kN,
-  rotulado "Acero"/perfil/diagonal en el visor, sin curva P–M de hormigón.
-- Actualizados: `test_secciones` (349 elementos, 80 columnas, 38 "Acero",
-  muro 100 EX 20 993,7), `test_ar_elementos` (viga 134 y columna 14:
-  218,1 kN·m), `test_json_contrato` (pilar de raíz en x = 17,5 sobre el eje 3),
-  `test_viga_secundaria_fg` (349 elementos y peso del pilar).
-- `pytest tests/ -q` → **169 passed**.
-
-### Pendientes
-
-- [ ] Abrir el visor sólido en Unity: compilar, ver los pilares y diagonales
-      metálicos delgados y en gris azulado, el pilar nuevo en (17,5; 0) del
-      piso 1, y «Material: Acero» en la consulta. Correr EditMode (153).
-- [ ] Si se quiere verificación P–M de los pilares metálicos: definir la
-      calidad del acero (p. ej. A270ES, fy = 270 MPa) y agregar su envolvente.
-
----
-
-## Sesión 28 - Miércoles 7 de octubre 2026 (visor sólido: edificios lado a lado, vista de frente al eje J y rotación más sensible)
-
-### Pedido
-
-1. Al abrir Unity, ver **de frente el anexo metálico del eje J** del Edificio A
-   (voladizo superior I'–J) y **al lado, a la izquierda, el Edificio B**.
-2. El profesor pidió que **rotar con el botón derecho** sea más fácil: la
-   sensibilidad era muy baja.
-
-### Cambios (solo `unity/EdificioSolidoUnity`)
-
-- **No se giraron los datos** del Edificio A: el análisis, el contrato JSON y la
-  app AR conservan sus coordenadas reales. Se cambió la **cámara** y el
-  **offset de dibujo** de los bloques.
-- `UnityStickModel.cs`:
-  - `ladoALado = true` y `holguraLadoALado = 10 m` (nuevos campos públicos).
-  - `OffsetVisual(idx)`: el bloque 0 (A) queda en su lugar; cada bloque
-    siguiente se **alinea por el frente (+X, eje J de A, x = 50)** y se coloca a
-    la **izquierda** mirando desde +X (hacia −Y del contrato) con 10 m de
-    holgura. Resultado: B pasa de x 71–103 / y 11–38 (detrás, en diagonal) a
-    **x 18,6–50 / y −41,3 a −14,3**. El slider «Sep bloques» ahora **aumenta la
-    holgura** en vez de mover B en +Y. Con `ladoALado = false` vuelve el
-    comportamiento antiguo.
-  - `CentroTodos()` / `SpanTodos()`; al cargar se llama
-    `OrbitCamera.EnfocarTodo()` (antes `EnfocarBloque(0)`).
-- `OrbitCamera.cs`:
-  - Vista inicial `yawPerspectiva = −90°` (cámara en +X mirando a −X, de frente
-    al eje J) y `pitchPerspectiva = 20°`; `EnfocarTodo()` centra el conjunto
-    A+B a 1,6× su mayor dimensión (≈ 92 m).
-  - **`rotVel` 0,25 → 3** (12× más sensible): arrastrar ~300 px gira ≈ 90°
-    (antes ≈ 7,5°). Slider **«Sensibilidad»** (0,5–12) en el panel Cámara, botón
-    **«Inicio»** y tecla **0** para volver a la vista inicial; **R** también.
-- `Scenes/Main.unity`: valores serializados de la cámara actualizados
-  (`rotVel: 3`, `yawPerspectiva: -90`, `pitchPerspectiva: 20`); sin esto la
-  escena seguía imponiendo 0,25 y 45°.
+Al empezar quedaban 5,51 GB. Se borro la carpeta de trabajo de la Sesión 25
+(`s6build`, 3,5 GB; su APK ya estaba copiado) y quedaron **8,69 GB**. El build
+llego a ocupar 3,15 GB de `Library/` y acabo con ~6 GB libres.
 
 ### Verificación
 
-- `OrbitCamera.cs` completo y los métodos nuevos de `UnityStickModel.cs`
-  compilados con `mcs` + stubs de UnityEngine, alimentados con las extensiones
-  reales de A y B: offset B = (7,40; −52,10), centro (25,0; 5,8; −12,6),
-  cámara en x ≈ 98 m; 20 cuadros de arrastre giran 300° con `rotVel` 3 frente a
-  25° con 0,25.
-- `pytest tests/ -q` → 169 passed (Python sin cambios).
+```text
+Unity EditMode: total=110  passed=110  failed=0  result=Passed
+errores CS: 0
+Build Finished, Result: Success.        0 errores CS
+[MCOC] APK: ...\build\EdificioComplejo_MCOC_AR.apk  (23,37 MB)
+application-label: 'MCOC AR'
+package: com.mcoc.edificiocomplejo.ar   versionName 1.0
+sdkVersion 24 / targetSdkVersion 36 / compileSdk 36
+permisos: INTERNET, CAMERA
+features: android.hardware.camera.ar, com.google.ar.core.depth, android.hardware.camera
+ABI: arm64-v8a (unico)
+```
+
+**110/110 EditMode**, 26 mas que la Corrección 5 (84). Build ~27 min; Gradle 129 s.
+
+De nuevo hubo que anadir `companyName = "MCOC"` y `productName = "MCOC AR"` en
+`ConfigurarAndroid()` de la **copia de trabajo**: el ZIP sigue sin fijar el
+`productName`, asi que sin eso el launcher sale como `EdificioIngUnity`.
+
+### Resultado
+
+- **APK:** `C:\Users\pablo\Desktop\MCOC_AR_C6.apk` — 24 501 983 bytes,
+  SHA-256 `D0EAA32349A82BA98B99260BA23147ADE9576CDC23321BFEF8867FD60FAC5C7A`.
+
+Los APKs de las Sesiones 20, 23, 24 y 25 ya no estan en el Desktop (se quitaron al
+qued obsoletos). Este es el unico vigente.
 
 ### Pendientes
 
-- [ ] Abrir en Unity (compilar), confirmar la vista inicial y probar la nueva
-      sensibilidad con el mouse y con el trackpad del Mac (clic secundario).
+- [ ] **Probar `MCOC_AR_C6.apk`**: columna 14/26 con "Marcar base" al pie de la
+      columna; viga 134 marcando el pie de las columnas 14 y 26; caminar alrededor y
+      comprobar que el diagrama queda pegado; abrir "Panel 2D" y comparar con la
+      referencia (viga 134, M = −114 / +77 / −160). Desinstalar antes la version
+      anterior del telefono: mismo paquete y mismo `versionCode 1`.
+- [ ] Mirar si el anillo sale naranja (piso estimado) en el sitio real de la prueba y
+      si "Piso ±5 cm" basta para cuadrar.
+- [ ] Probar el marcado en paredes sin grounding de ARCore (`FeaturePoint`).
+- [ ] La copia de trabajo vive en `%LOCALAPPDATA%\Temp\opencode\c6build` (~3,3 GB,
+      se puede perder). El codigo y la bitacora estan en el ZIP del usuario.
 
 ---
 
-## Sesión 29 - Miércoles 7 de octubre 2026 (diagrama de interacción de pilares metálicos + viga F–G en el cielo piso 2)
+## Sesión 27 — APK de la Corrección 7 (rama `semana06-ar`, commit `62c36d5`)
 
-### 1) Diagrama de interacción P–M de los pilares metálicos
+**Fecha:** 2026-10-06
+**Origen:** `C:\Users\pablo\Desktop\Proyecto 1\MCOC_semana06-ar_correccion7.zip`
+(119 938 524 bytes, 13 552 entradas, trae `Library/` pero **ningún** `.apk`).
 
-- Antes (Sesión 27) los 8 pilares P.M. 300×300×20 (73, 74, 75, 328, 329, 340,
-  341, 349) salían del catálogo P–M de hormigón y quedaban **sin diagrama**.
-- **Nuevo** `src/secciones/acero.py`: envolvente **nominal de sección** del
-  cajón 300×300×20 por **plastificación total** (fibras de t/40, el borde
-  ala–alma coincide con un borde de fibra → P y Mp exactos), P de −fy·A a +fy·A.
-  - Acero **A270ES, fy = 270 MPa** (supuesto: los planos no indican la calidad;
-    los 420 MPa del proyecto son de las barras A630-420H). Parámetro `FY_MPA`.
-  - P0 = fy·A = **6 048 kN**; Mp = fy·Z = **636,1 kN·m** (Z = 0,002356 m³);
-    sección compacta ((b−3t)/t = 12 < 30,5). Informativo: Pn con pandeo AISC
-    360 E3 (L = 3,96 m, K = 1, KL/r = 34,6) = **5 648 kN**.
-  - Verificado analíticamente: eje neutro en las almas, P = 756 kN →
-    M = Mp − fy·(2t)·e² = 622,89 kN·m.
-- `semana03_edificio_A_run.py`: agrega `PM_A_300x300x20` a `curvas_A`.
-- `demandas_a.per_elemento`: los pilares metálicos se etiquetan
-  `PM_A_300x300x20` (antes quedaban fuera) → el visor y la app AR los resuelven
-  por clave exacta. Catálogo A: 7 secciones; 80 columnas con curva (72 + 8).
-- Demandas GQ máximas en los pilares metálicos ≈ 286 kN·m con P ≈ 0
-  (≈ 45 % de Mp).
+Mismos requisitos de siempre: escena AR index 0, IL2CPP/ARM64, minSdk 24, GLES3,
+camara + ARCore, interfaz que no bloquea toques, label `MCOC AR`.
 
-### 2) Viga secundaria F–G también en el cielo piso 2 (lámina 102)
+### Objetivo de verificacion de esta entrega
 
-- DXF 102 (cielo piso 2, F = 1893,2): caras en x = 2363,2 / 2423,2 → 470/530 cm
-  de F, del eje 3 al eje 2 — misma viga que en la planta 101. La lámina 102
-  también la muestra en el cielo piso 3, pero **por decisión del usuario solo
-  se agrega en el cielo piso 2** (nivel 2, z = 3,91).
-- `vigas_secundarias.py`: registro por nivel `modelo["vigas_sec_fg"][nivel]`
-  (`viga_sec_fg` sigue siendo el del nivel 1). En `analizar` se llama con
-  `cfg={"nivel": 2}` **después** del pilar de raíz para que el 349 no cambie.
-- Tags nivel 2: viga **353** (3→2a) y **354** (2a→2); nodos 204–206; vigas
-  F–G partidas: **134**/350 (eje 3), 139/351 (eje 2a), 144/352 (eje 2).
-- Modelo completo A: **206 nodos / 354 elementos**; vigas con diagrama 238.
-- ΣFz G = **45 417,44 kN** (+87,00); Q = 7 671,25; equilibrio y cierre OK.
+El `LEEME_correccion7.txt` del propio ZIP pide **129/129** en EditMode
+(Window -> General -> Test Runner -> EditMode -> Run All). Se corrio en Unity
+2022.3.62f3 real antes de compilar, para no gastar 27 min de build con codigo roto.
 
-### 3) App AR: la viga 134 sigue siendo la viga física F–G
+### Que trae la Corrección 7
 
-- La 134 (eje 3, F–G, cielo piso 2) es la viga de la app AR y quedó partida en
-  x = 15. `exportar_ar.py` ahora **encadena tramos colineales unidos en nudos
-  sin columna ni muro** (`_cadena_viga`) y exporta la viga física completa:
-  tag 134, L = 10 m, extremos en los ejes F y G (pilares 14 y 26), con
-  `tags_modelo: [134, 350]` y `tramos` (coeficientes por tramo).
-  En x = 5 el corte salta P ≈ 96,1 kN (reacción de la secundaria) y M salta
-  ≈ 1,7 kN·m (torsión de la secundaria); la muestra en el nudo es el promedio
-  de ambos límites.
-- Valores GQ de la 134: M_i = −220,0, M_j = −265,3, M(centro) = +211,9 kN·m;
-  equilibrio (|Mi|+|Mj|)/2 + M_c = wL²/8 + P·L/4 = 453,76 kN·m ✓.
-- Unity `ARPanel2DTests`: leyenda de la 134 actualizada a «i -220» / «j -265.3»
-  (ya estaba desactualizada desde la Sesión 26).
+Codigo nuevo: `Assets/Scripts/AR/ARTecho.cs`. Suites nuevas:
+`ARTechoTests` y `ARQuietoTests` (19 tests nuevos frente a los 110 de la
+Corrección 6).
 
-### Tests
+Por lo que pide el LEEME, la 7 atacaba: marcado de la viga 134 **por la cara
+inferior** junto a las columnas 14 y 26, una linea de **profundidad** en el panel
+Diag, y que la **columna no se mueva** al tocar sus botones ni con "Restablecer".
 
-- `test_acero_elementos`: pilares con curva propia (P0, Mp, simetría, punto
-  analítico, resolución por clave en el visor); tags 349 estable.
-- `test_ar_elementos`: 134 como viga de 2 tramos (salto de corte P, equilibrio
-  con carga puntual, dM/dx = V salvo junto al nudo), columna 14 Mz = 217,05.
-- `test_secciones` (354 elem., vigas_x 122 / vigas_y 120, muro 100 EX 21 025,9,
-  pilares con `PM_A_300x300x20`), `test_esfuerzos_a` (238 vigas),
-  `test_viga_secundaria_fg` (niveles {1, 2}, 206/354, +2×87 kN).
-- `pytest tests/ -q` → **169 passed**.
+### Espacio en disco (importante)
 
-### Pendientes
+Al empezar solo quedaban **2,02 GB**: el build de la Sesión 26 (`c6build`) llevaba
+3,4 GB. Se borro antes de extraer (su APK ya estaba copiado) y quedaron 5,04 GB. El
+build de la Corrección 7 **llego a dejar 1,77 GB libres** al terminar, con el pico
+en `Library/` de 2,9 GB. Conviene borrar la carpeta de trabajo en cuanto se copia
+el APK: al final de esta sesion se borro y se volvio a 5,04 GB.
 
-- [ ] Unity: compilar, ver la viga del piso 2 y abrir el panel P–M de un pilar
-      metálico (p. ej. 349 o 73); correr EditMode.
-- [ ] Confirmar con el profesor la calidad del acero (A270ES supuesto).
-
----
-
-## Sesión 30 - Miércoles 7 de octubre 2026 (ENTREGA FINAL — Semana 7)
-
-### Integración con el paquete de Pablo
-
-- Pablo había preparado otro paquete, con los commits `fec7c0d` y `b633769`,
-  que no pudo subir porque GitHub le respondió 403. Ese paquete tiene:
-  - el cambio_01 (encuadre plano, sin anillo, con rótulos fijos);
-  - el contrato AR de **9 elementos**: 14, 26, 105, 134, 337, 340, 342, 350
-    y 354;
-  - el APK final compilado con esos 9 elementos.
-- La entrega final se construyó **encima de ese paquete**.
-- Su sincronización había reemplazado esta bitácora por la de los builds en
-  Windows, y con eso se perdieron las sesiones 22–29. Se restauró
-  `docs/bitacora.md`, y la de Pablo quedó en
-  `docs/bitacora_apk_pablo.md`, con sus sesiones 19–33 de compilación de los
-  APK.
-- Se eliminó `Assets/Tests.meta`, que había quedado huérfano: la carpeta ya no
-  existe.
-- En el repo de Pablo, `LlenarElementosTests.TagsEnOrdenDelContrato()`
-  recorría `Raiz().elementos` (un diccionario) con `e.tag`, y **no compilaba**.
-  Se corrigió a `Raiz().EnOrden()`. Ahora pasan 150/150 en el emulador Mono
-  (153 en Unity, con los 3 de XR). El APK se había compilado desde otra copia,
-  así que no se vio afectado.
-
-### Qué se hizo
-
-- **Informe técnico final** en LaTeX, en blanco y negro y con carátula:
-  `reports/final.tex` → `reports/final.pdf` (22 páginas). El mismo contenido
-  está en `reports/final.md`, generado con pandoc. Tiene las 22 secciones del
-  enunciado, en orden.
-- **Figuras nuevas** en `reports/fig/final_*.png` (escala de grises),
-  generadas por el script aditivo `scripts/final_figuras.py`, que solo lee
-  `results/`.
-- **README reproducible**: dependencias y versiones (Python 3.12, openseespy
-  3.8.0.0, Unity 2022.3.62f3, AR Foundation y ARCore 4.2.0), análisis,
-  resultados, visor, build Android y tests. `reports/README.md` ahora apunta
-  a la entrega final.
-- Los JSON regenerados en Linux se dejaron con fin de línea **CRLF**, igual
-  que en el repositorio, para que el diff muestre solo cambios reales.
+Ademas se borro `MCOC_AR_C6.apk` del Desktop al quedar obsoleto.
 
 ### Verificación
 
-- `pytest tests -q` → **169 passed**, con openseespy 3.7.1.2 (Python 3.11) y
-  con 3.8.0.0 (Python 3.12, entorno nuevo desde `requirements.txt`).
-- `python src/complejo.py --sin-visualizar` en un entorno nuevo regeneró los
-  7 archivos de resultados **idénticos byte a byte**.
-- Unity EditMode, emulado con Mono: 150/150 (en Unity: 153, sumando los 3
-  tests de XR).
+```text
+Unity EditMode: total=129  passed=129  failed=0  result=Passed
+errores CS: 0
+Build Finished, Result: Success.        0 errores CS
+[MCOC] APK: ...\build\EdificioComplejo_MCOC_AR.apk  (23,37 MB)
+application-label: 'MCOC AR'
+package: com.mcoc.edificiocomplejo.ar   versionName 1.0
+sdkVersion 24 / targetSdkVersion 36 / compileSdk 36
+permisos: INTERNET, CAMERA
+features: android.hardware.camera.ar, com.google.ar.core.depth, android.hardware.camera
+ABI: arm64-v8a (unico)
+```
 
-### Hallazgo (no corregido, documentado en el informe §11, §12 y §19)
+**129/129**, exactamente los que pedia el LEEME. Build ~27 min; Gradle 149 s.
 
-- Cinco envolventes P–M de muros largos tienen puntos con **M = 0**, porque la
-  curva M–φ no converge en esos niveles de P:
-  - A: `muro_A_0.30x7.25` y `muro_A_0.30x8.90`;
-  - B: `muro0.20x9.44`, `muro0.20x11.59` y `muro0.25x7.95`.
-  Los D/C de esos 31 muros no son confiables. Por ejemplo, el muro A 95 da
-  D/C = 3,05 en GQ. Las columnas, los elementos AR y el muro B 41 no se ven
-  afectados.
-- Corrección propuesta: en `pm.py`, descartar o refinar los puntos que no
-  convergen.
+De nuevo hubo que anadir `companyName = "MCOC"` y `productName = "MCOC AR"` en
+`ConfigurarAndroid()` de la **copia de trabajo**: el ZIP sigue sin fijar el
+`productName`, asi que sin eso el launcher sale como `EdificioIngUnity`. Es la
+cuarta correccion seguidos (Sesiones 23, 24, 25, 26 y 27) y conviene arreglarlo en
+el origen para que el ZIP salga bien sin parche.
 
-### Pendientes de entrega (los hace el grupo)
+### Resultado
 
-- [ ] Revisar la sección 21 del informe (contribución individual de cada
-      integrante) y la fecha de la carátula.
-- [ ] Oscar: push de `master` y `semana06-ar` y del tag `entrega-final`
-      (instrucciones en `LEEME_ENTREGA_FINAL.txt`). Crear el Release en GitHub y
-      adjuntar el APK.
+- **APK:** `C:\Users\pablo\Desktop\MCOC_AR_C7.apk` — 24 507 747 bytes,
+  SHA-256 `60CBB8C5368D7CF09E490DA573655B9459EA9DE9A220941B272B9725243CCF7F`.
+- Es el unico APK del Desktop.
+
+### Pendientes
+
+- [ ] **Probar `MCOC_AR_C7.apk`** segun el LEEME (desinstalar antes la version
+      anterior del telefono: mismo paquete y mismo `versionCode 1`):
+      A. viga 134 por la cara inferior junto a columna 14 y luego 26; anotar el
+         mensaje final (Medido ... m · modelo 10 m · bajo viga ... m) y si el anillo
+         salio amarillo (medido) o naranja (estimado).
+      B. linea "profundidad: ..." del panel Diag mientras se marca.
+      C. columna 26 con "Marcar base", caminar alrededor, tocar su boton y
+         "Restablecer": el diagrama NO debe moverse.
+      D. marcar columna 14, luego viga 134, volver a la 14: cada uno en su lugar.
+      Mandar fotos/video de A y C.
+- [ ] Probar el marcado en paredes sin grounding de ARCore (`FeaturePoint`).
+- [ ] Arreglar `productName` en el proyecto de origen para que deje de hacer falta
+      el parche en cada build.
+
+---
+
+## Sesión 28 — APK de la Corrección 8 (rama `semana06-ar`, commit `3dd494e`)
+
+**Fecha:** 2026-10-06
+**Origen:** `C:\Users\pablo\Desktop\Proyecto 1\MCOC_semana06-ar_correccion8.zip`
+(119 413 101 bytes, 13 519 entradas, `Library/` presente pero **ningún** `.apk`,
+raíz con `LEEME_correccion8.txt`).
+
+Mismos requisitos de siempre: escena AR index 0, IL2CPP/ARM64, minSdk 24, GLES3,
+camara + ARCore, interfaz que no bloquea toques, label `MCOC AR`.
+
+### Objetivo de esta entrega
+
+El `LEEME_correccion8.txt` pide **145/145** en EditMode. Se corrio en Unity
+2022.3.62f3 real antes de compilar. Añade ademas `ARCuadro.cs` (encuadre por
+4 esquinas de la cara de columna/viga) y las suites que lo cubren.
+
+### Espacio en disco: hubo que liberar
+
+Al empezar solo quedaban **3,35 GB** y un build se come ~3 GB. Pregunte y se aprobo
+borrar solo `unity/EdificioSolidoUnity/Library` del proyecto antiguo
+(`MCOC_Complejo_AB`, 3,45 GB): es caché 100% generada por Unity y **no** se toco
+`Assets`/`Packages`/`ProjectSettings`. Quedaron **8,22 GB**. El build acabo en
+5,16 GB y tras borrar la carpeta de trabajo se volvio a **8,34 GB**.
+
+Tambien se borro `MCOC_AR_C7.apk` del Desktop al quedar obsoleto.
+
+### Verificación
+
+```text
+Unity EditMode: total=145  passed=145  failed=0  result=Passed
+errores CS: 0
+Build Finished, Result: Success.        0 errores CS
+[MCOC] APK: ...\build\EdificioComplejo_MCOC_AR.apk  (23,40 MB)
+application-label: 'MCOC AR'
+package: com.mcoc.edificiocomplejo.ar   versionName 1.0
+sdkVersion 24 / targetSdkVersion 36 / compileSdk 36
+permisos: INTERNET, CAMERA
+features: android.hardware.camera.ar, com.google.ar.core.depth, android.hardware.camera
+ABI: arm64-v8a (unico)
+```
+
+**145/145**, exactamente lo que pedía el LEEME.
+
+### Dos cosas del log que no son fallo
+
+- **`ExitCode: 4`** en `AndroidPlayerBuildProgram.exe`: son los reintentos
+  normales de Bee (buildprogram0/1/2). No hay ningun `error CS` ni excepcion, y
+  los `.o` siguen creciendo entre intentos. No abortar el build por verlo.
+- **`Licensing::Client Code 500 / No ULF license found`**: aparece igualmente en
+  `tests.log` y ahi los 145 tests pasaron. Es la licencia Personal buscando
+  `Unity_lic.ulf` (no existe porque se usa licencia cliente) y no impide ni test
+  ni build.
+- En `-nographics` sale `GfxDevice renderer is null ... Ambient Probe`: aviso
+  esperable, irrelevante.
+
+Gradle tardo 198 s (mas que las 149 s de la Corrección 7). El build completo tardo
+~50 min, mas que los ~27 min de antes, por los reintentos de Bee.
+
+### Parche de siempre
+
+Otra vez hubo que anadir `companyName = "MCOC"` y `productName = "MCOC AR"` en
+`ConfigurarAndroid()` de la copia de trabajo. Ya son las correcciones 23, 24, 25,
+26, 27 y 28: **arreglarlo en el proyecto de origen** sigue pendiente.
+
+### Resultado
+
+- **APK:** `C:\Users\pablo\Desktop\MCOC_AR_C8.apk` — 24 536 331 bytes,
+  SHA-256 `3A83375473AD57774A6E1788FB3208F5AE00F93ADC3B49C5F0C9EA8723A1CFFC`.
+- Unico APK del Desktop.
+
+### Pendientes
+
+- [ ] **Probar `MCOC_AR_C8.apk`** segun el LEEME (desinstalar antes la version
+      anterior: mismo paquete y mismo `versionCode 1`):
+      A. columna 26 con «Encuadrar: 4 esquinas»: tocar las 4 esquinas de la cara
+         visible (2 abajo junto al piso, 2 arriba), en cualquier orden; cruces
+         blancas; al acabar, N/V/M **dentro** del recuadro y en vertical.
+      B. caminar, mirar a otro lado y volver: el diagrama debe seguir en el mismo
+         recuadro; si ARCore pierde seguimiento se oculta y vuelve al apuntar.
+      C. viga 134 «Encuadrar: 4 esquinas» sobre el costado entre columnas 14 y 26,
+         diagramas **horizontales**.
+      D. linea «profundidad: ...» del panel Diag mientras se marca.
+      E. mensaje final de cada encuadre («Encuadre listo: ... m × ... m») y si avisa
+         de esquinas «sin medir».
+      Mandar fotos/video de A, B y C.
+- [ ] Probar el marcado en paredes sin grounding de ARCore (`FeaturePoint`).
+- [ ] Arreglar `productName` en el proyecto de origen para que deje de hacer falta
+      el parche en cada build.
+
+---
+
+## Sesión 29 — APK de la Corrección 9 (rama `semana06-ar`, commit `3a16cd6`)
+
+**Fecha:** 2026-10-06
+**Origen:** `C:\Users\pablo\Desktop\Proyecto 1\MCOC_semana06-ar_correccion9.zip`
+(119 433 475 bytes, 13 533 entradas, `Library/` presente pero **ningún** `.apk`,
+raíz con `LEEME_correccion9.txt`).
+
+Mismos requisitos de siempre: escena AR index 0, IL2CPP/ARM64, minSdk 24, GLES3,
+camara + ARCore, interfaz que no bloquea toques, label `MCOC AR`.
+
+### Objetivo de esta entrega
+
+El `LEEME_correccion9.txt` pide **153/153** en EditMode. Se corrio en Unity
+2022.3.62f3 real antes de compilar. La corrección añade `ARCuadroTests.cs` y
+`Assets/Editor/ComplejoSceneSetup.cs`.
+
+### Verificación
+
+```text
+Unity EditMode: total=153  passed=153  failed=0  result=Passed
+errores CS: 0
+Build Finished, Result: Success.        0 errores CS
+[MCOC] APK: ...\build\EdificioComplejo_MCOC_AR.apk  (23,40 MB)
+application-label: 'MCOC AR'
+package: com.mcoc.edificiocomplejo.ar   versionName 1.0
+sdkVersion 24 / targetSdkVersion 36 / compileSdk 36
+permisos: INTERNET, CAMERA
+features: android.hardware.camera.ar, com.google.ar.core.depth, android.hardware.camera
+ABI: arm64-v8a (unico)
+```
+
+**153/153**, exactamente lo que pedia el LEEME. Gradle 206 s; build total ~45 min.
+
+### Espacio y tiempos
+
+Empezó con 8,12 GB (bien). El build toco suelo en **4,9 GB** y tras borrar la
+carpeta de trabajo quedaron **8,09 GB**. Se borro `MCOC_AR_C8.apk` del Desktop al
+quedar obsoleto.
+
+Como en la Corrección 8, hay una etapa larga (~20 min) en la que **el log se queda
+congelado** en `Starting: bee_backend ... Player` sin escribir lineas nuevas.
+No es un cuelgue: `Library/` sigue creciendo (se midio +62 MB en 2 min y 17
+archivos recientes) y a los ~30 min aparece `DisplayProgressbar: Building Gradle
+project` y arranca `java.exe`. Lo mismo con los `ExitCode: 4` de
+`AndroidPlayerBuildProgram` (reintentos de Bee) y con los `Licensing::Client
+Code 500 / No ULF license found` (benignos, tambien estan en `tests.log` ahi
+donde pasan los 153). Comprobar progreso por `Library/` y `java.exe`, no por
+lineas del log.
+
+### Parche de siempre
+
+Otra vez hubo que anadir `companyName = "MCOC"` y `productName = "MCOC AR"` en
+`ConfigurarAndroid()` de la copia de trabajo. Ya van las correcciones 23 a 29:
+**arreglarlo en el proyecto de origen** sigue pendiente.
+
+### Resultado
+
+- **APK:** `C:\Users\pablo\Desktop\MCOC_AR_C9.apk` — 24 539 455 bytes,
+  SHA-256 `F53835E20AACCA05C9BECDD84996B2E431318B1CCDE0A091095F770A9369FC3E`.
+- Unico APK del Desktop.
+
+### Pendientes
+
+- [ ] **Probar `MCOC_AR_C9.apk`** segun el LEEME (desinstalar antes la version
+      anterior: mismo paquete y mismo `versionCode 1`):
+      A. columna 26 «Encuadrar: 4 esquinas» **EN ORDEN**: 1-2 los dos PIES de la
+         cara visible en el piso (anillo amarillo = medido); 3-4 ARRIBA de la
+         columna, en cada arista, guiandose con la guía amarilla.
+      B. caminar alrededor y volver: diagrama en el mismo recuadro y **VERTICAL**.
+      C. viga 134 «Encuadrar: 4 esquinas»: 1-2 cara INFERIOR junto a columna 14 y
+         junto a la 26; 3-4 arriba del costado donde se junta con la losa.
+      D. al terminar el menú se esconde: hay que tocar «Menú» (abajo a la derecha)
+         para recuperarlo.
+      E. Diag -> linea «profundidad: ...».
+      Mandar fotos/video de A, B y C. **Si la app se cierra sola, anotar en que
+      momento.**
+- [ ] Probar el marcado en paredes sin grounding de ARCore (`FeaturePoint`).
+- [ ] Arreglar `productName` en el proyecto de origen para que deje de hacer falta
+      el parche en cada build.
+
+---
+
+## Sesión 30 — APK de la Corrección 10 (rama `semana06-ar`, commit `9b0c219`)
+
+**Fecha:** 2026-10-06
+**Origen:** `C:\Users\pablo\Desktop\Proyecto 1\MCOC_semana06-ar_correccion10.zip`
+(119 520 333 bytes, 13 548 entradas, `Library/` presente pero **ningún** `.apk`,
+raíz con `LEEME_correccion10.txt`).
+
+Mismos requisitos de siempre: escena AR index 0, IL2CPP/ARM64, minSdk 24, GLES3,
+camara + ARCore, interfaz que no bloquea toques, label `MCOC AR`.
+
+### Objetivo de esta entrega
+
+El `LEEME_correccion10.txt` pide **153/153** en EditMode. Igual que la Corrección 9:
+no hay ningun `.cs` nuevo en `Scripts/AR` ni `Editor` (mismos 13 y 23 archivos),
+así que los cambios son de comportamiento/codigo dentro de los ya existentes.
+
+### Verificación
+
+```text
+Unity EditMode: total=153  passed=153  failed=0  result=Passed
+errores CS: 0
+Build Finished, Result: Success.        0 errores CS
+[MCOC] APK: ...\build\EdificioComplejo_MCOC_AR.apk  (23,40 MB)
+application-label: 'MCOC AR'
+package: com.mcoc.edificiocomplejo.ar   versionName 1.0
+sdkVersion 24 / targetSdkVersion 36 / compileSdk 36
+permisos: INTERNET, CAMERA
+features: android.hardware.camera.ar, com.google.ar.core.depth, android.hardware.camera
+ABI: arm64-v8a (unico)
+```
+
+**153/153**. Gradle 102 s (el mas rapido de la serie: 198 s en la 8, 206 s en la 9);
+build total ~30 min.
+
+### Espacio y tiempos
+
+Empezó con 7,79 GB. El build toco suelo en **4,12 GB** y tras borrar la carpeta de
+trabajo quedaron **7,75 GB**. Se borro `MCOC_AR_C9.apk` del Desktop al quedar
+obsoleto.
+
+Se confirmó otra vez la etapa larga (~20 min) con el log congelado en
+`Starting: bee_backend ... Player`: no es un cuelgue. Se comprueba midiendo
+`Library/` (a los 15 min iba por 1 290 MB con 70 archivos escritos en 3 min).
+
+### Parche de siempre
+
+Otra vez `companyName = "MCOC"` y `productName = "MCOC AR"` en
+`ConfigurarAndroid()` de la copia de trabajo. Correcciones 23 a 30: **arreglarlo en
+el proyecto de origen** sigue pendiente.
+
+### Resultado
+
+- **APK:** `C:\Users\pablo\Desktop\MCOC_AR_C10.apk` — 24 539 867 bytes,
+  SHA-256 `E1252B1931A3DEFD268B3FD0C389675EBD915849F2243D201F33AC938B2C220A`.
+- Unico APK del Desktop.
+
+### Pendientes
+
+- [ ] **Probar `MCOC_AR_C10.apk`** segun el LEEME (desinstalar antes la version
+      anterior: mismo paquete y mismo `versionCode 1`):
+      A. columna 26 «Encuadrar: 4 esquinas» (2 pies, luego 2 arriba) y **comparar**
+         con «Marcar base (anillo)».
+      B. viga 134 «Marcar viga: apuntar a ella» (anillo de la mañana); si no aparece
+         el anillo, «Marcar viga: pie de columnas».
+      C. Diag -> linea «profundidad: ...».
+      Mandar fotos/video de A y B.
+- [ ] Probar el marcado en paredes sin grounding de ARCore (`FeaturePoint`).
+- [ ] Arreglar `productName` en el proyecto de origen para que deje de hacer falta
+      el parche en cada build.
+
+---
+
+## Sesión 31 — APK de la Corrección 10v2 + cambio_01
+
+**Fecha:** 2026-10-07
+**Origen:** carpeta `C:\Users\pablo\Desktop\Proyecto 1\opencode\` con **dos** ZIP:
+
+| fichero | bytes | entradas |
+|---|---|---|
+| `MCOC_semana06-ar_correccion10_v2.zip` | 119 621 220 | 13 553 (commit `9b0c219`) |
+| `cambio_01.zip` | 47 184 | 5 ficheros + `LEEME_cambio_01.txt` |
+
+Ninguno trae `.apk`. Requisitos de siempre: escena AR index 0, IL2CPP/ARM64,
+minSdk 24, GLES3, camara + ARCore, interfaz que no bloquea toques, label `MCOC AR`.
+
+### Procedimiento nuevo: dos capas
+
+Primera vez que no basta con un unico ZIP. Se hizo:
+
+1. Extraer `correccion10_v2` a `%LOCALAPPDATA%\Temp\opencode\c11build`.
+2. Extraer `cambio_01` **encima con `-y`** (mismas raíces, reemplaza 5 ficheros):
+   `ARInspeccionApp.cs`, `ARCuadro.cs`, `ARGeometria.cs`,
+   `ARGeometriaBuilder.cs`, `ARCuadroTests.cs`.
+3. **Verificar MD5** de los 5 contra el `LEEME_cambio_01`: **5 de 5 coinciden**
+   (`A8126ED1...`, `F849AB37...`, `624C4167...`, `70AF1413...`,
+   `E4A0CB84...`).
+4. Borrar `Library`/`UserSettings`, parchear `productName`, EditMode, build.
+
+Si no coincidiera algun MD5, la capa no se aplicó bien y no hay que compilar.
+
+### Objetivo de verificación
+
+Ambos LEEME piden **153/153** en EditMode.
+
+### Verificación
+
+```text
+MD5 de los 5 ficheros de cambio_01:  5 de 5 OK
+Unity EditMode: total=153  passed=153  failed=0  result=Passed
+errores CS: 0
+Build Finished, Result: Success.        0 errores CS
+[MCOC] APK: ...\build\EdificioComplejo_MCOC_AR.apk  (23,37 MB)
+application-label: 'MCOC AR'
+package: com.mcoc.edificiocomplejo.ar   versionName 1.0
+sdkVersion 24 / targetSdkVersion 36 / compileSdk 36
+permisos: INTERNET, CAMERA
+features: android.hardware.camera.ar, com.google.ar.core.depth, android.hardware.camera
+ABI: arm64-v8a (unico)
+```
+
+**153/153**. Gradle 150 s.
+
+Que cambio el `cambio_01` (por el propio LEEME): encuadre por 4 esquinas sin
+anillo, la 1ª esquina fija la distancia y las otras 3 quedan en el mismo plano de
+frente a la camara (el diagrama es una figura 2D como una imagen impresa), rótulos
+del encuadre impresos en ese plano y con tamaño justo, y **todos** los rótulos
+(incluso los del anillo / dibujo 1:1) fijos al colocar: ya no giran ni crecen con la
+camara.
+
+Se nota en el propio APK: `assets/ar_elementos.json` pasa de **27 838 a 28 755
+bytes**.
+
+### Espacio en disco: la sesión más justa de todas
+
+Empezó con **3,96 GB** libres y un build necesita ~3,6 GB de `Library`. Hubo que
+liberar **dos veces**:
+
+1. **Antes de empezar** (con permiso): `tmp_pack_X77UDz` de git (248 MB, restos del
+   02-09 sin `git.exe` en marcha), carpeta `Desktop\opencode` duplicada (114 MB),
+   `Builds/` con el APK obsoleto (23 MB) y `scoped_dir*` de TEMP (103 MB)
+   = **488 MB** -> 4,33 GB.
+2. **A mitad de build**, al ver que `Library` iba a acabar en ~3,46 GB con solo
+   ~2 GB libres: `Stata18.msi` (677 MB, de 2023) + `unityhub-updater` (174 MB)
+   = **852 MB**. Acabó con **1,53 GB** libres y `Library` en **3 456,8 MB**.
+
+**Regla práctica:** medir `Library/` y `freed` con la misma marca de tiempo.
+Si `Library/` + 300 MB > libre, el build no llega. La caída del disco coincide con
+la subida de `Library` (se comprobo: -119 MB vs +117 MB en 3 min), asi que no hay
+fugas raras: es el build.
+
+Tras borrar la carpeta de trabajo quedaron **4,75 GB**. Se borro `MCOC_AR_C10.apk`.
+
+### Parche de siempre
+
+Otra vez `companyName = "MCOC"` y `productName = "MCOC AR"` en
+`ConfigurarAndroid()` de la copia de trabajo. Correcciones 23 a 31: **arreglarlo en
+el proyecto de origen** sigue pendiente.
+
+### Resultado
+
+- **APK:** `C:\Users\pablo\Desktop\MCOC_AR_Cambio01.apk` — 24 500 895 bytes,
+  SHA-256 `B8BCEE0D8309BA3204F05815B71AF845F2C15D248573CB5C58B15AAC30A681B7`.
+- Unico APK del Desktop.
+
+### Pendientes
+
+- [ ] **Probar `MCOC_AR_Cambio01.apk`** segun `LEEME_cambio_01.txt`
+      (desinstalar antes la version anterior: mismo paquete y mismo `versionCode 1`):
+      A. columna «Encuadrar: 4 esquinas»: tocar las 4 esquinas de la cara, **en
+         cualquier orden** (los 4 son puntos en el centro de la mira, sin anillo).
+      B. viga «Encuadrar: 4 esquinas»: las 4 esquinas del costado entre columnas.
+      C. caminar, mirar a otro lado y volver: **mismo tamaño y misma posición**.
+      Mandar fotos/video de A, B y C.
+- [ ] Probar el marcado en paredes sin grounding de ARCore (`FeaturePoint`).
+- [ ] Arreglar `productName` en el proyecto de origen para que deje de hacer falta
+      el parche en cada build.
+- [ ] Quedan `Stata18.msi` y `unityhub-updater` borrados: si reparas/desinstalas
+      Stata necesitaras su instalador otra vez.
+
+---
+
+## Sesión 32 — 07-10-2026 — Añadir 6 elementos (tags 354, 350, 337, 340, 342, 105) sin tocar la interfaz
+
+**Encargo:** sobre los mismos ZIPs de la sesión 31, mismo objetivo, **sin cambiar nada de la
+interfaz**, solo añadir 6 elementos más, cada uno con sus diagramas:
+`354 (Viga), 350 (Viga), 337 (Viga), 340 (Columna), 342 (Diagonal), 105 (Muro)`,
+junto a los que ya había (`134, 14, 26`).
+
+### Por qué con tocar solo el JSON ya vale
+
+- `ARInterfaz.tagsElemento` se rellena **en bucle** desde `o.elementos` del JSON: la lista de
+  botones crece sola.
+- `ARGeometriaBuilder.Construir` itera `raiz.EnOrden()`: es **data-driven**, no busca GameObjects
+  de escena ni un conteo fijo.
+- Lo único parecido a un `transform.Find` es `ARInspeccionApp.cs:947`
+  (`foreach (var e in geometria) if (e.tag == tagSeleccionado)`), que recorre la lista del JSON.
+- Conclusión: añadir elementos = regenerar `ar_elementos.json` y meterlo en `StreamingAssets`.
+  **No hizo falta tocar `ARInterfaz`, `ARGeometriaBuilder`, `ARColocacion` ni `Main.unity`.**
+
+### Generación del contrato de 9 elementos
+
+Los 6 tags pedidos no estaban en `assets/ar_elementos.json` (solo tenía 3), pero **sí** en
+`results/edificio_solido.json` y en `Assets/StreamingAssets/edificio_completo.json` (bloque
+`Edificio A - Ingenieria (2017_67)`, 354 elementos).
+
+```
+python src/ar/exportar_ar.py --tags 134 14 26 354 350 337 340 342 105
+→ 9 elementos exportados
+results/ar_elementos.json  y  Assets/StreamingAssets/ar_elementos.json : 28 755 → 86 866 bytes
+```
+
+Contenido confirmado (todos con `tag, tipo, tipo_modelo, seccion, material, L, ubicacion,
+extremos, ejes_locales, x[41], diagramas{N,V_xz,M_xz,V_xy,M_xy,T}, principal,
+coeficientes_extremo_i, anclaje`):
+
+| tag | tipo | L (m) |
+|-----|------|-------|
+| 134 | viga | 10,0 |
+| 14  | columna | 3,96 |
+| 26  | columna | 3,96 |
+| 354 | viga | 7,25 |
+| 350 | viga | 10,0 |
+| 337 | viga | 7,5 |
+| 340 | columna | 3,96 |
+| 342 | viga | 5,846 |
+| 105 | muro | 3,96 |
+
+**Ojo con el 342:** el usuario lo llama **"Diagonal"**, pero en el modelo es `vigas_y` y
+`exportar_ar.py` tiene en la línea 227 `TIPO = {"vigas_x": "viga", "vigas_y": "viga",
+"column": "columna", "wall": "muro"}` — **no existe tipo "diagonal"**, así que sale como `viga`.
+`exportar_ar.py` no se puede tocar (regla del proyecto): está **pendiente de confirmar** si eso
+está bien.
+
+### 3 EditMode tests que se rompieron (la lista pasó de 3 a 9)
+
+Fallo: `total=153 passed=150 failed=3 result=Failed`. Los tres están en
+`Assets/Editor/LlenarElementosTests.cs` y **fijaban el contrato antiguo** de 3 elementos
+(`134, 14, 26`):
+
+- `LaListaVaOrdenadaYElPrimeroEsElTagMenor` — `Assert.AreEqual(3, tags.Count)` y `tags[1]`, `tags[2]` hardcodeados.
+- `CadaBotonEmiteSuPropioTag` — `CollectionAssert.AreEqual(new[] {14,26,134}, emitidos)`.
+- `ElCallbackOkLlenaLaListaYSeleccionaElTag14` — igual.
+
+`Raiz()` **lee el JSON real** de `StreamingAssets`, por eso fallaban. Arreglados **solo en los
+tests** (no es interfaz): nuevo helper `TagsEnOrdenDelContrato()` que deriva la lista esperada
+de `Raiz().EnOrden()`. Así dejan de romperse si en el futuro exportas más o menos elementos, y
+siguen validando orden ascendente, `tags[0] == 14` y `PrimerTag() == 14`.
+
+Resultado: **153/153**.
+
+### Build
+
+```
+Inicio 09:16:52 → Fin 10:01:58  (45 min exactos)
+errores CS: 0
+Incremental Player Build (IL2CPP) → Building Gradle project → Android PostProcess took 164.196 ms
+Build Finished, Result: Success.
+[MCOC] APK: ...\build\EdificioComplejo_MCOC_AR.apk  (23,42 MB)
+
+aapt2:
+package: com.mcoc.edificiocomplejo.ar  versionCode 1  versionName 1.0
+application-label: 'MCOC AR'
+sdkVersion 24 / targetSdkVersion 36 / compileSdk 36
+permisos: INTERNET, CAMERA
+features: android.hardware.camera.ar, com.google.ar.core.depth, android.hardware.camera
+ABI: arm64-v8a (unico)
+```
+
+**Verificación de que van los 9 elementos (extraído del APK, no del disco):**
+
+```
+assets/ar_elementos.json = 86.866 bytes
+tags: 14 26 105 134 337 340 342 350 354
+```
+
+### Espacio en disco: esta vez sin sustos
+
+`Library/` del build anterior ya estaba borrado. 4,88 GB libres al arrancar; bajó a 2,49 GB
+durante Gradle (pagefile) y **acabó en 6,02 GB** tras borrar la carpeta de trabajo. **No hizo
+falta liberar nada** ni sacar el turno del "lo que es basura" de la sesión 31.
+
+### Resultado
+
+- **APK:** `C:\Users\pablo\Desktop\MCOC_AR_9elementos.apk` — 24 559 003 bytes,
+  SHA-256 `3BAF2CD4616D8C64E41EDFE75ECDBF602B15AF8CA2B6B28B846BFD87705F9B70`.
+- Se borró `MCOC_AR_Cambio01.apk`: **un único APK en el Desktop**.
+- Borrada la carpeta de trabajo `c12build`.
+
+### Pendientes
+
+- [ ] **Probar `MCOC_AR_9elementos.apk`** (desinstalar antes: mismo paquete y mismo `versionCode 1`):
+      en la lista deben aparecer **9 elementos** (los 3 de antes + 354, 350, 337, 340, 342, 105)
+      y cada uno debe mostrar **sus diagramas** (N, V, M) al seleccionarlo.
+- [ ] Confirmar si el tag **342** debe salir como `viga` (hoy `vigas_y` → `viga`) o hace falta
+      meter `"diagonal"` en `TIPO` de `exportar_ar.py` (mientras, no se puede tocar el script).
+- [ ] Probar encuadre por 4 esquinas de `LEEME_cambio_01.txt` (fotos A, B y C).
+- [ ] Arreglar `productName` en el proyecto de origen para que deje de hacer falta el parche
+      en cada build (Correcciones 23 a 32).
+
+---
+
+# Sesión 33 — ENTREGA FINAL (Semana 7): informe final, sync a corrección10v2 y release
+
+**Grupo:** Oscar Rodríguez · Nicolás Letelier · Pablo Arancibia.
+**Fecha:** hoy (cierre del proyecto).
+**Rol:** consolidación del repositorio único (`MCOC_Complejo_AB`) a su estado
+**más reciente** (regla: usar SIEMPRE la versión más nueva de cada fichero, de
+más reciente a más antiguo), informe final `reports/final.md`, README
+reproducible y release `entrega-final`.
+
+## Qué había (diagnóstico)
+
+- El repo en disco estaba en el linaje "week 5" (A=343, sin Correcciones AR
+  5–10) y el ZIP `MCOC_semana06-ar_correccion10_v2` + `cambio_01` era la
+  versión más nueva del proyecto (A=354, app AR final, rama `semana06-ar`).
+- `exportar_ar.py --tags 134 14 26 354 350 337 340 342 105` **fallaba** en el
+  repo (`KeyError: tag 354 no existe en el Edificio A`): el `edificio_solido.json`
+  local tenía 343 elementos. Decisión confirmada con el usuario: **sincronizar
+  el repo al ZIP**.
+
+## Sync repo → ZIP (corrección10v2 + cambio_01)
+
+- Comparación de árbol ZIP vs repo (rel, robocopy `/E`): 58 solo-ZIP, 15
+  solo-REPO, 47 distintos. Se copió todo el árbol del ZIP y se eliminaron los
+  restos del linaje AR viejo (`Assets/Tests/`, `MCOC.AR.asmdef`, `MCOC.AR.csproj`,
+  `EditModeTests.csproj`, `editmode_results.xml`, `tests.log`, `build_android.log`).
+- **Conservados** los ficheros del repo que el ZIP no trae: `docs/bitacora.md`
+  (Sesión 32), `docs/bitacora_edificio_A.md`, `docs/sesion20.md`.
+- Verificado en el repo sincronizado: **A = 354 elementos (206 nodos)**,
+  B = 350 (240 nodos); `results/edificio_solido.json` = 2 174 717 B.
+
+## 9 elementos del contrato AR (regenerado canónico)
+
+```
+python src\ar\exportar_ar.py --tags 134 14 26 354 350 337 340 342 105
+```
+- `results/ar_elementos.json` = **86 866 B**, tags **14 26 105 134 337
+  340 342 350 354** (caso GQ, Edificio A), copiado a
+  `unity/EdificioSolidoUnity/Assets/StreamingAssets/`.
+- Se re-aplicó en `LlenarElementosTests.cs` el arreglo de la Sesión 32
+  (helper `TagsEnOrdenDelContrato()` en vez de `{14, 26, 134}`), ya que el
+  ZIP traía la versión de 3 elementos.
+
+## Números finales verificados (que entran en el informe)
+
+- **A:** G = 45 417,4 kN · Q = 7 671,3 kN (GQ 53 088,7) · V sísmico EX=EY =
+  4 541,7 kN (0,10·G) · 354 elems (80 columnas, 238 vigas, 32 muros,
+  4 diagonales de acero) · 206 nodos · niveles −4,21 … 11,83 m.
+- **B:** G = 48 171,1 kN · Q = 11 029,6 kN · V = 4 817,1 kN · 350 elems
+  (40 col, 215 vigas, 60 muros, 35 brazos) · 240 nodos · 6 niveles.
+- **Complejo:** G = 93 588,6 kN · Q = 18 700,8 kN.
+- **Superposición:** G+Q≡GQ / G+EX / G+Q+EX con max ΔR ≤ 6,0e-11 kN,
+  max ΔP = 4,68e-11 kN. **Equilibrio** ~1e-11 … 1e-12 por caso.
+- **pytest:** `python -m pytest tests\` → **169 passed** (16,6 s; incorpora
+  acero/vigas secundarias + 17 de AR).
+- **D/C:** muro B tag 41 GQ 0,74 (EY 1,78 ❌ documentado) · col B tag 2 1,05 ·
+  A col 14 0,191 · col 26 0,189 · col 340 0,02 · muro 105 0,04.
+
+## Entregables escritos
+
+- `reports/final.md` — informe final con las 22 secciones del enunciado +
+  reproducibilidad. Honors Track: **H3 (AR estructural avanzada) y H5
+  (capacidad/análisis avanzado) SÍ**; H1/H2/H4 NO (declarado).
+- `reports/README.md` — fila semana 7 + suite 169 + tag `entrega-final`.
+- `README.md` — estado final, resultados canónicos y sección de ejecución
+  reproducible (Python 3.12.7 · OpenSeesPy 3.8.0.0 · Unity 2022.3.62f3).
+
+## Git
+
+- Commit **`fec7c0d`** "Entrega final Semana 7: sync a correccion10v2 + cambio_01,
+  contrato AR de 9 elementos, informe final y reproducibilidad (169 passed)".
+- Consolidado en **`master`** (fast-forward desde `semana06-ar`), tag
+  **`entrega-final`** creado.
+- ⚠️ **PUSH/RESEASE BLOQUEADOS por permisos**: `git push origin` y `gh release`
+  dan **403 — Permission to OscarRodriguez17/Proyecto-1-MCOC-Completo denied to
+  Pabloaran201120** (no es colaborador con push en ese repo). Pendiente de que
+  el dueño agregue a Pablo como colaborador (Write) o se use una cuenta con
+  acceso; luego:
+  `git push origin master semana06-ar entrega-final`
+  `gh release create entrega-final --title "Entrega Final Semana 7" --notes "9 elementos AR · 169 tests · informe final" unity/EdificioSolidoUnity/build/EdificioComplejo_MCOC_AR.apk`
+
+## Pendientes (heredados de la Sesión 32)
+
+- [ ] Probar `MCOC_AR_9elementos.apk` en el Edificio A real (viga 134 con sus columnas a la vista).
+- [ ] Decidir si el tag 342 se muestra como `viga` o `diagonal`.
+- [ ] Desbloquear push + release (ver arriba).

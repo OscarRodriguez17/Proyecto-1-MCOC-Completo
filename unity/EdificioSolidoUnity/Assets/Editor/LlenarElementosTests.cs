@@ -42,7 +42,7 @@ namespace MCOC.AR.Editores
         private static List<int> TagsEnOrdenDelContrato()
         {
             var tags = new List<int>();
-            foreach (var e in Raiz().elementos) tags.Add(e.tag);
+            foreach (var e in Raiz().EnOrden()) tags.Add(e.tag);
             tags.Sort();
             return tags;
         }
